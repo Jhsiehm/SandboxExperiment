@@ -1,0 +1,19 @@
+{
+  "series": "Gallup Most Important Problem",
+  "note": "Monthly share citing the economy/unemployment as the most important problem. Used only for agenda-setting validation of prominence weights.",
+  "source": "Gallup historical MIP series, public summaries",
+  "points": [
+    {"month": "2012-01", "economy_plus_unemployment": 0.51, "deficit": 0.08, "war_terrorism": 0.04, "healthcare": 0.06, "immigration": 0.02},
+    {"month": "2012-02", "economy_plus_unemployment": 0.49, "deficit": 0.09, "war_terrorism": 0.03, "healthcare": 0.07, "immigration": 0.02},
+    {"month": "2012-03", "economy_plus_unemployment": 0.47, "deficit": 0.11, "war_terrorism": 0.03, "healthcare": 0.09, "immigration": 0.03},
+    {"month": "2012-04", "economy_plus_unemployment": 0.46, "deficit": 0.10, "war_terrorism": 0.04, "healthcare": 0.08, "immigration": 0.02},
+    {"month": "2012-05", "economy_plus_unemployment": 0.50, "deficit": 0.08, "war_terrorism": 0.03, "healthcare": 0.06, "immigration": 0.02},
+    {"month": "2012-06", "economy_plus_unemployment": 0.52, "deficit": 0.07, "war_terrorism": 0.05, "healthcare": 0.05, "immigration": 0.02},
+    {"month": "2012-07", "economy_plus_unemployment": 0.53, "deficit": 0.08, "war_terrorism": 0.04, "healthcare": 0.05, "immigration": 0.02},
+    {"month": "2012-08", "economy_plus_unemployment": 0.51, "deficit": 0.09, "war_terrorism": 0.04, "healthcare": 0.05, "immigration": 0.02},
+    {"month": "2012-09", "economy_plus_unemployment": 0.48, "deficit": 0.10, "war_terrorism": 0.05, "healthcare": 0.06, "immigration": 0.03},
+    {"month": "2012-10", "economy_plus_unemployment": 0.47, "deficit": 0.09, "war_terrorism": 0.04, "healthcare": 0.07, "immigration": 0.03},
+    {"month": "2012-11", "economy_plus_unemployment": 0.46, "deficit": 0.12, "war_terrorism": 0.03, "healthcare": 0.06, "immigration": 0.02},
+    {"month": "2012-12", "economy_plus_unemployment": 0.44, "deficit": 0.16, "war_terrorism": 0.03, "healthcare": 0.06, "immigration": 0.02}
+  ]
+}

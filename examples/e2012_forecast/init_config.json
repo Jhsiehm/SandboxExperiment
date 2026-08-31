@@ -1,0 +1,51 @@
+{
+  "name": "e2012-forecast",
+  "description": "Contamination-controlled forecasting on frozen epoch e2012.",
+  "start_t": "2012-06-30T00:00:00",
+  "run_dir": "data/runs/phase1-e2012-society/society",
+  "agent_class_name": "ForecasterAgent",
+  "workspace_path": ".",
+  "custom_modules": {
+    "agents": ["custom/agents/forecaster_agent.py"],
+    "envs": ["custom/envs/frozen_epoch_env.py"]
+  },
+  "env_modules": [
+    {
+      "class_name": "FrozenEpochEnv",
+      "config": {
+        "epoch_id": "e2012",
+        "min_prominence": 0.0
+      }
+    }
+  ],
+  "agent_specs": [
+    {
+      "id": 1,
+      "profile": {
+        "name": "forecaster-frontier-a",
+        "role": "historical forecaster",
+        "bio": "Uses only contemporaneous search as of 2012-06-30."
+      },
+      "config": { "model_id": "frontier-a" }
+    },
+    {
+      "id": 2,
+      "profile": {
+        "name": "forecaster-frontier-b",
+        "role": "historical forecaster",
+        "bio": "Uses only contemporaneous search as of 2012-06-30."
+      },
+      "config": { "model_id": "frontier-b" }
+    }
+  ],
+  "llm": {
+    "api_key_env": "AGENTSOCIETY_LLM_API_KEY",
+    "api_base_env": "AGENTSOCIETY_LLM_API_BASE",
+    "model_env": "AGENTSOCIETY_LLM_MODEL"
+  },
+  "psbx": {
+    "question_set": "data/questions/e2012.jsonl",
+    "run_config": "config/run-society.yaml",
+    "live_run_config": "config/run-phase2.yaml"
+  }
+}

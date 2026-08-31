@@ -1,0 +1,33 @@
+# Declared pretraining cutoffs are first-class inputs to contamination_curve.
+# Dates are the model's own stated knowledge cutoff (or a conservative
+# published estimate), not a guess about memorization.
+models:
+  - id: gpt-oss-2012ish
+    provider: local_vllm
+    model_name: gpt2
+    declared_pretraining_cutoff: 2012-01-01
+    is_instruction_tuned: false
+    max_tokens: 1024
+    temperature: 0.2
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+
+  - id: frontier-a
+    provider: anthropic
+    model_name: claude-sonnet-4-5
+    declared_pretraining_cutoff: 2025-01-01
+    is_instruction_tuned: true
+    max_tokens: 2048
+    temperature: 0.2
+    cost_per_1k_input: 0.003
+    cost_per_1k_output: 0.015
+
+  - id: frontier-b
+    provider: openai
+    model_name: gpt-4.1-mini
+    declared_pretraining_cutoff: 2024-06-01
+    is_instruction_tuned: true
+    max_tokens: 2048
+    temperature: 0.2
+    cost_per_1k_input: 0.0004
+    cost_per_1k_output: 0.0016

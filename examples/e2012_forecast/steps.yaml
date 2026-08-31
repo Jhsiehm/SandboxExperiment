@@ -1,0 +1,14 @@
+# AgentSociety 2 step file for the frozen-epoch forecast.
+# Clock does not advance past the cutoff. Each step asks one question.
+name: e2012-forecast
+start_t: "2012-06-30T00:00:00"
+tick_seconds: 0
+steps:
+  - tick: 0
+    t: "2012-06-30T00:00:00"
+    action: ask
+    message: "Read FrozenEpochEnv.epoch_clock. That date is now. Search, fetch, then forecast."
+  - tick: 1
+    t: "2012-06-30T00:00:00"
+    action: ask
+    message: "Output calibrated probability JSON with verbatim citations from FrozenEpochEnv.fetch."

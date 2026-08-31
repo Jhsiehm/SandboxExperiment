@@ -1,0 +1,16 @@
+run_id: phase2-e2012-real
+epoch: e2012
+models: [frontier-a, frontier-b]
+question_set: data/questions/e2012.jsonl
+max_tool_calls: 8
+min_prominence: 0.0
+n_questions: 50
+category_balance:
+  economic: 20
+  legislative: 20
+  geopolitical: 10
+sandbox_mode: host
+embedding_backend: hashing
+# Fail loud if ANTHROPIC_API_KEY / OPENAI_API_KEY are missing. Do not fall back
+# to the retrieval heuristic — that would poison the contamination curve.
+allow_mock: false

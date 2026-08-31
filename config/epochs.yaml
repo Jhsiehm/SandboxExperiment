@@ -1,0 +1,5 @@
+epochs:
+  - id: e2012
+    cutoff_date: 2012-06-30
+    resolution_window_end: 2013-06-30
+    corpus_index_path: data/corpus/e2012

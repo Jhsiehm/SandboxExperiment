@@ -1,0 +1,150 @@
+{
+  "as_of": "2012-06-30",
+  "note": "GDELT-derived geopolitical questions. Pre-cutoff mention stream is the live-signal check; post-cutoff events resolve ground truth.",
+  "items": [
+    {
+      "id": "assad-in-office",
+      "text": "Will Bashar al-Assad remain President of Syria through June 30, 2013?",
+      "resolution_criteria": "Resolves YES if Assad holds the office of President of Syria on 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": true,
+      "source_url": "https://www.un.org/securitycouncil/",
+      "mentions_pre_cutoff": 18420,
+      "prior": 0.46,
+      "prior_kind": "analyst_consensus",
+      "prior_source": "open-source regime-survival commentary, H1 2012"
+    },
+    {
+      "id": "greece-euro",
+      "text": "Will Greece remain a member of the euro area through June 30, 2013?",
+      "resolution_criteria": "Resolves YES if Greece is a euro-area member on 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": true,
+      "source_url": "https://ec.europa.eu/info/business-economy-euro/euro-area_en",
+      "mentions_pre_cutoff": 22100,
+      "prior": 0.62,
+      "prior_kind": "market",
+      "prior_source": "Grexit-probability commentary after June 2012 elections"
+    },
+    {
+      "id": "iran-p51-deal",
+      "text": "Will Iran and the P5+1 announce a nuclear agreement by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if a publicly announced nuclear accord (interim or final) between Iran and the P5+1 is issued on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": false,
+      "source_url": "https://www.iaea.org/",
+      "mentions_pre_cutoff": 9800,
+      "prior": 0.24,
+      "prior_kind": "analyst_consensus",
+      "prior_source": "Moscow round coverage, June 2012"
+    },
+    {
+      "id": "morsi-in-office",
+      "text": "Will Mohamed Morsi remain President of Egypt through June 30, 2013?",
+      "resolution_criteria": "Resolves YES if Morsi holds the office of President of Egypt on 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": true,
+      "source_url": "https://www.state.gov/",
+      "mentions_pre_cutoff": 6400,
+      "prior": 0.70,
+      "prior_kind": "analyst_consensus",
+      "prior_source": "post-election transition coverage, June 2012"
+    },
+    {
+      "id": "dprk-ntest",
+      "text": "Will the Democratic People's Republic of Korea conduct a nuclear test by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if the U.S., CTBTO, or the DPRK itself reports a DPRK nuclear test explosion on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": true,
+      "source_url": "https://www.ctbto.org/",
+      "mentions_pre_cutoff": 4100,
+      "prior": 0.38,
+      "prior_kind": "base_rate",
+      "prior_source": "DPRK nuclear-test inter-event timing through 2009"
+    },
+    {
+      "id": "israel-iran-strike",
+      "text": "Will Israel conduct an overt military strike on Iranian nuclear facilities by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if Israeli forces carry out an acknowledged strike on Iranian nuclear sites on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": false,
+      "source_url": "https://www.un.org/",
+      "mentions_pre_cutoff": 7200,
+      "prior": 0.22,
+      "prior_kind": "analyst_consensus",
+      "prior_source": "U.S. and Israeli official statements, spring 2012"
+    },
+    {
+      "id": "unsc-syria-force",
+      "text": "Will the UN Security Council adopt a resolution authorizing military force in Syria by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if the Council adopts a Chapter VII use-of-force authorization for Syria on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": false,
+      "source_url": "https://www.un.org/securitycouncil/",
+      "mentions_pre_cutoff": 5300,
+      "prior": 0.16,
+      "prior_kind": "base_rate",
+      "prior_source": "Chapter VII Syria draft success rate, 2011-H1 2012"
+    },
+    {
+      "id": "xi-ccp",
+      "text": "Will Xi Jinping become General Secretary of the Chinese Communist Party by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if Xi is named CCP General Secretary on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": true,
+      "source_url": "https://www.fmprc.gov.cn/",
+      "mentions_pre_cutoff": 3600,
+      "prior": 0.80,
+      "prior_kind": "analyst_consensus",
+      "prior_source": "18th Party Congress succession reporting, 2012"
+    },
+    {
+      "id": "euro-new-member",
+      "text": "Will the euro area admit a new member state by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if any country adopts the euro as its currency on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": false,
+      "source_url": "https://ec.europa.eu/",
+      "mentions_pre_cutoff": 1200,
+      "prior": 0.18,
+      "prior_kind": "base_rate",
+      "prior_source": "euro-accession cadence 2007-2011"
+    },
+    {
+      "id": "kofi-annan-syria",
+      "text": "Will the Kofi Annan six-point plan produce a sustained nationwide ceasefire in Syria by December 31, 2012?",
+      "resolution_criteria": "Resolves YES if a nationwide ceasefire under the Annan plan holds for at least 14 consecutive days ending on or before 2012-12-31.",
+      "resolution_date": "2012-12-31",
+      "ground_truth": false,
+      "source_url": "https://www.un.org/",
+      "mentions_pre_cutoff": 8900,
+      "prior": 0.26,
+      "prior_kind": "analyst_consensus",
+      "prior_source": "UN special envoy coverage, June 2012"
+    },
+    {
+      "id": "egypt-imf",
+      "text": "Will Egypt sign an IMF loan program by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if Egypt and the IMF announce a staff-level or board-approved arrangement on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": false,
+      "source_url": "https://www.imf.org/",
+      "mentions_pre_cutoff": 2100,
+      "prior": 0.45,
+      "prior_kind": "analyst_consensus",
+      "prior_source": "IMF-Egypt negotiation coverage, H1 2012"
+    },
+    {
+      "id": "mali-intervention",
+      "text": "Will a UN-authorized or French-led military intervention begin in Mali by June 30, 2013?",
+      "resolution_criteria": "Resolves YES if French or UN-authorized forces commence combat operations in Mali on or before 2013-06-30.",
+      "resolution_date": "2013-06-30",
+      "ground_truth": true,
+      "source_url": "https://www.un.org/securitycouncil/",
+      "mentions_pre_cutoff": 1500,
+      "prior": 0.34,
+      "prior_kind": "base_rate",
+      "prior_source": "ECOWAS / Sahel intervention discussion intensity, 2012"
+    }
+  ]
+}

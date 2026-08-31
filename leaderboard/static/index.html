@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prediction Sandbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css?v=5">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <div class="brand">
+      <p class="kicker">Forecast benchmark</p>
+      <h1>Prediction Sandbox</h1>
+    </div>
+    <dl class="chips" id="mast-meta">
+      <div>
+        <dt>Epoch</dt>
+        <dd id="mast-epoch">—</dd>
+      </div>
+      <div>
+        <dt>Agents may read through</dt>
+        <dd id="mast-cutoff">—</dd>
+      </div>
+      <div>
+        <dt>Outcomes resolve by</dt>
+        <dd id="mast-resolve">—</dd>
+      </div>
+    </dl>
+    <div class="run-box">
+      <label class="field">
+        <span>Scored run</span>
+        <select id="run-select"></select>
+      </label>
+      <div class="run-acts">
+        <button type="button" class="act ghost" id="run-btn">Run mock</button>
+        <button type="button" class="act" id="run-live-btn">Run live</button>
+      </div>
+      <p class="run-state" id="run-state" data-status="idle" aria-live="polite">
+        <span class="run-dot" aria-hidden="true"></span>
+        <span id="run-state-label">Idle</span>
+      </p>
+    </div>
+  </header>
+
+  <section id="run-log-band" class="run-log-band" hidden>
+    <h2>Run log</h2>
+    <pre id="run-log"></pre>
+  </section>
+
+  <nav class="tabs" aria-label="Dashboard">
+    <button type="button" data-view="results" aria-current="page">Results</button>
+    <button type="button" data-view="forecasts">Forecasts</button>
+    <button type="button" data-view="questions">Questions</button>
+    <button type="button" data-view="corpus">Corpus</button>
+    <button type="button" data-view="lab">Lab</button>
+  </nav>
+
+  <main id="main">
+    <section id="view-results" class="view" hidden>
+      <p class="verdict" id="verdict" data-tone="empty">
+        <strong id="verdict-h">Loading scores…</strong>
+        <span id="verdict-d"></span>
+      </p>
+      <p class="howto" id="howto"></p>
+      <div class="layout">
+        <article>
+          <header class="block-head">
+            <h2>Scoreboard</h2>
+            <p>Bar length is Brier error. Shorter is better. The prior is the line to beat.</p>
+          </header>
+          <div id="scoreboard" class="scoreboard"></div>
+        </article>
+        <aside>
+          <header class="block-head">
+            <h2>This epoch</h2>
+          </header>
+          <dl class="facts" id="result-facts"></dl>
+          <header class="block-head">
+            <h2>By category</h2>
+          </header>
+          <table class="sheet" id="cat-table">
+            <thead><tr><th>Model</th><th>Category</th><th>Brier</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </aside>
+      </div>
+      <div class="layout">
+        <article>
+          <header class="block-head">
+            <h2>Calibration</h2>
+            <p>Points on the diagonal are well calibrated. Above the line is underconfident; below is overconfident.</p>
+          </header>
+          <div id="cal-chart" class="chart"></div>
+          <p class="note" id="cal-note"></p>
+        </article>
+        <article>
+          <header class="block-head">
+            <h2>Contamination</h2>
+            <p id="contam-note" class="note"></p>
+          </header>
+          <div id="contam-chart" class="chart"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-forecasts" class="view" hidden>
+      <header class="view-head">
+        <h2>Individual forecasts</h2>
+        <p>Each row is one model answering one question, using only documents dated on or before the cutoff.</p>
+      </header>
+      <div class="toolbar">
+        <label class="field">
+          <span>Model</span>
+          <select id="f-model"><option value="">All models</option></select>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="f-reveal">
+          <span>Show outcomes and per-question error</span>
+        </label>
+        <p class="count" id="f-count"></p>
+      </div>
+      <div id="forecasts-empty" class="empty" hidden>
+        <p>No predictions on disk for this run. Use <strong>Run mock</strong> to write the heuristic baseline, or <strong>Run live</strong> with API keys.</p>
+      </div>
+      <table class="sheet" id="pred-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Question</th>
+            <th>Forecast</th>
+            <th>Prior</th>
+            <th class="truth-col">Outcome</th>
+            <th class="truth-col">Error</th>
+            <th>Queries</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="view-questions" class="view" hidden>
+      <header class="view-head">
+        <h2>Question set</h2>
+        <p>Present-tense “will … by” items. Ground truth is withheld unless you reveal it — that is the agent’s view at the cutoff.</p>
+      </header>
+      <div class="toolbar">
+        <label class="toggle">
+          <input type="checkbox" id="reveal-truth">
+          <span>Reveal ground truth</span>
+        </label>
+        <label class="field">
+          <span>Category</span>
+          <select id="q-category">
+            <option value="">All</option>
+          </select>
+        </label>
+        <p class="count" id="q-count"></p>
+      </div>
+      <table class="sheet" id="q-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Category</th>
+            <th>Question</th>
+            <th>Prior</th>
+            <th>Generator</th>
+            <th class="truth-col">Truth</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="view-corpus" class="view" hidden>
+      <header class="view-head">
+        <h2>What the agent can search</h2>
+        <p id="corpus-assertion" class="stamp-line">Only documents published on or before the cutoff.</p>
+      </header>
+      <form id="search-form" class="search-bar">
+        <label class="field grow">
+          <span>Query</span>
+          <input type="search" id="search-q" name="query" placeholder="unemployment, NDAA, Syria" required>
+        </label>
+        <label class="field">
+          <span>Results</span>
+          <input type="number" id="search-k" name="k" value="8" min="1" max="25">
+        </label>
+        <label class="field">
+          <span>Min prominence</span>
+          <input type="number" id="search-prom" name="min_prominence" value="0" min="0" max="1" step="0.05">
+        </label>
+        <button type="submit" class="act">Search</button>
+      </form>
+      <p class="note" id="search-status"></p>
+      <table class="sheet" id="search-table">
+        <thead>
+          <tr>
+            <th>Document</th>
+            <th>Title</th>
+            <th>Outlet</th>
+            <th>Published</th>
+            <th>Prominence</th>
+            <th>Snippet</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <article id="fetch-panel" class="dossier" hidden>
+        <h3 id="fetch-title">Document</h3>
+        <dl class="meta-grid" id="fetch-meta"></dl>
+        <p class="body-text" id="fetch-text"></p>
+      </article>
+    </section>
+
+    <section id="view-lab" class="view" hidden>
+      <header class="view-head">
+        <h2>Lab</h2>
+        <p>What is wired, which models are registered, and how mock vs live runs differ.</p>
+      </header>
+      <div class="layout">
+        <article>
+          <header class="block-head">
+            <h2>Registered models</h2>
+            <p>Declared training cutoff is an input, not a measurement of memorization.</p>
+          </header>
+          <table class="sheet" id="overview-models">
+            <thead><tr><th>ID</th><th>Provider</th><th>Training cutoff</th><th>Instruction-tuned</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </article>
+        <aside>
+          <header class="block-head">
+            <h2>Wiring</h2>
+          </header>
+          <ul class="status-list" id="overview-connected"></ul>
+          <p class="note" id="overview-errors"></p>
+          <header class="block-head">
+            <h2>How to run</h2>
+          </header>
+          <ul class="plain">
+            <li><strong>Run mock</strong> writes <code>phase1-e2012-smoke</code> with a retrieval heuristic. No API keys.</li>
+            <li><strong>Run live</strong> writes <code>phase2-e2012-real</code> using Claude and GPT. Needs <code>ANTHROPIC_API_KEY</code> and <code>OPENAI_API_KEY</code>.</li>
+            <li>This page never overwrites a different run directory.</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <p>Search on this page is the same <code>POST /search</code> / <code>POST /fetch</code> contract the agent uses. Documents after the cutoff cannot appear.</p>
+  </footer>
+  <script src="/static/app.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+# Outlet list for Wayback seed crawl and prominence weights.
+# Weights are 2012-era relative reach (ComScore/Nielsen-style rank, archived),
+# scaled to 0..1. Do not use raw document count as a reach proxy.
+outlets:
+  - domain: nytimes.com
+    name: The New York Times
+    tier: 1
+    source_type: news
+    outlet_weight: 0.95
+  - domain: washingtonpost.com
+    name: The Washington Post
+    tier: 1
+    source_type: news
+    outlet_weight: 0.88
+  - domain: wsj.com
+    name: The Wall Street Journal
+    tier: 1
+    source_type: news
+    outlet_weight: 0.90
+  - domain: reuters.com
+    name: Reuters
+    tier: 1
+    source_type: wire
+    outlet_weight: 0.92
+  - domain: ap.org
+    name: Associated Press
+    tier: 1
+    source_type: wire
+    outlet_weight: 0.93
+  - domain: bbc.co.uk
+    name: BBC News
+    tier: 1
+    source_type: news
+    outlet_weight: 0.91
+  - domain: bloomberg.com
+    name: Bloomberg
+    tier: 1
+    source_type: news
+    outlet_weight: 0.84
+  - domain: economist.com
+    name: The Economist
+    tier: 1
+    source_type: news
+    outlet_weight: 0.70
+  - domain: politico.com
+    name: Politico
+    tier: 1
+    source_type: news
+    outlet_weight: 0.62
+  - domain: cnn.com
+    name: CNN
+    tier: 1
+    source_type: news
+    outlet_weight: 0.89
+  - domain: latimes.com
+    name: Los Angeles Times
+    tier: 2
+    source_type: news
+    outlet_weight: 0.55
+  - domain: chicagotribune.com
+    name: Chicago Tribune
+    tier: 2
+    source_type: news
+    outlet_weight: 0.42
+  - domain: dallasnews.com
+    name: The Dallas Morning News
+    tier: 2
+    source_type: news
+    outlet_weight: 0.28
+  - domain: bls.gov
+    name: U.S. Bureau of Labor Statistics
+    tier: 3
+    source_type: gov
+    outlet_weight: 0.35
+  - domain: federalreserve.gov
+    name: Board of Governors of the Federal Reserve
+    tier: 3
+    source_type: gov
+    outlet_weight: 0.40
+  - domain: congress.gov
+    name: Congress.gov
+    tier: 3
+    source_type: gov
+    outlet_weight: 0.30
+  - domain: whitehouse.gov
+    name: The White House
+    tier: 3
+    source_type: gov
+    outlet_weight: 0.50
+  - domain: state.gov
+    name: U.S. Department of State
+    tier: 3
+    source_type: gov
+    outlet_weight: 0.32
+  - domain: un.org
+    name: United Nations
+    tier: 3
+    source_type: gov
+    outlet_weight: 0.38
+  - domain: oilandgasjournal.com
+    name: Oil & Gas Journal
+    tier: 3
+    source_type: trade
+    outlet_weight: 0.12
+  - domain: rollcall.com
+    name: Roll Call
+    tier: 3
+    source_type: trade
+    outlet_weight: 0.22
+  - domain: thehill.com
+    name: The Hill
+    tier: 3
+    source_type: trade
+    outlet_weight: 0.33
+  - domain: ft.com
+    name: Financial Times
+    tier: 1
+    source_type: news
+    outlet_weight: 0.72
+  - domain: wikipedia.org
+    name: Wikipedia
+    tier: 2
+    source_type: wiki
+    outlet_weight: 0.80
+
+wayback:
+  # Live CDX/snapshot pulls identify as PredictionSandbox (see psbx.corpus.ia_http).
+  # Honor 429 / Retry-After. Do not use this as the agent search UI.
+  cdx_api: https://web.archive.org/cdx/search/cdx
+  rate_limit_seconds: 5.0
+  collapse: digest
+  statuscode: 200
+  paths:
+    - "/"
+    - "/world"
+    - "/business"
+    - "/politics"
+    - "/economy"
+
+prominence_weights:
+  outlet_weight: 0.40
+  front_page_minutes: 0.20
+  syndication_count: 0.20
+  gdelt_mention_count: 0.20
