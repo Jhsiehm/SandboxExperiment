@@ -225,3 +225,6 @@ class ScoreReport(BaseModel):
     calibration: dict[str, CalibrationResult]
     contamination: list[ContaminationResult]
     n_flagged: int
+    c_index_by_model: dict[str, Optional[float]] = Field(default_factory=dict)
+    c_index_pairs_by_model: dict[str, int] = Field(default_factory=dict)
+    c_index_baselines: dict[str, Optional[float]] = Field(default_factory=dict)

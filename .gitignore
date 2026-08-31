@@ -26,3 +26,4 @@ custom/.agentsociety/
 leaderboard/site/
 *.png
 !docs/**
+!leaderboard/static/enchant/*.png

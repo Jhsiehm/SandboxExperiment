@@ -7,38 +7,84 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/app.css?v=5">
+  <link rel="stylesheet" href="/static/app.css?v=11">
+  <link rel="stylesheet" href="/static/enchant.css?v=5">
 </head>
 <body>
+  <section class="enchant" id="enchant" data-pose="idle" aria-live="polite">
+    <div class="enchant-stage">
+      <div class="enchant-room" aria-hidden="true">
+        <div class="enchant-back"></div>
+        <div class="enchant-ceiling"></div>
+        <div class="enchant-shelves left"></div>
+        <div class="enchant-shelves left-low"></div>
+        <div class="enchant-shelves right"></div>
+        <div class="enchant-shelves right-low"></div>
+        <div class="enchant-shelves back"></div>
+        <div class="enchant-floor"></div>
+        <span class="enchant-lantern a"></span>
+        <span class="enchant-lantern b"></span>
+        <span class="enchant-lantern c"></span>
+        <span class="enchant-lantern d"></span>
+        <div class="enchant-aura"></div>
+        <div class="enchant-lapis" title="Lapis"></div>
+        <div class="enchant-desk" title="Desk"></div>
+        <div class="enchant-bench" title="Workbench">
+          <img src="/static/enchant/mc-workbench.png" alt="">
+        </div>
+        <div class="enchant-table" title="Enchanting table">
+          <img src="/static/enchant/mc-enchant-table.png" alt="">
+        </div>
+        <div class="enchant-flybooks">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="enchant-agent" title="The agent">
+          <img src="/static/enchant/mc-agent.png" alt="">
+        </div>
+        <ol class="enchant-menu">
+          <li tabindex="0"><span class="galactic">ᓭᓵ𝙹∷ᒷ ʖ∷╎ᒷ∷</span><span class="plain">Brier score</span><em>1</em></li>
+          <li tabindex="0"><span class="galactic">ᓵ𝙹リᓵ𝙹∷↸ ᔑ⚍ᓵ</span><span class="plain">C-index</span><em>2</em></li>
+          <li tabindex="0"><span class="galactic">ᔑᓵᓵ⚍∷ᔑᓵ||</span><span class="plain">Accuracy</span><em>3</em></li>
+        </ol>
+        <p class="enchant-xp">+XP</p>
+        <div class="enchant-xpbar" title="Experience"><span></span></div>
+      </div>
+      <canvas class="enchant-fx" id="enchant-fx"></canvas>
+    </div>
+    <p class="enchant-caption" id="enchant-caption">Librarian at the desk. Click the room to preview.</p>
+  </section>
+
+  <div class="hud">
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="top">
     <div class="brand">
-      <p class="kicker">Forecast benchmark</p>
+      <p class="kicker">Start here</p>
       <h1>Prediction Sandbox</h1>
+      <p class="lede">We freeze mid-2012, let a model search only 2012 documents, then grade it on what really happened next.</p>
     </div>
     <dl class="chips" id="mast-meta">
       <div>
-        <dt>Epoch</dt>
-        <dd id="mast-epoch">—</dd>
-      </div>
-      <div>
-        <dt>Agents may read through</dt>
+        <dt>Pretend today is</dt>
         <dd id="mast-cutoff">—</dd>
       </div>
       <div>
-        <dt>Outcomes resolve by</dt>
+        <dt>Answers land by</dt>
         <dd id="mast-resolve">—</dd>
+      </div>
+      <div>
+        <dt>This experiment</dt>
+        <dd id="mast-epoch">—</dd>
       </div>
     </dl>
     <div class="run-box">
       <label class="field">
-        <span>Scored run</span>
+        <span>Which run to look at</span>
         <select id="run-select"></select>
       </label>
       <div class="run-acts">
-        <button type="button" class="act ghost" id="run-btn">Run mock</button>
-        <button type="button" class="act" id="run-live-btn">Run live</button>
+        <button type="button" class="act ghost" id="run-btn">Run practice</button>
+        <button type="button" class="act" id="run-live-btn">Run live AI</button>
       </div>
       <p class="run-state" id="run-state" data-status="idle" aria-live="polite">
         <span class="run-dot" aria-hidden="true"></span>
@@ -52,66 +98,99 @@
     <pre id="run-log"></pre>
   </section>
 
-  <nav class="tabs" aria-label="Dashboard">
-    <button type="button" data-view="results" aria-current="page">Results</button>
-    <button type="button" data-view="forecasts">Forecasts</button>
-    <button type="button" data-view="questions">Questions</button>
-    <button type="button" data-view="corpus">Corpus</button>
-    <button type="button" data-view="lab">Lab</button>
+  <nav class="tabs" aria-label="Read the experiment in order">
+    <button type="button" data-view="results" aria-current="page">1. Results</button>
+    <button type="button" data-view="forecasts">2. Each answer</button>
+    <button type="button" data-view="questions">3. The questions</button>
+    <button type="button" data-view="corpus">4. The 2012 library</button>
+    <button type="button" data-view="lab">5. Setup</button>
   </nav>
 
   <main id="main">
     <section id="view-results" class="view" hidden>
-      <p class="verdict" id="verdict" data-tone="empty">
-        <strong id="verdict-h">Loading scores…</strong>
-        <span id="verdict-d"></span>
-      </p>
-      <p class="howto" id="howto"></p>
-      <div class="layout">
-        <article>
-          <header class="block-head">
-            <h2>Scoreboard</h2>
-            <p>Bar length is Brier error. Shorter is better. The prior is the line to beat.</p>
-          </header>
-          <div id="scoreboard" class="scoreboard"></div>
-        </article>
-        <aside>
-          <header class="block-head">
-            <h2>This epoch</h2>
-          </header>
-          <dl class="facts" id="result-facts"></dl>
-          <header class="block-head">
-            <h2>By category</h2>
-          </header>
-          <table class="sheet" id="cat-table">
-            <thead><tr><th>Model</th><th>Category</th><th>Brier</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </aside>
-      </div>
-      <div class="layout">
-        <article>
-          <header class="block-head">
-            <h2>Calibration</h2>
-            <p>Points on the diagonal are well calibrated. Above the line is underconfident; below is overconfident.</p>
-          </header>
-          <div id="cal-chart" class="chart"></div>
-          <p class="note" id="cal-note"></p>
-        </article>
-        <article>
-          <header class="block-head">
-            <h2>Contamination</h2>
-            <p id="contam-note" class="note"></p>
-          </header>
-          <div id="contam-chart" class="chart"></div>
-        </article>
-      </div>
+      <ol class="ladder">
+        <li class="rung">
+          <p class="rung-num" aria-hidden="true">1</p>
+          <div>
+            <h2>What this is</h2>
+            <ol class="story" id="story"></ol>
+          </div>
+        </li>
+        <li class="rung">
+          <p class="rung-num" aria-hidden="true">2</p>
+          <div>
+            <h2>The bottom line</h2>
+            <p class="verdict" id="verdict" data-tone="empty">
+              <strong id="verdict-h">Loading scores…</strong>
+              <span id="verdict-d"></span>
+            </p>
+            <p class="ranking" id="ranking-line"></p>
+          </div>
+        </li>
+        <li class="rung">
+          <p class="rung-num" aria-hidden="true">3</p>
+          <div>
+            <h2>Two scores, two questions</h2>
+            <div class="metric-grid" id="metrics"></div>
+          </div>
+        </li>
+        <li class="rung">
+          <p class="rung-num" aria-hidden="true">4</p>
+          <div>
+            <h2>Who did better</h2>
+            <p class="rung-lead">Green is the 2012 public prior — beat that on probability error before calling it skill. Ranking can look strong even when percentages are sloppy.</p>
+            <div class="board-head" aria-hidden="true">
+              <span>Who</span>
+              <span>Probability error <em>smaller better</em></span>
+              <span>Ranking <em>larger better</em></span>
+            </div>
+            <div id="scoreboard" class="scoreboard"></div>
+          </div>
+        </li>
+        <li class="rung">
+          <p class="rung-num" aria-hidden="true">5</p>
+          <div>
+            <details class="more">
+              <summary>More detail (by topic, honesty of percentages, already-knew-it check)</summary>
+              <div class="more-body">
+                <dl class="facts" id="result-facts"></dl>
+                <header class="block-head">
+                  <h3>By topic</h3>
+                  <p>Same probability error, split into economic / legislative / geopolitical.</p>
+                </header>
+                <table class="sheet" id="cat-table">
+                  <thead><tr><th>Who</th><th>Topic</th><th>Probability error</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+                <div class="layout nested">
+                  <article>
+                    <header class="block-head">
+                      <h3>Were the percentages honest?</h3>
+                      <p>On the diagonal, 70% meant “happened about 70% of the time.” Below the line is overconfident.</p>
+                    </header>
+                    <div id="cal-chart" class="chart"></div>
+                    <p class="note" id="cal-note"></p>
+                  </article>
+                  <article>
+                    <header class="block-head">
+                      <h3>Did they already know?</h3>
+                      <p id="contam-note" class="note"></p>
+                    </header>
+                    <div id="contam-chart" class="chart"></div>
+                  </article>
+                </div>
+              </div>
+            </details>
+          </div>
+        </li>
+      </ol>
     </section>
 
     <section id="view-forecasts" class="view" hidden>
       <header class="view-head">
-        <h2>Individual forecasts</h2>
-        <p>Each row is one model answering one question, using only documents dated on or before the cutoff.</p>
+        <p class="rung-kicker">Step 2 of 5</p>
+        <h2>Each answer</h2>
+        <p>One row is one model answering one question, using only documents from on or before the freeze date.</p>
       </header>
       <div class="toolbar">
         <label class="field">
@@ -120,23 +199,23 @@
         </label>
         <label class="toggle">
           <input type="checkbox" id="f-reveal">
-          <span>Show outcomes and per-question error</span>
+          <span>Show what actually happened, and the per-question error</span>
         </label>
         <p class="count" id="f-count"></p>
       </div>
       <div id="forecasts-empty" class="empty" hidden>
-        <p>No predictions on disk for this run. Use <strong>Run mock</strong> to write the heuristic baseline, or <strong>Run live</strong> with API keys.</p>
+        <p>No answers on disk for this run. Use <strong>Run practice</strong> for a keyword lookup, or <strong>Run live AI</strong> with API keys.</p>
       </div>
       <table class="sheet" id="pred-table">
         <thead>
           <tr>
-            <th>Model</th>
+            <th>Who</th>
             <th>Question</th>
-            <th>Forecast</th>
-            <th>Prior</th>
-            <th class="truth-col">Outcome</th>
+            <th>Their guess</th>
+            <th>2012 prior</th>
+            <th class="truth-col">Happened?</th>
             <th class="truth-col">Error</th>
-            <th>Queries</th>
+            <th>What they searched</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -145,18 +224,19 @@
 
     <section id="view-questions" class="view" hidden>
       <header class="view-head">
-        <h2>Question set</h2>
-        <p>Present-tense “will … by” items. Ground truth is withheld unless you reveal it — that is the agent’s view at the cutoff.</p>
+        <p class="rung-kicker">Step 3 of 5</p>
+        <h2>The questions</h2>
+        <p>Each one is a yes-or-no about something that would or would not happen by a date in 2012–2013. The true answer stays hidden unless you reveal it — that is the agent’s view at the freeze date.</p>
       </header>
       <div class="toolbar">
         <label class="toggle">
           <input type="checkbox" id="reveal-truth">
-          <span>Reveal ground truth</span>
+          <span>Reveal what actually happened</span>
         </label>
         <label class="field">
-          <span>Category</span>
+          <span>Topic</span>
           <select id="q-category">
-            <option value="">All</option>
+            <option value="">All topics</option>
           </select>
         </label>
         <p class="count" id="q-count"></p>
@@ -165,11 +245,11 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Category</th>
+            <th>Topic</th>
             <th>Question</th>
-            <th>Prior</th>
-            <th>Generator</th>
-            <th class="truth-col">Truth</th>
+            <th>2012 prior</th>
+            <th>Where it came from</th>
+            <th class="truth-col">Happened?</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -178,16 +258,17 @@
 
     <section id="view-corpus" class="view" hidden>
       <header class="view-head">
-        <h2>What the agent can search</h2>
-        <p id="corpus-assertion" class="stamp-line">Only documents published on or before the cutoff.</p>
+        <p class="rung-kicker">Step 4 of 5</p>
+        <h2>The 2012 library</h2>
+        <p id="corpus-assertion" class="stamp-line">Only documents published on or before the freeze date.</p>
       </header>
       <form id="search-form" class="search-bar">
         <label class="field grow">
-          <span>Query</span>
+          <span>Search the same index the agent uses</span>
           <input type="search" id="search-q" name="query" placeholder="unemployment, NDAA, Syria" required>
         </label>
         <label class="field">
-          <span>Results</span>
+          <span>How many</span>
           <input type="number" id="search-k" name="k" value="8" min="1" max="25">
         </label>
         <label class="field">
@@ -219,42 +300,45 @@
 
     <section id="view-lab" class="view" hidden>
       <header class="view-head">
-        <h2>Lab</h2>
-        <p>What is wired, which models are registered, and how mock vs live runs differ.</p>
+        <p class="rung-kicker">Step 5 of 5</p>
+        <h2>Setup</h2>
+        <p>What is wired, which models are registered, and how practice vs live runs differ.</p>
       </header>
       <div class="layout">
         <article>
           <header class="block-head">
-            <h2>Registered models</h2>
-            <p>Declared training cutoff is an input, not a measurement of memorization.</p>
+            <h3>Registered models</h3>
+            <p>Training cutoff is what the vendor says the model should know, not a measurement of memorization.</p>
           </header>
           <table class="sheet" id="overview-models">
-            <thead><tr><th>ID</th><th>Provider</th><th>Training cutoff</th><th>Instruction-tuned</th></tr></thead>
+            <thead><tr><th>ID</th><th>Provider</th><th>Training cutoff</th><th>Chat-tuned</th></tr></thead>
             <tbody></tbody>
           </table>
         </article>
         <aside>
           <header class="block-head">
-            <h2>Wiring</h2>
+            <h3>Is it plugged in?</h3>
           </header>
           <ul class="status-list" id="overview-connected"></ul>
           <p class="note" id="overview-errors"></p>
           <header class="block-head">
-            <h2>How to run</h2>
+            <h3>How to run</h3>
           </header>
-          <ul class="plain">
-            <li><strong>Run mock</strong> writes <code>phase1-e2012-smoke</code> with a retrieval heuristic. No API keys.</li>
-            <li><strong>Run live</strong> writes <code>phase2-e2012-real</code> using Claude and GPT. Needs <code>ANTHROPIC_API_KEY</code> and <code>OPENAI_API_KEY</code>.</li>
-            <li>This page never overwrites a different run directory.</li>
-          </ul>
+          <ol class="plain numbered">
+            <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys. Cheap.</li>
+            <li><strong>Run live AI</strong> scores Claude and GPT. Needs both API keys in <code>.env</code>.</li>
+            <li>This page never overwrites a different run folder.</li>
+          </ol>
         </aside>
       </div>
     </section>
   </main>
 
   <footer class="colophon">
-    <p>Search on this page is the same <code>POST /search</code> / <code>POST /fetch</code> contract the agent uses. Documents after the cutoff cannot appear.</p>
+    <p>Search on this page is the same search the agent gets. Nothing published after the freeze date can appear.</p>
   </footer>
-  <script src="/static/app.js?v=4"></script>
+  </div>
+  <script src="/static/enchant.js?v=4"></script>
+  <script src="/static/app.js?v=10"></script>
 </body>
 </html>

@@ -17,7 +17,8 @@ OracleProto already cover live or near-term questions. The contribution here:
 
 Epoch **e2012**: cutoff `2012-06-30`, resolution window through `2013-06-30`.
 Fifty binary questions (20 economic, 20 legislative, 10 geopolitical). Scoring
-matches ForecastBench: Brier `(f − o)²`, plus Brier Index `(1 − √Brier) × 100`.
+matches ForecastBench Brier `(f − o)²` and Brier Index `(1 − √Brier) × 100`,
+plus Harrell C-index (pairwise ranking of yes vs no).
 
 Agent-loop layout follows [AgentSociety 2](https://github.com/tsinghua-fib-lab/AgentSociety)
 (`custom/envs`, `custom/agents`, `examples/e2012_forecast`). Cite Piao et al.
@@ -27,7 +28,7 @@ Agent-loop layout follows [AgentSociety 2](https://github.com/tsinghua-fib-lab/A
 
 Working today:
 
-- Question set, seed corpus, cutoff-filtered search, Brier scoring, dashboard.
+- Question set, seed corpus, cutoff-filtered search, Brier + C-index scoring, dashboard.
 - Mock pipeline (retrieval heuristic, no API keys).
 - Docker search sidecar: clock frozen at 2012-06-30, outbound traffic dropped.
 - Optional Internet Archive ingest at **index-build** time only.
@@ -36,9 +37,14 @@ Not working yet:
 
 - Live Claude / GPT scores — needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in `.env`.
 - Swarm (`src/psbx/agents/swarm.py` raises `NotImplementedError`).
-- A contamination curve that crosses model training cutoffs. Every e2012
-  question resolves in 2012–2013; the frontier configs declare 2024/2025
-  cutoffs, so they already *could* know the answers from pretraining.
+- Sequential / time-to-event questions (C-index is wired for binary ranking now;
+  the same pairwise definition will cover ordered events when those items exist).
+
+Frontier models on e2012 already *could* know the answers from pretraining
+(cutoffs 2024–2025, outcomes 2012–2013). That is still worth running. Brier
+asks whether probabilities are calibrated. C-index asks whether the model
+*ranks* true events above false ones. A leaked model can look excellent on
+ranking and mediocre on Brier.
 
 Built indices and run folders are gitignored. After clone, rebuild the index
 before you run.

@@ -125,6 +125,12 @@ def score_cmd(run: Annotated[str, typer.Option("--run")]) -> None:
         typer.echo(f"beats prior_signal: {', '.join(report.models_beating_prior_signal)}")
     else:
         typer.echo("kill signal: no model beat the prior-signal baseline")
+    if report.c_index_by_model:
+        bits = [
+            f"{mid}={('—' if v is None else f'{v:.3f}')}"
+            for mid, v in report.c_index_by_model.items()
+        ]
+        typer.echo("c-index: " + ", ".join(bits))
     del epoch
 
 

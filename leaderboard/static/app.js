@@ -46,7 +46,8 @@ function setView(name) {
     if (el) el.hidden = view !== name;
   }
   document.querySelectorAll("nav.tabs button").forEach((btn) => {
-    btn.setAttribute("aria-current", btn.dataset.view === name ? "page" : "false");
+    if (btn.dataset.view === name) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
   });
   if (location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
   if (name === "results") loadScores();
@@ -198,6 +199,7 @@ async function runSearch(ev) {
     min_prominence: Number($("#search-prom").value) || 0,
   };
   $("#search-status").textContent = "Searching…";
+  if (window.Enchant) Enchant.setPose("search");
   const res = await fetch("/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -205,10 +207,15 @@ async function runSearch(ev) {
   });
   if (!res.ok) {
     $("#search-status").textContent = `Search failed ${res.status}`;
+    if (window.Enchant) Enchant.setPose("error");
     return;
   }
   const hits = await res.json();
   $("#search-status").textContent = `${hits.length} hits · all on or before cutoff`;
+  if (window.Enchant) {
+    Enchant.setPose("done");
+    setTimeout(() => Enchant.setPose("idle"), 1800);
+  }
   $("#search-table tbody").innerHTML = hits
     .map(
       (h) => `<tr>
@@ -301,12 +308,23 @@ async function loadForecasts() {
 
 function tagFor(row) {
   if (row.reference) return "line to beat";
-  if (row.kind === "baseline") return "baseline";
+  if (row.kind === "baseline") return "simple rule";
   if (row.beats_prior) return "beats prior";
   if (row.delta_vs_prior != null && row.delta_vs_prior > 0) {
-    return `+${fmt(row.delta_vs_prior)} vs prior`;
+    return `${fmt(row.delta_vs_prior)} worse than prior`;
   }
   return "model";
+}
+
+function boardCell(kind, width, value, extraClass) {
+  const w = width == null ? 0 : width;
+  const mark = kind === "c" ? `<span class="chance-mark" title="0.50 = guessing"></span>` : "";
+  return `<div class="metric-cell">
+    <div class="pair">
+      <div class="board-track">${mark}<span class="board-fill ${extraClass}" style="--w:${w}"></span></div>
+      <div class="board-val">${value}</div>
+    </div>
+  </div>`;
 }
 
 async function loadScores() {
@@ -317,35 +335,55 @@ async function loadScores() {
   $("#verdict").dataset.tone = verdict.tone || "empty";
   setText("#verdict-h", verdict.headline);
   setText("#verdict-d", verdict.detail || "");
-  setText("#howto", ex.how_to_read || "");
+  setText("#ranking-line", verdict.ranking || "");
   if (ex.run_id) {
     state.selectedRun = ex.run_id;
     const select = $("#run-select");
     if (select && [...select.options].some((o) => o.value === ex.run_id)) select.value = ex.run_id;
   }
 
+  const story = ex.story || [];
+  $("#story").innerHTML = story
+    .map(
+      (s) => `<li>
+        <span class="n">${s.step}</span>
+        <div><h3>${s.title}</h3><p>${s.body}</p></div>
+      </li>`
+    )
+    .join("");
+
+  const metrics = ex.metrics || [];
+  $("#metrics").innerHTML = metrics
+    .map(
+      (m) => `<article class="metric">
+        <p class="short">${m.short}</p>
+        <h3>${m.name}</h3>
+        <p>${m.plain}</p>
+        <span class="dir">${m.direction}</span>
+      </article>`
+    )
+    .join("");
+
   const board = ex.scoreboard || [];
   $("#scoreboard").innerHTML = board.length
     ? board
         .map((row) => {
-          const w = row.bar == null ? 0 : row.bar;
           const win = row.kind === "model" && row.beats_prior;
           const lose = row.kind === "model" && !row.beats_prior && row.delta_vs_prior != null;
           return `<div class="board-row" data-kind="${row.kind}" data-reference="${row.reference}" data-win="${win}" data-lose="${lose}">
-            <div class="board-name">${row.label}<small>${row.id}</small></div>
-            <div class="board-track"><span class="board-fill" style="--w:${w}"></span></div>
-            <div class="board-val">${fmt(row.brier)}</div>
-            <div class="board-tag">${tagFor(row)}</div>
+            <div class="board-name">${row.label}<small>${row.note || row.id}</small><span class="board-tag">${tagFor(row)}</span></div>
+            ${boardCell("brier", row.bar, fmt(row.brier), "brier-fill")}
+            ${boardCell("c", row.c_bar, row.c_index == null ? "—" : fmt(row.c_index), "c-fill")}
           </div>`;
         })
         .join("")
-    : `<p class="note">Baselines appear once the question set is loaded.</p>`;
+    : `<p class="note">Scores appear once a run has been graded.</p>`;
 
   const facts = [
-    ["Run", ex.run_label || data.run_id || "—"],
-    ["Predictions", ex.n_predictions || 0],
-    ["Flagged citations", ex.n_flagged || 0],
-    ["Source", data.source || "—"],
+    ["This run", ex.run_label || data.run_id || "—"],
+    ["Answers scored", ex.n_predictions || 0],
+    ["Citations flagged", ex.n_flagged || 0],
+    ["Score source", data.source || "—"],
   ];
   $("#result-facts").innerHTML = facts
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
@@ -360,7 +398,7 @@ async function loadScores() {
   });
   $("#cat-table tbody").innerHTML = catRows.length
     ? catRows.join("")
-    : `<tr><td colspan="3">Category split appears after a scored run.</td></tr>`;
+    : `<tr><td colspan="3">Topic split appears after a scored run.</td></tr>`;
 
   const report = data.report || {};
   const cal = report.calibration || {};
@@ -369,9 +407,9 @@ async function loadScores() {
   }
   $("#cal-chart").innerHTML = reliabilitySVG(cal);
   const eces = Object.entries(cal)
-    .map(([id, c]) => `${id} ECE ${fmt(c.ece)}`)
+    .map(([id, c]) => `${id} honesty gap ${fmt(c.ece)}`)
     .join(" · ");
-  $("#cal-note").textContent = eces || "Calibration needs forecasts with known outcomes.";
+  $("#cal-note").textContent = eces || "This chart needs forecasts with known outcomes.";
   $("#contam-note").textContent = ex.contamination_note || "";
   $("#contam-chart").innerHTML = contaminationSVG(report.contamination || []);
 }
@@ -442,6 +480,16 @@ function contaminationSVG(curves) {
   </svg>`;
 }
 
+function poseFromJob(job) {
+  if (!window.Enchant) return;
+  const status = job.status || "idle";
+  const phase = job.phase || "";
+  if (status === "running" && phase === "score") Enchant.setPose("maths");
+  else if (status === "running") Enchant.setPose("search");
+  else if (status === "error" && state.lastJobStatus === "running") Enchant.setPose("error");
+  else if (status === "done" && state.lastJobStatus === "running") Enchant.setPose("done");
+}
+
 function renderJob(job) {
   const status = job.status || "idle";
   const label = job.phase && status === "running" ? `${status} · ${job.phase}` : status;
@@ -451,13 +499,13 @@ function renderJob(job) {
   const liveBtn = $("#run-live-btn");
   const busy = status === "running";
   mockBtn.disabled = busy;
-  mockBtn.textContent = busy && job.mock ? "Running…" : "Run mock";
+  mockBtn.textContent = busy && job.mock ? "Running…" : "Run practice";
   const liveOk = state.ready && state.ready.live_ready;
   liveBtn.disabled = busy || !liveOk;
-  liveBtn.textContent = busy && !job.mock ? "Running…" : "Run live";
+  liveBtn.textContent = busy && !job.mock ? "Running…" : "Run live AI";
   liveBtn.title = liveOk
-    ? "Score Claude and GPT on e2012"
-    : "Set ANTHROPIC_API_KEY and OPENAI_API_KEY";
+    ? "Score Claude and GPT on the 2012 questions"
+    : "Add ANTHROPIC_API_KEY and OPENAI_API_KEY to .env";
   const log = (job.log || []).join("\n");
   const band = $("#run-log-band");
   if (status === "idle" && !log) {
@@ -467,6 +515,7 @@ function renderJob(job) {
     $("#run-log").textContent = log || "(no output yet)";
     $("#run-log").scrollTop = $("#run-log").scrollHeight;
   }
+  poseFromJob(job);
 }
 
 async function pollJob() {
@@ -508,8 +557,9 @@ async function startSimulation(mock) {
   else liveBtn.textContent = "Running…";
   $("#run-log-band").hidden = false;
   $("#run-log").textContent = mock
-    ? "Starting mock heuristic run…"
-    : "Starting live frontier run…";
+    ? "Starting practice (keyword lookup)…"
+    : "Starting live Claude + GPT…";
+  if (window.Enchant) Enchant.setPose("search");
   const res = await fetch("/api/jobs/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -525,9 +575,10 @@ async function startSimulation(mock) {
     $("#run-state-label").textContent = "error";
     $("#run-log").textContent = `Start failed ${res.status}: ${detail}`;
     mockBtn.disabled = false;
-    mockBtn.textContent = "Run mock";
-    liveBtn.textContent = "Run live";
+    mockBtn.textContent = "Run practice";
+    liveBtn.textContent = "Run live AI";
     applyReady(state.ready);
+    if (window.Enchant) Enchant.setPose("error");
     return;
   }
   state.lastJobStatus = "running";

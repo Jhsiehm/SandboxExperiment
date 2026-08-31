@@ -119,7 +119,7 @@ def list_runs() -> list[dict[str, Any]]:
         return []
     rows: list[dict[str, Any]] = []
     for child in sorted(root.iterdir()):
-        if not child.is_dir():
+        if not child.is_dir() or child.name.startswith("."):
             continue
         preds = _first_existing(child, ("predictions.jsonl", "predictions.json"))
         scores = _first_existing(child, ("scores.json", "results.json", "score_report.json"))
@@ -248,6 +248,7 @@ def _prior_signal_view(questions: list[Question], run_id: str) -> dict[str, Any]
     from psbx.scoring.baselines import as_predictions
     from psbx.scoring.brier import brier, brier_index
     from psbx.scoring.calibration import calibration_curve
+    from psbx.scoring.concordance import concordance_index
 
     qs = {q.id: q for q in questions}
     preds = as_predictions(
@@ -257,9 +258,12 @@ def _prior_signal_view(questions: list[Question], run_id: str) -> dict[str, Any]
         lambda q: q.prior_signal.probability if q.prior_signal else 0.5,
     )
     score = brier(preds, qs)
+    c, n_pairs = concordance_index(preds, qs)
     return {
         "brier": score,
         "brier_index": brier_index(score),
+        "c_index": c,
+        "c_index_pairs": n_pairs,
         "calibration": _dump(calibration_curve(preds, qs)),
     }
 

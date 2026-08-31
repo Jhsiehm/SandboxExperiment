@@ -3,6 +3,7 @@ from datetime import date
 from psbx.schemas import Citation, ModelConfig, Prediction, PriorSignal, Question
 from psbx.scoring.baselines import baseline_scores
 from psbx.scoring.brier import brier, brier_index
+from psbx.scoring.concordance import concordance_index
 from psbx.scoring.contamination import contamination_curve
 
 
@@ -30,6 +31,25 @@ def _p(qid: str, model: str, prob: float) -> Prediction:
         reasoning="test",
         citations=[Citation(document_id="d", quoted_span="span", supports="context")],
     )
+
+
+def test_concordance_ranks_yes_above_no():
+    qs = {
+        "yes": _q("yes", True, date(2012, 12, 1)),
+        "no": _q("no", False, date(2012, 12, 1)),
+    }
+    perfect = [_p("yes", "m", 0.9), _p("no", "m", 0.1)]
+    inverted = [_p("yes", "m", 0.1), _p("no", "m", 0.9)]
+    tied = [_p("yes", "m", 0.5), _p("no", "m", 0.5)]
+    c_ok, n_ok = concordance_index(perfect, qs)
+    c_bad, n_bad = concordance_index(inverted, qs)
+    c_tie, n_tie = concordance_index(tied, qs)
+    assert n_ok == n_bad == n_tie == 1
+    assert c_ok == 1.0
+    assert c_bad == 0.0
+    assert c_tie == 0.5
+    empty_c, empty_n = concordance_index([_p("yes", "m", 0.9)], {"yes": qs["yes"]})
+    assert empty_c is None and empty_n == 0
 
 
 def test_brier_perfect_and_index():

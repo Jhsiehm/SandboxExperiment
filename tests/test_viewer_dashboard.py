@@ -40,8 +40,14 @@ def test_explain_miss_when_models_worse_than_prior():
     assert ex["scoreboard"][0]["id"] == "prior_signal"
     heuristic = next(r for r in ex["scoreboard"] if r["id"] == "gpt-oss-2012ish")
     assert heuristic["beats_prior"] is False
-    assert "retrieval heuristic" in ex["verdict"]["detail"]
-    assert "post-cutoff" in ex["contamination_note"].lower()
+    assert "c_index" in heuristic
+    assert "c_bar" in heuristic
+    assert ex["story"]
+    assert ex["metrics"][0]["id"] == "brier"
+    assert ex["metrics"][1]["id"] == "c_index"
+    assert ex["verdict"].get("ranking") is not None
+    assert "keyword" in ex["verdict"]["detail"].lower()
+    assert "2012" in ex["contamination_note"]
 
 
 def test_forecast_rows_join_question_and_error():

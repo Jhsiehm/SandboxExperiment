@@ -10,9 +10,10 @@ import matplotlib.pyplot as plt
 from psbx.io import read_jsonl
 from psbx.paths import resolve
 from psbx.schemas import CalibrationResult, ContaminationResult, ModelConfig, Prediction, Question, ScoreReport
-from psbx.scoring.baselines import baseline_scores
+from psbx.scoring.baselines import as_predictions, baseline_scores
 from psbx.scoring.brier import brier, brier_by_category, brier_by_model, brier_index
 from psbx.scoring.calibration import calibration_curve
+from psbx.scoring.concordance import concordance_by_model, concordance_index
 from psbx.scoring.contamination import contamination_curve
 
 PHASE1_HEURISTIC_RUN = "phase1-e2012-smoke"
@@ -47,6 +48,8 @@ def score_run(
     prior = bases.get("prior_signal", 0.25)
     beating = [mid for mid, score in by_model.items() if score < base]
     beating_prior = [mid for mid, score in by_model.items() if score < prior]
+    c_by_model, c_pairs = concordance_by_model(preds, qs)
+    c_baselines = _baseline_c_index(questions)
     return ScoreReport(
         run_id=run_id,
         n_predictions=len(preds),
@@ -59,7 +62,29 @@ def score_run(
         calibration=calib,
         contamination=contam,
         n_flagged=sum(1 for p in preds if p.flagged_for_contamination_review),
+        c_index_by_model=c_by_model,
+        c_index_pairs_by_model=c_pairs,
+        c_index_baselines=c_baselines,
     )
+
+
+def _baseline_c_index(questions: list[Question]) -> dict[str, float | None]:
+    qs = {q.id: q for q in questions}
+    out: dict[str, float | None] = {}
+    specs = {
+        "always_0.5": lambda q: 0.5,
+        "status_quo_persistence": lambda q: 0.0,
+        "always_base_rate": lambda q: (
+            sum((x.prior_signal.probability if x.prior_signal else 0.5) for x in questions)
+            / max(len(questions), 1)
+        ),
+        "prior_signal": lambda q: q.prior_signal.probability if q.prior_signal else 0.5,
+    }
+    for name, fn in specs.items():
+        preds = as_predictions(questions, "baseline", name, fn)
+        c, _n = concordance_index(preds, qs)
+        out[name] = None if c is None else round(c, 6)
+    return out
 
 
 def _phase1_heuristic_brier(questions: list[Question]) -> float | None:
