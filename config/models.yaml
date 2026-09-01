@@ -1,6 +1,11 @@
 # Declared pretraining cutoffs are first-class inputs to contamination_curve.
 # Dates are the model's own stated knowledge cutoff (or a conservative
 # published estimate), not a guess about memorization.
+#
+# Product swarm mix (source of truth for counts: config/swarm.yaml):
+#   8 × openrouter-gpt-4.1-mini + 4 × openrouter-haiku.
+# Local Llama/Qwen never ride OPENROUTER_API_KEY unless a run explicitly
+# changes their provider — needs_endpoint + local_vllm skip if vLLM is down.
 models:
   - id: gpt-oss-2012ish
     provider: local_vllm
@@ -11,6 +16,8 @@ models:
     temperature: 0.2
     cost_per_1k_input: 0.0
     cost_per_1k_output: 0.0
+    label: fixture · 2012-era local
+    notes: Smoke / practice body. Not part of the live OpenRouter swarm.
 
   - id: frontier-a
     provider: anthropic
@@ -21,6 +28,8 @@ models:
     temperature: 0.2
     cost_per_1k_input: 0.003
     cost_per_1k_output: 0.015
+    label: native · Claude Sonnet
+    notes: Native Anthropic path (config/run-phase2.yaml). Not the cheap swarm.
 
   - id: frontier-b
     provider: openai
@@ -31,3 +40,95 @@ models:
     temperature: 0.2
     cost_per_1k_input: 0.0004
     cost_per_1k_output: 0.0016
+    label: native · GPT-4.1 mini
+    notes: Native OpenAI path (config/run-phase2.yaml). Swarm uses the OpenRouter twin.
+
+  # Cheap OpenRouter path. Rate-limited in psbx.openrouter (1 req / 2s, 20/min, concurrency 1).
+  # 12 agents × N questions at ≥2s/req is slow on purpose — keep n_questions small.
+  - id: openrouter-gpt-4.1-mini
+    provider: openrouter
+    model_name: openai/gpt-4.1-mini
+    declared_pretraining_cutoff: 2024-06-01
+    is_instruction_tuned: true
+    max_tokens: 256
+    temperature: 0.8
+    cost_per_1k_input: 0.0004
+    cost_per_1k_output: 0.0016
+    label: swarm worker · OpenAI mini
+    notes: Primary swarm body. JSON forecast, no CoT. Default mix uses 8 copies.
+
+  - id: openrouter-gpt-4o-mini
+    provider: openrouter
+    model_name: openai/gpt-4o-mini
+    declared_pretraining_cutoff: 2023-10-01
+    is_instruction_tuned: true
+    max_tokens: 256
+    temperature: 0.8
+    cost_per_1k_input: 0.00015
+    cost_per_1k_output: 0.0006
+    label: swarm worker · OpenAI mini (4o alternate)
+    notes: Same class as gpt-4.1-mini. Registered alternate; not in the default 12.
+
+  - id: swarm-median
+    provider: openrouter
+    model_name: swarm-median
+    declared_pretraining_cutoff: 2024-06-01
+    is_instruction_tuned: true
+    max_tokens: 256
+    temperature: 0.8
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    label: swarm · median of 12
+    notes: Scored aggregate (median p) of 8 mini + 4 Haiku. Not an OpenRouter slug. Individual votes are data/runs/<id>/swarm_votes.jsonl.
+
+  - id: openrouter-haiku
+    provider: openrouter
+    model_name: anthropic/claude-3.5-haiku
+    declared_pretraining_cutoff: 2024-07-01
+    is_instruction_tuned: true
+    max_tokens: 256
+    temperature: 0.8
+    cost_per_1k_input: 0.0008
+    cost_per_1k_output: 0.004
+    label: swarm species · Haiku
+    notes: Cheap non-thinking Haiku (not 4.5, not Sonnet/Opus). Default mix uses 4 copies.
+
+  - id: openrouter-gemini-flash-lite
+    provider: openrouter
+    model_name: google/gemini-2.5-flash-lite
+    declared_pretraining_cutoff: 2025-01-01
+    is_instruction_tuned: true
+    max_tokens: 256
+    temperature: 0.8
+    cost_per_1k_input: 0.0001
+    cost_per_1k_output: 0.0004
+    label: optional scale-up · Gemini Flash-Lite
+    notes: Cheapest Flash-Lite (thinking off by default). Not in the default 12.
+
+  - id: local-llama-3.1-8b
+    provider: local_vllm
+    model_name: meta-llama/Llama-3.1-8B-Instruct
+    declared_pretraining_cutoff: 2023-12-01
+    is_instruction_tuned: true
+    max_tokens: 256
+    temperature: 0.8
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    label: local scale-up · Llama 3.1 8B
+    needs_endpoint: true
+    openrouter_fallback: meta-llama/llama-3.1-8b-instruct
+    notes: Local-only. Needs VLLM_BASE_URL serving these weights. Do not route through OPENROUTER_API_KEY (openrouter_fallback is documentation, never auto-used).
+
+  - id: local-qwen-2.5-7b
+    provider: local_vllm
+    model_name: Qwen/Qwen2.5-7B-Instruct
+    declared_pretraining_cutoff: 2024-09-01
+    is_instruction_tuned: true
+    max_tokens: 256
+    temperature: 0.8
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    label: local scale-up · Qwen2.5 7B
+    needs_endpoint: true
+    openrouter_fallback: qwen/qwen-2.5-7b-instruct
+    notes: Local-only. Needs VLLM_BASE_URL serving these weights. Do not route through OPENROUTER_API_KEY (openrouter_fallback is documentation, never auto-used).

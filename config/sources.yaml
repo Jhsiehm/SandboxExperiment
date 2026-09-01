@@ -136,6 +136,11 @@ wayback:
     - "/business"
     - "/politics"
     - "/economy"
+    - "/us"
+    - "/international"
+    - "/europe"
+    - "/middleeast"
+    - "/markets"
 
 prominence_weights:
   outlet_weight: 0.40

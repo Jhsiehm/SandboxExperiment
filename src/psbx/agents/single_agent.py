@@ -13,6 +13,7 @@ from psbx.agents.runner import (
     execute_tool,
     parse_action,
     parse_prediction_json,
+    sanitize_openai_message,
     system_prompt,
     user_prompt,
 )
@@ -83,14 +84,17 @@ def _live_loop(
     parsed: dict | None = None
     attempts = 0
     for _ in range(max_tool_calls + 4):
-        turn = complete_turn(model, messages, system=system)
+        allow_tools = client.n_calls < max_tool_calls
+        turn = complete_turn(model, messages, system=system, tools=allow_tools)
         raw_chunks.append(turn.text or json_preview(turn))
-        if turn.tool_calls and client.n_calls < max_tool_calls:
+        if turn.tool_calls and allow_tools:
+            # Fulfill every tool_call in the turn. Slicing leftover ids is an
+            # OpenRouter/OpenAI 400 ("assistant tool_calls must be followed by
+            # tool messages").
             _append_assistant(model, messages, turn)
-            remaining = max_tool_calls - client.n_calls
             if model.provider == "anthropic":
                 blocks = []
-                for call in turn.tool_calls[:remaining]:
+                for call in turn.tool_calls:
                     observation = execute_tool(client, call.name, call.arguments)
                     blocks.append(
                         {
@@ -101,9 +105,20 @@ def _live_loop(
                     )
                 messages.append({"role": "user", "content": blocks})
             else:
-                for call in turn.tool_calls[:remaining]:
+                for call in turn.tool_calls:
                     observation = execute_tool(client, call.name, call.arguments)
                     _append_tool_result(model, messages, call, observation)
+            continue
+        if turn.tool_calls and not allow_tools:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "You have used all tool calls. Output ONLY the JSON object "
+                        "with probability, reasoning, and citations. Do not call tools."
+                    ),
+                }
+            )
             continue
         react = parse_action(turn.text or "")
         if react and client.n_calls < max_tool_calls:
@@ -160,9 +175,9 @@ def _append_assistant(model: ModelConfig, messages: list[dict[str, Any]], turn: 
         messages.append({"role": "assistant", "content": content})
         return
     if turn.openai_message:
-        messages.append(turn.openai_message)
+        messages.append(sanitize_openai_message(turn.openai_message))
         return
-    messages.append({"role": "assistant", "content": turn.text})
+    messages.append({"role": "assistant", "content": turn.text or ""})
 
 
 def _append_tool_result(
@@ -189,6 +204,7 @@ def _append_tool_result(
         {
             "role": "tool",
             "tool_call_id": call.id,
+            "name": call.name,
             "content": observation,
         }
     )

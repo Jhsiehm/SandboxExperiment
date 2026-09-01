@@ -18,6 +18,22 @@ _LOCK = threading.Lock()
 _LOG_CAP = 400
 MOCK_CONFIG = "config/run.yaml"
 LIVE_CONFIG = "config/run-phase2.yaml"
+OPENROUTER_CONFIG = "config/run-openrouter.yaml"
+
+
+def live_config_path() -> str:
+    """Native dual keys keep phase2; OpenRouter-only uses the cheap 1-question probe.
+
+    Dashboard live click stays on run-openrouter.yaml (primary mini only).
+    The 12-agent sequential median is config/run-swarm.yaml (n_questions=1).
+    Do not fire that from the live button — 12×50 at 2s/req is hours.
+    """
+    status = provider_status()
+    if status["anthropic"] and status["openai"]:
+        return LIVE_CONFIG
+    if status["openrouter"]:
+        return OPENROUTER_CONFIG
+    return LIVE_CONFIG
 
 
 class JobBusy(RuntimeError):
@@ -65,23 +81,34 @@ def get_job() -> dict[str, Any]:
 def ready() -> dict[str, Any]:
     load_dotenv()
     status = provider_status()
+    live_cfg = live_config_path()
     return {
         "providers": status,
         "live_ready": live_ready(),
         "mock_config": MOCK_CONFIG,
-        "live_config": LIVE_CONFIG,
-        "live_run_id": load_run(LIVE_CONFIG).run_id,
+        "live_config": live_cfg,
+        "live_run_id": load_run(live_cfg).run_id,
         "mock_run_id": load_run(MOCK_CONFIG).run_id,
+        "swarm_roster": "8 × gpt-4.1-mini + 4 × Haiku (12 agents; sequential OpenRouter)",
+        "swarm_config": "config/swarm.yaml",
+        "swarm_run_config": "config/run-swarm.yaml",
+        "swarm_note": (
+            "Swarm is real: 12 sequential OpenRouter votes, shared retrieval, "
+            "median p (swarm-median). Run live AI stays the 1-question mini probe. "
+            "CLI: psbx run --config config/run-swarm.yaml --limit 1. "
+            "A full 12×50 pass is hours at 2s/req. Llama/Qwen stay local-only."
+        ),
     }
 
 
 def start_job(*, run_id: str | None = None, mock: bool = True) -> dict[str, Any]:
     load_dotenv()
-    config_path = MOCK_CONFIG if mock else LIVE_CONFIG
+    config_path = MOCK_CONFIG if mock else live_config_path()
     cfg = load_run(config_path)
     if not mock and not live_ready():
         raise LiveNotReady(
-            "live run needs ANTHROPIC_API_KEY and OPENAI_API_KEY (see .env.example)"
+            "live run needs OPENROUTER_API_KEY, or both ANTHROPIC_API_KEY and "
+            "OPENAI_API_KEY (see .env.example)"
         )
     rid = (run_id or cfg.run_id).strip() or cfg.run_id
     with _LOCK:

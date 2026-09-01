@@ -7,7 +7,7 @@ from datetime import timezone
 from psbx.corpus.embed import embed_texts
 from psbx.corpus.fetch_commoncrawl import ingest_commoncrawl
 from psbx.corpus.fetch_gdelt import ingest_gdelt
-from psbx.corpus.fetch_wayback import ingest_wayback
+from psbx.corpus.fetch_wayback import DEFAULT_MAX_DOCS, ingest_wayback
 from psbx.corpus.fetch_wikipedia import ingest_wikipedia
 from psbx.corpus.index import HybridIndex, save_index
 from psbx.corpus.prominence import apply_prominence
@@ -15,12 +15,14 @@ from psbx.corpus.seed_documents import seed_documents
 from psbx.schemas import Document, Epoch
 
 
-def collect_documents(epoch: Epoch, live: bool = False) -> list[Document]:
+def collect_documents(
+    epoch: Epoch, live: bool = False, max_docs: int = DEFAULT_MAX_DOCS
+) -> list[Document]:
     docs = [
         *seed_documents(),
         *ingest_wikipedia(epoch, live=live),
         *ingest_commoncrawl(epoch, live=live),
-        *ingest_wayback(epoch, live=live),
+        *ingest_wayback(epoch, live=live, max_docs=max_docs),
         *ingest_gdelt(epoch, live=live),
     ]
     seen: set[str] = set()
@@ -41,8 +43,13 @@ def collect_documents(epoch: Epoch, live: bool = False) -> list[Document]:
     return apply_prominence(kept)
 
 
-def build_index(epoch: Epoch, live: bool = False, backend: str = "hashing") -> HybridIndex:
-    docs = collect_documents(epoch, live=live)
+def build_index(
+    epoch: Epoch,
+    live: bool = False,
+    backend: str = "hashing",
+    max_docs: int = DEFAULT_MAX_DOCS,
+) -> HybridIndex:
+    docs = collect_documents(epoch, live=live, max_docs=max_docs)
     texts = [f"{d.title}\n{d.text}" for d in docs]
     embeddings = embed_texts(texts, backend=backend)
     for doc in docs:

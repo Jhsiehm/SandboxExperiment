@@ -198,16 +198,13 @@ def compute_scores(
         payload["prior_signal"] = _prior_signal_view(questions, run_id)
 
     disk = load_score_report(run_id)
-    if disk is None and not preds:
-        # Any run on disk, not just the configured id.
-        disk = load_score_report(None)
     if disk is not None:
         payload["source"] = "disk"
         payload["report"] = _dump(disk)
-        payload["run_id"] = disk.run_id
+        payload["run_id"] = run_id
         return _with_explain(payload, models)
 
-    preds = preds if preds is not None else load_predictions(run_id) or load_predictions(None)
+    preds = preds if preds is not None else load_predictions(run_id)
     if not preds or not questions:
         return _with_explain(payload, models)
     try:
@@ -229,10 +226,10 @@ def compute_scores(
             )
             for mid in sorted({p.model_id for p in preds})
         ]
-    report = score_run(preds, questions, used_models, preds[0].run_id)
+    report = score_run(preds, questions, used_models, run_id)
     payload["source"] = "computed"
     payload["report"] = _dump(report)
-    payload["run_id"] = report.run_id
+    payload["run_id"] = run_id
     return _with_explain(payload, used_models)
 
 

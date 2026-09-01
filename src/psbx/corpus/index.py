@@ -9,12 +9,28 @@ from pathlib import Path
 import numpy as np
 from rank_bm25 import BM25Okapi
 
+from urllib.parse import urlparse, urlunparse
+
 from psbx.corpus.embed import embed_texts, tokenize
 from psbx.io import read_jsonl, write_json, write_jsonl
 from psbx.paths import resolve
 from psbx.schemas import Document, Epoch, SearchHit
 
 RRF_K = 60
+
+
+def _canon_url(url: str) -> str:
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    parsed = urlparse(raw)
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    path = parsed.path or "/"
+    if path != "/" and path.endswith("/"):
+        path = path.rstrip("/")
+    query = parsed.query
+    rebuilt = urlunparse(("", host, path, "", query, ""))
+    return rebuilt.lstrip("/")
 
 
 def _as_date(value: datetime) -> date:
@@ -27,6 +43,7 @@ class HybridIndex:
             raise ValueError("docs/embeddings length mismatch")
         self.docs = docs
         self.by_id = {d.id: d for d in docs}
+        self.by_url = {_canon_url(d.url): d for d in docs if d.url}
         self.embeddings = embeddings
         self.cutoff = cutoff
         self._tokens = [tokenize(f"{d.title} {d.text}") for d in docs]
@@ -90,6 +107,16 @@ class HybridIndex:
         payload = doc.model_dump(mode="json")
         payload.pop("embedding", None)
         return payload
+
+    def lookup_url(self, url: str) -> Document | None:
+        """Return the indexed document for a URL, or None. Never hits the live web."""
+        key = _canon_url(url)
+        if not key:
+            return None
+        doc = self.by_url.get(key)
+        if doc is None:
+            return None
+        return self._enforce(doc)
 
 
 def _rrf(rank_lists: list[list[int]], k: int = RRF_K) -> list[int]:

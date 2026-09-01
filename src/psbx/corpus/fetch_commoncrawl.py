@@ -1,7 +1,22 @@
 """Ingest local Common Crawl / pywb WARCs into the Document index.
 
-Do not use this as the agent search UI. Drop CC-MAIN-2012-* (or pywb) WARCs
-under data/corpus-cache/commoncrawl/ and they join the hybrid index at build.
+Do not use this as the agent search UI. Live e2012 web is Wayback
+(`psbx corpus build --epoch e2012 --live`), not a Common Crawl dump.
+
+CC-MAIN-2012 is a dead end for this project this week:
+- https://data.commoncrawl.org/crawl-data/CC-MAIN-2012/index.html says the
+  archive cannot be comprehensively extracted ("check back later").
+- Files are legacy ARC (`parse-output/segment/.../*.arc.gz`), not WARC.
+- CDX at https://index.commoncrawl.org/CC-MAIN-2012-index still answers, and
+  a single gzip-member range-GET can be parsed with warcio `arc2warc=True`,
+  but bulk extraction is not supported. Do not download the ~89 TiB dump.
+
+CC-MAIN-2013-20 captures May–June 2013. Never ingest it into e2012
+(cutoff 2012-06-30). Later crawls are only usable if WARC-Date / capture
+timestamp is on or before the epoch cutoff.
+
+Offline path: drop already-cutoff WARCs (or a converted ARC slice) under
+data/corpus-cache/commoncrawl/ and they join the hybrid index at build.
 """
 
 from __future__ import annotations
@@ -36,12 +51,17 @@ def _outlet_for_url(url: str, outlets: list[dict]) -> dict | None:
 def _warc_paths(root: Path) -> list[Path]:
     if not root.exists():
         return []
-    files = list(root.rglob("*.warc.gz")) + list(root.rglob("*.warc"))
+    files = (
+        list(root.rglob("*.warc.gz"))
+        + list(root.rglob("*.warc"))
+        + list(root.rglob("*.arc.gz"))
+        + list(root.rglob("*.arc"))
+    )
     return sorted(p for p in files if p.is_file())
 
 
 def ingest_commoncrawl(epoch: Epoch, live: bool = False) -> list[Document]:
-    """Read local WARCs. `live` is ignored — no CC index crawl from this process."""
+    """Read local WARCs/ARCs. `live` is ignored — no CC index crawl from this process."""
     del live
     paths = _warc_paths(warc_dir())
     if not paths:
@@ -54,7 +74,8 @@ def ingest_commoncrawl(epoch: Epoch, live: bool = False) -> list[Document]:
         return []
     for path in paths:
         with path.open("rb") as fh:
-            for record in ArchiveIterator(fh):
+            # arc2warc is a no-op on WARC; required so ARC members get WARC-Date.
+            for record in ArchiveIterator(fh, arc2warc=True):
                 if record.rec_type != "response":
                     continue
                 url = record.rec_headers.get_header("WARC-Target-URI") or ""

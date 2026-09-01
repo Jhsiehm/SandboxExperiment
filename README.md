@@ -13,7 +13,7 @@ OracleProto already cover live or near-term questions. The contribution here:
 
 1. Deep-history epochs those benchmarks do not test.
 2. Legislative and policy outcome questions.
-3. Later: single-agent vs swarm (swarm is still a stub).
+3. Later: single-agent vs swarm (`config/swarm.yaml`: 8 mini + 4 Haiku, sequential median).
 
 Epoch **e2012**: cutoff `2012-06-30`, resolution window through `2013-06-30`.
 Fifty binary questions (20 economic, 20 legislative, 10 geopolitical). Scoring
@@ -32,11 +32,16 @@ Working today:
 - Mock pipeline (retrieval heuristic, no API keys).
 - Docker search sidecar: clock frozen at 2012-06-30, outbound traffic dropped.
 - Optional Internet Archive ingest at **index-build** time only.
+- Cheap live OpenRouter probe (`config/run-openrouter.yaml`) when `OPENROUTER_API_KEY` is set.
+  Swarm mix is `config/swarm.yaml` (8 × `openai/gpt-4.1-mini` + 4 × `anthropic/claude-3.5-haiku`).
+- Sequential swarm (`psbx run --config config/run-swarm.yaml --limit 1`): one shared
+  search pack, 12 serialized OpenRouter votes, median probability (`swarm-median`).
+  Individual votes are written to `swarm_votes.jsonl`. A full 12×50 pass is hours
+  at 2s/req — keep `--limit` small. Dashboard **Run live AI** does not fire this.
 
 Not working yet:
 
-- Live Claude / GPT scores — needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in `.env`.
-- Swarm (`src/psbx/agents/swarm.py` raises `NotImplementedError`).
+- Native Claude + GPT live scores still need both `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`.
 - Sequential / time-to-event questions (C-index is wired for binary ranking now;
   the same pairwise definition will cover ordered events when those items exist).
 
@@ -69,16 +74,39 @@ Copy `.env.example` to `.env` when you want live models. Do not commit `.env`.
 
 ## Mock vs live
 
-| | Mock | Live |
-|---|---|---|
-| Config | `config/run.yaml` | `config/run-phase2.yaml` |
-| Run id | `phase1-e2012-smoke` | `phase2-e2012-real` |
-| Needs | Nothing | Anthropic + OpenAI keys |
-| What it measures | Pipeline + heuristic | Actual model forecasts |
+| | Mock | Live (native) | Live (OpenRouter) |
+|---|---|---|---|
+| Config | `config/run.yaml` | `config/run-phase2.yaml` | `config/run-openrouter.yaml` |
+| Run id | `phase1-e2012-smoke` | `phase2-e2012-real` | `phase2-e2012-openrouter` |
+| Needs | Nothing | Anthropic + OpenAI keys | `OPENROUTER_API_KEY` |
+| What it measures | Pipeline + heuristic | Claude + GPT forecasts | Cheap `openai/gpt-4.1-mini` probe (not the 12-agent swarm) |
 
 Live will not fall back to the heuristic. If keys are missing it fails loud.
 
-Cheaper live probe (edit `config/run-phase2.yaml` to `models: [frontier-b]` first):
+OpenRouter is rate-limited in-process: 1 request / 2s, max 20/min, concurrency 1
+(`OPENROUTER_MIN_INTERVAL_SEC`, `OPENROUTER_MAX_PER_MINUTE`, `OPENROUTER_MAX_CONCURRENCY`).
+Completions cap at 256 tokens unless `OPENROUTER_MAX_TOKENS` is raised. On HTTP 429 the
+client waits 15s then 30s and retries at most twice.
+
+Cheap OpenRouter probe (one question; do not omit `--limit` on bigger configs).
+Dashboard live click uses this. It does **not** expand the 12-agent mix:
+
+```bash
+psbx run --config config/run-openrouter.yaml --limit 1
+```
+
+Real swarm (12 sequential votes, shared retrieval, median `p`). Default is one
+question. A full 12×50 pass at `OPENROUTER_MIN_INTERVAL_SEC=2` is hours:
+
+```bash
+psbx run --config config/run-swarm.yaml --limit 1
+```
+
+Needs `OPENROUTER_API_KEY`. Local Llama/Qwen are not in this mix and are never
+auto-routed onto that key. Scorer reads `swarm-median`; per-agent votes are
+`data/runs/phase2-e2012-swarm-probe/swarm_votes.jsonl`.
+
+Native live (edit `config/run-phase2.yaml` to `models: [frontier-b]` first):
 
 ```bash
 psbx run --config config/run-phase2.yaml --limit 5
@@ -109,17 +137,29 @@ the index still hard-filters.
 
 ## Corpus
 
+The e2012 library is **Wayback Machine snapshots with `to=20120630`**, plus in-repo
+seeds, dated Wikipedia fixtures, and optional GDELT. It is **not** the
+[CC-MAIN-2012 HTML dump](https://data.commoncrawl.org/crawl-data/CC-MAIN-2012/index.html)
+(legacy ARC, “check back later”) and **not** CC-MAIN-2013-20 (captures May–June 2013).
+
 ```bash
 psbx corpus build --epoch e2012
-# optional: Wayback at index-build only (not agent search)
+# Grow the 2012 library this week (Wayback only; paced; bounded):
 # export PSBX_IA_USER_AGENT_SUFFIX="your-project"
-psbx corpus build --epoch e2012 --live
+psbx corpus build --epoch e2012 --live --max-docs 400
 ```
 
 `--live` uses User-Agent `PredictionSandbox/0.1.0 (psbx; corpus-builder)`,
-5s pacing, and 429 / Retry-After. Drop Common Crawl WARCs in
+5s pacing, and 429 / Retry-After. Default `--max-docs` is 400 (hundreds, not
+unbounded). Re-run the same command to resume: snapshots cache under
+`data/corpus-cache/wayback/`. Frozen search also exposes `GET /archive?url=`
+on the sidecar/viewer: 200 only if that URL is in the index with
+`published_at <= cutoff`; 404 otherwise. No live origin fetch at query time.
+
+Optional local WARCs (or a converted ARC slice) can be dropped in
 `data/corpus-cache/commoncrawl/` and dated wiki JSONL in
-`data/corpus-cache/wikipedia/` — ingested offline.
+`data/corpus-cache/wikipedia/` — ingested offline. Do not ingest CC-MAIN-2013-20
+into e2012.
 
 The fixture seed (~33 documents) is enough to exercise the 50-question smoke.
 
@@ -138,7 +178,7 @@ The fixture seed (~33 documents) is enough to exercise the 50-question smoke.
 ## Layout
 
 ```
-config/          epochs, models, run profiles
+config/          epochs, models, swarm roster, run profiles
 src/psbx/        CLI, index, agent loop, scoring, Docker sidecar
 leaderboard/     dashboard (port 8765)
 custom/          AgentSociety-shaped env + forecaster

@@ -1,0 +1,75 @@
+# Intended Prediction Sandbox swarm. Source of truth for the mix.
+# Implemented in src/psbx/agents/swarm.py: sequential OpenRouter + median p.
+#
+# Default experiment: 12 agents.
+#   8 × openai/gpt-4.1-mini  (OpenRouter slug; cheap JSON, no CoT)
+#   4 × anthropic/claude-3.5-haiku  (cheap non-thinking Haiku; different prior)
+#
+# Each worker: JSON forecast, no chain-of-thought, max_tokens 256 (already capped
+# in psbx.openrouter), temperature ~0.8 for population variance.
+#
+# Shared retrieval: one search pack per question; agents only read.
+#
+# OpenRouter calls MUST stay serialized through the existing limiter
+# (OPENROUTER_MIN_INTERVAL_SEC=2, OPENROUTER_MAX_PER_MINUTE=20, concurrency 1).
+# Do not weaken those. 12 agents × N questions at ≥2s/req is slow on purpose —
+# keep n_questions / --limit small (default 1). A full 12×50 pass is hours.
+#
+# Not in the default 12:
+#   Gemini Flash-Lite  — optional cheapest volume / person-on-the-street
+#   Llama 3.1 8B + Qwen2.5 7B — local-only scale-up (needs vLLM). Never fan
+#   20 local bodies out through OPENROUTER_API_KEY.
+name: default-12
+n_agents: 12
+n_questions_default: 1
+shared_retrieval: one search pack per question; agents only read
+serialize_openrouter: true
+rate_limit_note: >
+  12 agents × N questions at OPENROUTER_MIN_INTERVAL_SEC=2 is slow on purpose.
+  Serialize every OpenRouter call. Do not raise concurrency. Keep --limit small.
+  A full 12×50 pass is hours.
+bodies:
+  - model_id: openrouter-gpt-4.1-mini
+    count: 8
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Primary species. OpenAI mini, cheap JSON, no CoT.
+  - model_id: openrouter-haiku
+    count: 4
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Second species. Cheap non-thinking Haiku (anthropic/claude-3.5-haiku).
+optional_scale_up:
+  - model_id: openrouter-gemini-flash-lite
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Optional. google/gemini-2.5-flash-lite. Not in the default 12.
+  - model_id: openrouter-gpt-4o-mini
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Same class as gpt-4.1-mini. Swap-in alternate, not extra default bodies.
+local_scale_up:
+  - model_id: local-llama-3.1-8b
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Local-only. Skip unless VLLM_BASE_URL is serving Llama 3.1 8B Instruct.
+  - model_id: local-qwen-2.5-7b
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Local-only. Skip unless VLLM_BASE_URL is serving Qwen2.5 7B Instruct.

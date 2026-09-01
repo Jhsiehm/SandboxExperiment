@@ -9,6 +9,8 @@ from psbx.schemas import ModelConfig
 RUN_LABELS = {
     "phase1-e2012-smoke": "Practice run (no live AI)",
     "phase2-e2012-real": "Live Claude + GPT",
+    "phase2-e2012-openrouter": "Live OpenRouter probe (GPT-4.1 mini)",
+    "phase2-e2012-swarm-probe": "Live swarm (median of 12)",
     "phase1-e2012-society": "Society scaffold",
     "phase1-e2012-docker": "Practice run through Docker search",
 }
@@ -17,6 +19,13 @@ MODEL_LABELS = {
     "gpt-oss-2012ish": "2012-era local model",
     "frontier-a": "Claude Sonnet 4.5",
     "frontier-b": "GPT-4.1 mini",
+    "openrouter-gpt-4.1-mini": "swarm worker · OpenAI mini",
+    "openrouter-gpt-4o-mini": "swarm worker · OpenAI mini (4o alternate)",
+    "openrouter-haiku": "swarm species · Haiku",
+    "swarm-median": "swarm · median of 12",
+    "openrouter-gemini-flash-lite": "optional scale-up · Gemini Flash-Lite",
+    "local-llama-3.1-8b": "local scale-up · Llama 3.1 8B",
+    "local-qwen-2.5-7b": "local scale-up · Qwen2.5 7B",
     "prior_signal": "2012 public prior",
 }
 
@@ -85,6 +94,8 @@ def model_label(model_id: str, models: dict[str, ModelConfig] | None = None) -> 
         return MODEL_LABELS[model_id]
     if models and model_id in models:
         m = models[model_id]
+        if m.label:
+            return m.label
         return f"{m.model_name} ({m.provider})"
     return model_id
 

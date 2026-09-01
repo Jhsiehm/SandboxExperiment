@@ -9,6 +9,7 @@ import typer
 from psbx.config import load_epochs, load_models, load_run
 from psbx.env import load_dotenv
 from psbx.corpus.build_index import build_index
+from psbx.corpus.fetch_wayback import DEFAULT_MAX_DOCS
 from psbx.corpus.index import load_index
 from psbx.io import read_jsonl, write_json, write_jsonl
 from psbx.paths import resolve
@@ -38,7 +39,15 @@ def _root() -> None:
 def _maybe_enable_mock() -> None:
     if os.environ.get("PSBX_MOCK_LLM"):
         return
-    if any(os.environ.get(k) for k in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "TOGETHER_API_KEY")):
+    if any(
+        os.environ.get(k)
+        for k in (
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "TOGETHER_API_KEY",
+            "OPENROUTER_API_KEY",
+        )
+    ):
         return
     os.environ["PSBX_MOCK_LLM"] = "1"
 
@@ -47,6 +56,8 @@ def _config_for_run_id(run_id: str):
     for path in (
         "config/run.yaml",
         "config/run-phase2.yaml",
+        "config/run-openrouter.yaml",
+        "config/run-swarm.yaml",
         "config/run-society.yaml",
         "config/run-sandbox.yaml",
     ):
@@ -73,9 +84,11 @@ def questions_build(
 def corpus_build(
     epoch: Annotated[str, typer.Option("--epoch")],
     live: Annotated[bool, typer.Option("--live")] = False,
+    max_docs: Annotated[int, typer.Option("--max-docs")] = DEFAULT_MAX_DOCS,
 ) -> None:
+    """Build the cutoff-locked hybrid index. `--live` pulls Wayback (to=cutoff)."""
     ep = load_epochs()[epoch]
-    index = build_index(ep, live=live)
+    index = build_index(ep, live=live, max_docs=max_docs)
     typer.echo(f"indexed {len(index.docs)} documents <= {ep.cutoff_date} at {ep.corpus_index_path}")
 
 

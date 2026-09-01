@@ -168,13 +168,27 @@ def parse_prediction_json(raw: str) -> dict:
 
 
 def skip_reason(model: ModelConfig) -> str | None:
-    """Why this model cannot be called. None means ready."""
+    """Why this model cannot be called. None means ready.
+
+    Local ``needs_endpoint`` bodies (Llama / Qwen) stay on vLLM. Never rewrite
+    them onto OpenRouter — that would bill OPENROUTER_API_KEY for 20 cheap bodies.
+    """
+    if model.id == "swarm-median" or model.model_name == "swarm-median":
+        return "swarm-median is an aggregate; run with use_swarm: true (config/run-swarm.yaml)"
+    if model.needs_endpoint and model.provider == "openrouter":
+        return (
+            f"{model.id} needs a local endpoint; refusing OpenRouter "
+            "(would bill OPENROUTER_API_KEY)"
+        )
     if model.provider == "anthropic":
         return None if os.environ.get("ANTHROPIC_API_KEY") else "ANTHROPIC_API_KEY is not set"
     if model.provider == "openai":
         return None if os.environ.get("OPENAI_API_KEY") else "OPENAI_API_KEY is not set"
     if model.provider == "together":
         return None if os.environ.get("TOGETHER_API_KEY") else "TOGETHER_API_KEY is not set"
+    if model.provider == "openrouter":
+        key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+        return None if key else "OPENROUTER_API_KEY is not set"
     if model.provider == "local_vllm":
         base = os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
         try:
@@ -213,17 +227,56 @@ def execute_tool(client: SearchClient, name: str, arguments: dict[str, Any]) -> 
     return f"unknown tool {name}"
 
 
-def complete_turn(model: ModelConfig, messages: list[dict[str, Any]], *, system: str) -> Turn:
+def sanitize_openai_message(message: dict[str, Any]) -> dict[str, Any]:
+    """Keep only fields the chat-completions API accepts when we replay a turn.
+
+    Replaying ``content: null`` without tool_calls, or ``tool_calls: []``, is a
+    common OpenRouter/OpenAI HTTP 400 after a tool loop.
+    """
+    role = str(message.get("role") or "assistant")
+    out: dict[str, Any] = {"role": role}
+    raw_calls = message.get("tool_calls")
+    calls = [c for c in raw_calls if isinstance(c, dict)] if isinstance(raw_calls, list) else []
+    content = message.get("content")
+    if calls:
+        out["tool_calls"] = calls
+        if isinstance(content, str) and content:
+            out["content"] = content
+    else:
+        out["content"] = content if isinstance(content, str) else ""
+    if role == "tool":
+        out["tool_call_id"] = str(message.get("tool_call_id") or "")
+        name = message.get("name")
+        if name:
+            out["name"] = str(name)
+    return out
+
+
+def complete_turn(
+    model: ModelConfig,
+    messages: list[dict[str, Any]],
+    *,
+    system: str,
+    tools: bool = True,
+) -> Turn:
     if os.environ.get("PSBX_MOCK_LLM", "0") == "1":
         return Turn(text="")
+    if model.id == "swarm-median" or model.model_name == "swarm-median":
+        raise RuntimeError("swarm-median is an aggregate, not a callable OpenRouter slug")
+    if model.needs_endpoint and model.provider == "openrouter":
+        raise RuntimeError(
+            f"{model.id} is local-only (needs_endpoint); refusing OpenRouter "
+            "so we do not bill OPENROUTER_API_KEY"
+        )
     if model.provider == "anthropic":
-        return _anthropic_turn(model, messages, system=system)
+        return _anthropic_turn(model, messages, system=system, tools=tools)
     if model.provider == "openai":
         return _openai_turn(
             model,
             messages,
             base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
             api_key=os.environ.get("OPENAI_API_KEY", ""),
+            tools=tools,
         )
     if model.provider == "together":
         return _openai_turn(
@@ -231,13 +284,17 @@ def complete_turn(model: ModelConfig, messages: list[dict[str, Any]], *, system:
             messages,
             base_url="https://api.together.xyz/v1",
             api_key=os.environ.get("TOGETHER_API_KEY", ""),
+            tools=tools,
         )
+    if model.provider == "openrouter":
+        return _openrouter_turn(model, messages, tools=tools)
     if model.provider == "local_vllm":
         return _openai_turn(
             model,
             messages,
             base_url=os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:8000/v1"),
             api_key=os.environ.get("VLLM_API_KEY", "local"),
+            tools=tools,
         )
     raise RuntimeError(f"unsupported provider {model.provider}")
 
@@ -250,10 +307,25 @@ def complete(model: ModelConfig, messages: list[dict[str, str]]) -> str:
     return turn.text
 
 
-def _anthropic_turn(model: ModelConfig, messages: list[dict[str, Any]], *, system: str) -> Turn:
+def _anthropic_turn(
+    model: ModelConfig,
+    messages: list[dict[str, Any]],
+    *,
+    system: str,
+    tools: bool = True,
+) -> Turn:
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         raise RuntimeError("ANTHROPIC_API_KEY is not set")
+    payload: dict[str, Any] = {
+        "model": model.model_name,
+        "max_tokens": model.max_tokens,
+        "temperature": model.temperature,
+        "system": system,
+        "messages": messages,
+    }
+    if tools:
+        payload["tools"] = ANTHROPIC_TOOLS
     resp = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={
@@ -261,14 +333,7 @@ def _anthropic_turn(model: ModelConfig, messages: list[dict[str, Any]], *, syste
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         },
-        json={
-            "model": model.model_name,
-            "max_tokens": model.max_tokens,
-            "temperature": model.temperature,
-            "system": system,
-            "tools": ANTHROPIC_TOOLS,
-            "messages": messages,
-        },
+        json=payload,
         timeout=120.0,
     )
     resp.raise_for_status()
@@ -300,23 +365,54 @@ def _openai_turn(
     *,
     base_url: str,
     api_key: str,
+    tools: bool = True,
 ) -> Turn:
     if not api_key:
         raise RuntimeError(f"API key missing for {model.provider}")
+    payload: dict[str, Any] = {
+        "model": model.model_name,
+        "messages": messages,
+        "max_tokens": model.max_tokens,
+        "temperature": model.temperature,
+    }
+    if tools:
+        payload["tools"] = OPENAI_TOOLS
     resp = httpx.post(
         f"{base_url.rstrip('/')}/chat/completions",
         headers={"authorization": f"Bearer {api_key}"},
-        json={
-            "model": model.model_name,
-            "messages": messages,
-            "max_tokens": model.max_tokens,
-            "temperature": model.temperature,
-            "tools": OPENAI_TOOLS,
-        },
+        json=payload,
         timeout=120.0,
     )
     resp.raise_for_status()
     message = resp.json()["choices"][0]["message"]
+    return _turn_from_openai_message(message)
+
+
+def _openrouter_turn(
+    model: ModelConfig,
+    messages: list[dict[str, Any]],
+    *,
+    tools: bool = True,
+) -> Turn:
+    from psbx.openrouter import chat_completion
+
+    data = chat_completion(
+        model=model.model_name,
+        messages=messages,
+        max_tokens=model.max_tokens,
+        temperature=model.temperature,
+        tools=OPENAI_TOOLS if tools else None,
+    )
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError("openrouter returned no choices")
+    message = choices[0].get("message") or {}
+    if not isinstance(message, dict):
+        message = {}
+    return _turn_from_openai_message(message)
+
+
+def _turn_from_openai_message(message: dict[str, Any]) -> Turn:
     text = message.get("content") or ""
     calls: list[ToolCall] = []
     for raw in message.get("tool_calls") or []:
@@ -334,4 +430,10 @@ def _openai_turn(
                 arguments=args,
             )
         )
-    return Turn(text=text, tool_calls=calls, openai_message=message)
+    stored = dict(message)
+    stored.setdefault("role", "assistant")
+    return Turn(
+        text=text if isinstance(text, str) else "",
+        tool_calls=calls,
+        openai_message=sanitize_openai_message(stored),
+    )

@@ -68,7 +68,7 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             "cutoff_filter": f"published_at <= {s.index.cutoff.isoformat()}",
             "runs": runs,
             "errors": s.errors,
-            "live_run_id": "phase2-e2012-real",
+            "live_run_id": ready()["live_run_id"],
             "run_labels": {r["run_id"]: run_label(r["run_id"]) for r in runs},
             "connected": {
                 "questions": bool(s.questions),
@@ -101,7 +101,7 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
         }
 
     @app.get("/api/corpus")
-    def corpus(limit: int = Query(80, ge=1, le=500)) -> dict[str, Any]:
+    def corpus(limit: int = Query(200, ge=1, le=2000)) -> dict[str, Any]:
         s: ViewerState = app.state.viewer
         leaked = [
             d.id for d in s.index.docs if d.published_at.date() > s.index.cutoff

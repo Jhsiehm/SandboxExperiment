@@ -6,16 +6,17 @@
   width: auto;
   margin: 0;
   padding: 0;
+  pointer-events: none;
 }
 .enchant-stage {
   position: absolute;
   inset: 0;
   height: auto;
   overflow: hidden;
-  cursor: pointer;
   border: 0;
   background: #0c0612;
   image-rendering: pixelated;
+  pointer-events: none;
 }
 .enchant-fx {
   position: absolute;
@@ -28,6 +29,24 @@
 .enchant-room {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+}
+.enchant-hit {
+  appearance: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  height: 16vh;
+  max-height: 140px;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .enchant-back {

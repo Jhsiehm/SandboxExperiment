@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/app.css?v=11">
-  <link rel="stylesheet" href="/static/enchant.css?v=5">
+  <link rel="stylesheet" href="/static/app.css?v=13">
+  <link rel="stylesheet" href="/static/enchant.css?v=7">
 </head>
 <body>
   <section class="enchant" id="enchant" data-pose="idle" aria-live="polite">
@@ -50,6 +50,7 @@
         <div class="enchant-xpbar" title="Experience"><span></span></div>
       </div>
       <canvas class="enchant-fx" id="enchant-fx"></canvas>
+      <button type="button" class="enchant-hit" id="enchant-hit" aria-label="Click the stone floor to preview poses"></button>
     </div>
     <p class="enchant-caption" id="enchant-caption">Librarian at the desk. Click the room to preview.</p>
   </section>
@@ -260,7 +261,7 @@
       <header class="view-head">
         <p class="rung-kicker">Step 4 of 5</p>
         <h2>The 2012 library</h2>
-        <p id="corpus-assertion" class="stamp-line">Only documents published on or before the freeze date.</p>
+        <p id="corpus-assertion" class="stamp-line">Only documents published on or before the freeze date. The 2012 library is Wayback (cutoff-locked), not the CC-MAIN-2012 dump and not CC-MAIN-2013-20.</p>
       </header>
       <form id="search-form" class="search-bar">
         <label class="field grow">
@@ -311,9 +312,10 @@
             <p>Training cutoff is what the vendor says the model should know, not a measurement of memorization.</p>
           </header>
           <table class="sheet" id="overview-models">
-            <thead><tr><th>ID</th><th>Provider</th><th>Training cutoff</th><th>Chat-tuned</th></tr></thead>
+            <thead><tr><th>ID</th><th>Role</th><th>Provider</th><th>Training cutoff</th><th>Chat-tuned</th></tr></thead>
             <tbody></tbody>
           </table>
+          <p class="note" id="overview-swarm">Live swarm is real: 8 × GPT-4.1 mini + 4 × Claude 3.5 Haiku via OpenRouter (12 sequential votes, shared retrieval, median probability). Run live AI stays a 1-question probe of the primary mini — it does not fire 12 bodies. A full 12×50 pass is hours at 2s/req; use <code>psbx run --config config/run-swarm.yaml --limit 1</code>. Llama 8B / Qwen 7B are local-only and need a vLLM endpoint.</p>
         </article>
         <aside>
           <header class="block-head">
@@ -325,8 +327,10 @@
             <h3>How to run</h3>
           </header>
           <ol class="plain numbered">
+            <li>The 2012 library is Wayback with <code>to=20120630</code>. Grow it with <code>psbx corpus build --epoch e2012 --live --max-docs 400</code>. That is not the CC-MAIN-2012 HTML dump (legacy ARC, “check back later”) and not CC-MAIN-2013-20 (May–June 2013).</li>
             <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys. Cheap.</li>
-            <li><strong>Run live AI</strong> scores Claude and GPT. Needs both API keys in <code>.env</code>.</li>
+            <li><strong>Run live AI</strong> scores a cheap 1-question OpenRouter probe (or native Claude+GPT if those keys are set). It does not run the 12-agent swarm. Needs <code>OPENROUTER_API_KEY</code>, or both Anthropic and OpenAI keys, in <code>.env</code>.</li>
+            <li>The 12-agent swarm is CLI-only: <code>psbx run --config config/run-swarm.yaml --limit 1</code>. Keep the limit at 1 unless you mean to wait hours (12×50 at 2s/req).</li>
             <li>This page never overwrites a different run folder.</li>
           </ol>
         </aside>
@@ -338,7 +342,7 @@
     <p>Search on this page is the same search the agent gets. Nothing published after the freeze date can appear.</p>
   </footer>
   </div>
-  <script src="/static/enchant.js?v=4"></script>
-  <script src="/static/app.js?v=10"></script>
+  <script src="/static/enchant.js?v=5"></script>
+  <script src="/static/app.js?v=17"></script>
 </body>
 </html>

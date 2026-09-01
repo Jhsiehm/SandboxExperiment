@@ -24,6 +24,7 @@ def test_phase2_config_disallows_mock():
 def test_live_run_fails_loud_without_keys(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "")
     monkeypatch.delenv("PSBX_MOCK_LLM", raising=False)
     runner = CliRunner()
     result = runner.invoke(app, ["run", "--config", "config/run-phase2.yaml", "--limit", "1"])

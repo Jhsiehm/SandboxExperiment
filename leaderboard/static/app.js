@@ -11,6 +11,7 @@ const state = {
   ready: null,
   selectedRun: null,
   runs: [],
+  runListKey: "",
 };
 
 function $(sel) {
@@ -57,23 +58,35 @@ function setView(name) {
   if (name === "lab") renderLab();
 }
 
+function runOptionKey(runs) {
+  return (runs || [])
+    .map((r) => `${r.run_id}|${r.label || r.run_id}|${r.n_predictions || 0}`)
+    .join("\n");
+}
+
 function fillRunSelect(runs, preferred) {
   const select = $("#run-select");
-  const current = preferred || state.selectedRun || (runs[0] && runs[0].run_id);
-  select.innerHTML = runs.length
-    ? runs
-        .map((r) => {
-          const label = r.label || r.run_id;
-          const n = r.n_predictions ? ` · ${r.n_predictions}` : "";
-          return `<option value="${r.run_id}">${label}${n}</option>`;
-        })
-        .join("")
-    : `<option value="">No runs yet</option>`;
+  if (!select) return;
+  const list = runs || [];
+  const current = preferred || state.selectedRun || (list[0] && list[0].run_id) || "";
+  const key = runOptionKey(list);
+  if (key !== state.runListKey) {
+    select.innerHTML = list.length
+      ? list
+          .map((r) => {
+            const label = r.label || r.run_id;
+            const n = r.n_predictions ? ` · ${r.n_predictions}` : "";
+            return `<option value="${r.run_id}">${label}${n}</option>`;
+          })
+          .join("")
+      : `<option value="">No runs yet</option>`;
+    state.runListKey = key;
+  }
   if (current && [...select.options].some((o) => o.value === current)) {
-    select.value = current;
+    if (select.value !== current) select.value = current;
   }
   state.selectedRun = select.value || null;
-  state.runs = runs;
+  state.runs = list;
 }
 
 async function loadOverview() {
@@ -86,7 +99,9 @@ async function loadOverview() {
     ...r,
     label: (data.run_labels && data.run_labels[r.run_id]) || r.run_id,
   }));
-  fillRunSelect(runs, state.selectedRun || data.run.run_id);
+  const liveId = (state.ready && state.ready.live_run_id) || data.live_run_id;
+  const liveHas = runs.some((r) => r.run_id === liveId && r.n_predictions > 0);
+  fillRunSelect(runs, state.selectedRun || (liveHas ? liveId : data.run.run_id));
 }
 
 function renderLab() {
@@ -97,6 +112,7 @@ function renderLab() {
     .map(
       (m) => `<tr>
         <td class="num">${m.id}</td>
+        <td>${m.label || m.id}</td>
         <td>${m.provider}</td>
         <td class="num">${m.declared_pretraining_cutoff}</td>
         <td>${m.is_instruction_tuned ? "yes" : "no"}</td>
@@ -123,6 +139,10 @@ function renderLab() {
     ...(data.errors || []),
   ];
   $("#overview-errors").textContent = extra.filter(Boolean).join(" · ");
+  const swarm = $("#overview-swarm");
+  if (swarm && state.ready && state.ready.swarm_note) {
+    swarm.textContent = state.ready.swarm_note;
+  }
 }
 
 async function loadQuestions() {
@@ -328,7 +348,8 @@ function boardCell(kind, width, value, extraClass) {
 }
 
 async function loadScores() {
-  const q = state.selectedRun ? `?run_id=${encodeURIComponent(state.selectedRun)}` : "";
+  const requested = state.selectedRun;
+  const q = requested ? `?run_id=${encodeURIComponent(requested)}` : "";
   const data = await getJSON(`/api/scores${q}`);
   const ex = data.explain || {};
   const verdict = ex.verdict || { tone: "empty", headline: "No scores yet.", detail: "" };
@@ -336,7 +357,13 @@ async function loadScores() {
   setText("#verdict-h", verdict.headline);
   setText("#verdict-d", verdict.detail || "");
   setText("#ranking-line", verdict.ranking || "");
-  if (ex.run_id) {
+  if (requested) {
+    state.selectedRun = requested;
+    const select = $("#run-select");
+    if (select && [...select.options].some((o) => o.value === requested) && select.value !== requested) {
+      select.value = requested;
+    }
+  } else if (ex.run_id) {
     state.selectedRun = ex.run_id;
     const select = $("#run-select");
     if (select && [...select.options].some((o) => o.value === ex.run_id)) select.value = ex.run_id;
@@ -503,9 +530,9 @@ function renderJob(job) {
   const liveOk = state.ready && state.ready.live_ready;
   liveBtn.disabled = busy || !liveOk;
   liveBtn.textContent = busy && !job.mock ? "Running…" : "Run live AI";
-  liveBtn.title = liveOk
-    ? "Score Claude and GPT on the 2012 questions"
-    : "Add ANTHROPIC_API_KEY and OPENAI_API_KEY to .env";
+    liveBtn.title = liveOk
+    ? "Score the cheap 1-question OpenRouter probe (not the 12-agent swarm)"
+    : "Add OPENROUTER_API_KEY, or both ANTHROPIC_API_KEY and OPENAI_API_KEY, to .env";
   const log = (job.log || []).join("\n");
   const band = $("#run-log-band");
   if (status === "idle" && !log) {
@@ -531,7 +558,7 @@ async function pollJob() {
     }
     if (prev === "running" && (job.status === "done" || job.status === "error")) {
       await refreshAfterJob(job.run_id);
-      if (job.status === "done") setView("results");
+      if (job.status === "done") setView("forecasts");
     }
     state.lastJobStatus = job.status;
     state.lastJobRunId = job.run_id;
@@ -558,7 +585,7 @@ async function startSimulation(mock) {
   $("#run-log-band").hidden = false;
   $("#run-log").textContent = mock
     ? "Starting practice (keyword lookup)…"
-    : "Starting live Claude + GPT…";
+    : "Starting live models…";
   if (window.Enchant) Enchant.setPose("search");
   const res = await fetch("/api/jobs/run", {
     method: "POST",
@@ -602,10 +629,14 @@ function bind() {
   $("#search-form").addEventListener("submit", runSearch);
   $("#run-btn").addEventListener("click", () => startSimulation(true));
   $("#run-live-btn").addEventListener("click", () => startSimulation(false));
-  $("#run-select").addEventListener("change", () => {
+  $("#run-select").addEventListener("change", async () => {
     state.selectedRun = $("#run-select").value || null;
-    loadScores();
-    if (!$("#view-forecasts").hidden) loadForecasts();
+    try {
+      await loadScores();
+      await loadForecasts();
+    } catch (err) {
+      console.error("Failed to load run", state.selectedRun, err);
+    }
   });
   $("#f-model").addEventListener("change", loadForecasts);
   $("#f-reveal").addEventListener("change", loadForecasts);
@@ -629,7 +660,11 @@ async function boot() {
   } catch (err) {
     $("#overview-errors").textContent = String(err);
   }
-  setView(location.hash.replace("#", "") || "results");
+  const hash = location.hash.replace("#", "");
+  const liveId = state.ready && state.ready.live_run_id;
+  const liveHas = (state.runs || []).some((r) => r.run_id === liveId && r.n_predictions > 0);
+  if (liveHas && !hash) setView("forecasts");
+  else setView(hash || "results");
   pollJob();
 }
 

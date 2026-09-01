@@ -39,6 +39,16 @@ def create_app(index: HybridIndex) -> FastAPI:
         query_log.append({"fetch": body.document_id})
         return doc
 
+    @app.get("/archive")
+    def archive(url: str = "") -> dict[str, Any]:
+        """Replay a URL from the frozen index only. No live origin fetch."""
+        doc = index.lookup_url(url)
+        if doc is None:
+            raise HTTPException(status_code=404, detail="not in frozen index")
+        assert doc.published_at.date() <= index.cutoff
+        query_log.append({"archive": url})
+        return index.public_document(doc.id)
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "cutoff": index.cutoff.isoformat()}

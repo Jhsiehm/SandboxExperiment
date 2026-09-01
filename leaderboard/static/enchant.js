@@ -202,13 +202,15 @@
     setPose("idle");
     const qPose = new URLSearchParams(location.search).get("pose");
     if (qPose && CAPTION[qPose]) setPose(qPose);
-    const stage = root();
-    stage.addEventListener("click", (ev) => {
-      if (ev.target.closest(".enchant-menu") || ev.target.closest(".hud")) return;
-      const cycle = ["search", "maths", "done", "idle"];
-      const i = Math.max(0, cycle.indexOf(pose));
-      setPose(cycle[(i + 1) % cycle.length]);
-    });
+    const hit = document.getElementById("enchant-hit");
+    if (hit) {
+      hit.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const cycle = ["search", "maths", "done", "idle"];
+        const i = Math.max(0, cycle.indexOf(pose));
+        setPose(cycle[(i + 1) % cycle.length]);
+      });
+    }
     if (reduced) {
       spawnGlyph("stream");
       spawnGlyph("orbit");

@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 
 from psbx.paths import resolve
-from psbx.schemas import Epoch, ModelConfig, RunConfig
+from psbx.schemas import Epoch, ModelConfig, RunConfig, SwarmRoster
 
 
 def load_yaml(path: str | Path) -> dict[str, Any]:
@@ -31,6 +31,10 @@ def load_models(path: str | Path = "config/models.yaml") -> dict[str, ModelConfi
 
 def load_run(path: str | Path = "config/run.yaml") -> RunConfig:
     return RunConfig.model_validate(load_yaml(path))
+
+
+def load_swarm(path: str | Path = "config/swarm.yaml") -> SwarmRoster:
+    return SwarmRoster.model_validate(load_yaml(path))
 
 
 def load_sources(path: str | Path = "config/sources.yaml") -> dict[str, Any]:

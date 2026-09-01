@@ -11,7 +11,7 @@ Category = Literal["economic", "legislative", "geopolitical", "electoral", "corp
 PriorKind = Literal["market", "poll", "analyst_consensus", "base_rate"]
 SourceType = Literal["news", "wire", "wiki", "gov", "trade"]
 CitationSupport = Literal["yes", "no", "context"]
-Provider = Literal["openai", "anthropic", "together", "local_vllm"]
+Provider = Literal["openai", "anthropic", "together", "local_vllm", "openrouter"]
 SandboxMode = Literal["host", "container"]
 
 
@@ -143,6 +143,76 @@ class ModelConfig(BaseModel):
     temperature: float = 0.2
     cost_per_1k_input: float = 0.0
     cost_per_1k_output: float = 0.0
+    label: str = ""
+    notes: str = ""
+    needs_endpoint: bool = False
+    openrouter_fallback: Optional[str] = None
+
+
+class SwarmVote(BaseModel):
+    """One worker forecast. Written to swarm_votes.jsonl, not scored as its own series."""
+
+    run_id: str
+    question_id: str
+    agent_index: int
+    agent_id: str
+    model_id: str
+    model_slug: str
+    temperature: float
+    max_tokens: int
+    probability: float
+    rationale: str = ""
+    raw_response: str = ""
+    parse_attempts: int = 1
+    system_prompt: str = ""
+    search_queries: list[str] = Field(default_factory=list)
+
+    @field_validator("probability")
+    @classmethod
+    def unit_interval(cls, v: float) -> float:
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("probability must be in [0, 1]")
+        return v
+
+
+class SwarmSpecies(BaseModel):
+    """One species in the default swarm. count expands to sequential bodies."""
+
+    model_id: str
+    count: int = 1
+    temperature: float = 0.8
+    json_forecast: bool = True
+    chain_of_thought: bool = False
+    max_tokens: int = 256
+    notes: str = ""
+
+    @field_validator("count")
+    @classmethod
+    def positive_count(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("count must be >= 1")
+        return v
+
+
+class SwarmRoster(BaseModel):
+    """Source of truth for the default 12-agent mix (8 mini + 4 Haiku)."""
+
+    name: str = "default-12"
+    n_agents: int = 12
+    n_questions_default: int = 1
+    bodies: list[SwarmSpecies]
+    optional_scale_up: list[SwarmSpecies] = Field(default_factory=list)
+    local_scale_up: list[SwarmSpecies] = Field(default_factory=list)
+    shared_retrieval: str = "one search pack per question; agents only read"
+    serialize_openrouter: bool = True
+    rate_limit_note: str = ""
+
+    @model_validator(mode="after")
+    def counts_match_n_agents(self) -> SwarmRoster:
+        total = sum(b.count for b in self.bodies)
+        if total != self.n_agents:
+            raise ValueError(f"bodies counts sum to {total}, expected n_agents={self.n_agents}")
+        return self
 
 
 class RunConfig(BaseModel):
@@ -157,6 +227,8 @@ class RunConfig(BaseModel):
     sandbox_mode: SandboxMode = "host"
     embedding_backend: Literal["hashing", "sentence-transformers"] = "hashing"
     allow_mock: bool = True
+    swarm_roster: Optional[str] = None
+    use_swarm: bool = False
 
 
 class SearchHit(BaseModel):

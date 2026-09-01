@@ -34,6 +34,35 @@ def test_clock_endpoint_reports_cutoff():
     assert "today" in body
 
 
+def test_archive_proxy_serves_index_only():
+    from psbx.corpus.build_index import collect_documents
+    from psbx.corpus.embed import embed_texts
+    from psbx.corpus.index import HybridIndex
+
+    epoch = load_epochs()["e2012"]
+    docs = collect_documents(epoch)
+    embeddings = embed_texts([f"{d.title}\n{d.text}" for d in docs], backend="hashing")
+    index = HybridIndex(docs, embeddings, epoch.cutoff_date)
+    client = TestClient(create_app(index))
+    known = docs[0]
+    ok = client.get("/archive", params={"url": known.url})
+    assert ok.status_code == 200
+    body = ok.json()
+    assert body["id"] == known.id
+    assert body["url"] == known.url
+    assert body["published_at"][:10] <= "2012-06-30"
+
+    missing = client.get(
+        "/archive",
+        params={"url": "https://www.nytimes.com/2013/07/01/world/syria.html"},
+    )
+    assert missing.status_code == 404
+    empty = client.get("/archive", params={"url": ""})
+    assert empty.status_code == 404
+    unknown = client.get("/archive", params={"url": "https://example.com/never-indexed"})
+    assert unknown.status_code == 404
+
+
 def test_host_sandbox_uses_local_client():
     from psbx.corpus.build_index import collect_documents
     from psbx.corpus.embed import embed_texts

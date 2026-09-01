@@ -12,5 +12,6 @@ overwrites observation values only.
 | `gallup_mip_2012.json` | Gallup MIP series for agenda-setting validation |
 
 Live Wayback/GDELT pulls cache under `data/corpus-cache/` (gitignored).
-Seed documents are code in `src/psbx/corpus/seed_documents.py` so the index
-rebuilds without a multi-day crawl.
+e2012 web is Wayback (`to=20120630`), not the CC-MAIN-2012 dump and not
+CC-MAIN-2013-20. Seed documents are code in `src/psbx/corpus/seed_documents.py`
+so the index rebuilds without a multi-day crawl.

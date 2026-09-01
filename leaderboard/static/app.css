@@ -1,6 +1,6 @@
 :root {
   --bg: transparent;
-  --panel: rgba(18, 12, 28, 0.92);
+  --panel: rgba(18, 12, 28, 0.96);
   --ink: #f3eee4;
   --muted: #c4b8a8;
   --line: #6b4aa0;
@@ -20,16 +20,21 @@ body {
   color: var(--ink);
   font: 16px/1.5 var(--sans);
   min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .hud {
   position: relative;
-  z-index: 3;
+  z-index: 5;
+  isolation: isolate;
   pointer-events: none;
-  height: 66vh;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 12px 0 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+  padding: 12px 0 96px;
 }
 .hud .skip,
 .hud .top,
@@ -38,6 +43,19 @@ body {
 .hud .colophon,
 .hud .run-log-band {
   pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
+.hud .top,
+.hud .tabs,
+.hud .run-log-band,
+.hud .colophon {
+  flex: 0 0 auto;
+}
+.hud main {
+  flex: 1 1 auto;
+  min-height: 42vh;
+  overflow: visible;
 }
 
 .skip {
@@ -70,6 +88,9 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   box-shadow: 0 0 0 1px #2e1064, 4px 4px 0 #05030c;
+  overflow: visible;
+  position: relative;
+  z-index: 6;
 }
 .brand h1 {
   margin: 0;
@@ -112,6 +133,16 @@ body {
   font: 500 14px/1.3 var(--sans);
 }
 
+.run-box {
+  overflow: visible;
+  position: relative;
+  z-index: 7;
+}
+.run-box select {
+  position: relative;
+  z-index: 8;
+  max-width: 100%;
+}
 .run-box .run-acts {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -207,6 +238,7 @@ main {
   border: 1px solid var(--line);
   box-shadow: 0 0 0 1px #2e1064, 4px 4px 0 #05030c;
   padding: 4px 22px 8px;
+  color: var(--ink);
 }
 .view { padding: 18px 0 36px; }
 .view[hidden], [hidden] { display: none !important; }
@@ -609,7 +641,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 @media (max-width: 960px) {
   .top, .layout, .chips, nav.tabs, .board-row, .board-head, .metric-grid, .rung { grid-template-columns: 1fr; }
   .top, nav.tabs, main, .colophon, .run-log-band { width: calc(100% - 24px); }
-  .hud { height: 62vh; }
+  .hud { height: auto; min-height: 100vh; }
   .chips div { border-left: 0; padding: 8px 0; border-top: 1px solid var(--line); }
 }
 

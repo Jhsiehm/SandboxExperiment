@@ -66,3 +66,22 @@ def test_forecast_rows_join_question_and_error():
     shown = forecast_rows([pred], [q], reveal_truth=True, limit=10)
     assert shown[0]["ground_truth"] is True
     assert shown[0]["item_brier"] == (0.8 - 1.0) ** 2
+
+
+def test_compute_scores_does_not_borrow_another_run(monkeypatch):
+    from types import SimpleNamespace
+
+    from leaderboard.store import compute_scores
+
+    other = SimpleNamespace(run_id="phase1-e2012-smoke")
+
+    def fake_report(run_id=None):
+        if run_id in (None, "phase1-e2012-smoke"):
+            return other
+        return None
+
+    monkeypatch.setattr("leaderboard.store.load_score_report", fake_report)
+    monkeypatch.setattr("leaderboard.store.load_predictions", lambda run_id=None: [])
+    payload = compute_scores([], [], "phase1-e2012-docker")
+    assert payload["run_id"] == "phase1-e2012-docker"
+    assert payload["source"] == "baselines-only"
