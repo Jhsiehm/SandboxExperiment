@@ -2,10 +2,10 @@
 (function () {
   const GLYPHS = "ᔑʖᓵ↸ᒷ⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹¡ᑑ∷ᓭℸ⚍⍊∴||⨅*".split("");
   const CAPTION = {
-    idle: "Librarian at the desk. Click the stone floor — or Run practice — to send them to the 2012 shelves.",
-    search: "Pulling volumes off the 2012 shelves. Glyphs streaming to the table.",
-    maths: "Workbench + enchanting table. Hover a slot to translate the Standard Galactic.",
-    done: "Enchantment complete. +XP. Scores are in the ledger above.",
+    idle: "Librarian at the desk. Stone floor previews poses. Use the run buttons above to start work.",
+    search: "Pulling volumes off the 2012 shelves.",
+    maths: "Scoring at the enchanting table. Slots are Brier, C-index, and accuracy.",
+    done: "Enchantment complete. Scores are in the ledger above.",
     error: "The table fizzled. Check the run log.",
   };
 

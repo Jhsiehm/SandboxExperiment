@@ -19,21 +19,29 @@ _LOG_CAP = 400
 MOCK_CONFIG = "config/run.yaml"
 LIVE_CONFIG = "config/run-phase2.yaml"
 OPENROUTER_CONFIG = "config/run-openrouter.yaml"
+SWARM_CONFIG = "config/run-swarm.yaml"
 
 
 def live_config_path() -> str:
-    """Native dual keys keep phase2; OpenRouter-only uses the cheap 1-question probe.
+    """Dashboard **Run live mix** is the 6-species OpenRouter probe when that key exists.
 
-    Dashboard live click stays on run-openrouter.yaml (primary mini only).
-    The 12-agent sequential median is config/run-swarm.yaml (n_questions=1).
-    Do not fire that from the live button — 12×50 at 2s/req is hours.
+    Native Claude+GPT (run-phase2.yaml) only if OpenRouter is missing but both
+    native keys are set. The 12-agent median is **Run swarm** / run-swarm.yaml.
     """
     status = provider_status()
-    if status["anthropic"] and status["openai"]:
-        return LIVE_CONFIG
     if status["openrouter"]:
         return OPENROUTER_CONFIG
-    return LIVE_CONFIG
+    if status["anthropic"] and status["openai"]:
+        return LIVE_CONFIG
+    return OPENROUTER_CONFIG
+
+
+def config_for_kind(kind: str) -> str:
+    if kind == "mock":
+        return MOCK_CONFIG
+    if kind == "swarm":
+        return SWARM_CONFIG
+    return live_config_path()
 
 
 class JobBusy(RuntimeError):
@@ -50,6 +58,7 @@ class JobState:
     run_id: str = "phase1-e2012-smoke"
     phase: str = ""
     mock: bool = True
+    kind: str = "mock"
     config_path: str = MOCK_CONFIG
     log: list[str] = field(default_factory=list)
     error: str | None = None
@@ -62,6 +71,7 @@ class JobState:
             "run_id": self.run_id,
             "phase": self.phase,
             "mock": self.mock,
+            "kind": self.kind,
             "config_path": self.config_path,
             "log": list(self.log),
             "error": self.error,
@@ -89,25 +99,37 @@ def ready() -> dict[str, Any]:
         "live_config": live_cfg,
         "live_run_id": load_run(live_cfg).run_id,
         "mock_run_id": load_run(MOCK_CONFIG).run_id,
-        "swarm_roster": "8 × gpt-4.1-mini + 4 × Haiku (12 agents; sequential OpenRouter)",
+        "swarm_roster": (
+            "2 × each of gpt-4.1-mini, gpt-4o-mini, Haiku, Flash-Lite, "
+            "Llama 3.1 8B, Qwen 2.5 7B (12 agents; sequential OpenRouter)"
+        ),
         "swarm_config": "config/swarm.yaml",
-        "swarm_run_config": "config/run-swarm.yaml",
+        "swarm_run_config": SWARM_CONFIG,
+        "swarm_run_id": load_run(SWARM_CONFIG).run_id,
         "swarm_note": (
-            "Swarm is real: 12 sequential OpenRouter votes, shared retrieval, "
-            "median p (swarm-median). Run live AI stays the 1-question mini probe. "
-            "CLI: psbx run --config config/run-swarm.yaml --limit 1. "
-            "A full 12×50 pass is hours at 2s/req. Llama/Qwen stay local-only."
+            "Three HUD buttons: Run practice (keyword lookup), Run live mix "
+            "(each of the six OpenRouter species once, 1 question), Run swarm "
+            "(12 sequential votes — 2 of each species — median p). "
+            "A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only."
         ),
     }
 
 
-def start_job(*, run_id: str | None = None, mock: bool = True) -> dict[str, Any]:
+def start_job(
+    *,
+    run_id: str | None = None,
+    mock: bool = True,
+    kind: str | None = None,
+) -> dict[str, Any]:
     load_dotenv()
-    config_path = MOCK_CONFIG if mock else live_config_path()
+    resolved = (kind or "").strip().lower()
+    if resolved not in {"mock", "live", "swarm"}:
+        resolved = "mock" if mock else "live"
+    config_path = config_for_kind(resolved)
     cfg = load_run(config_path)
-    if not mock and not live_ready():
+    if resolved != "mock" and not live_ready():
         raise LiveNotReady(
-            "live run needs OPENROUTER_API_KEY, or both ANTHROPIC_API_KEY and "
+            "live/swarm needs OPENROUTER_API_KEY, or both ANTHROPIC_API_KEY and "
             "OPENAI_API_KEY (see .env.example)"
         )
     rid = (run_id or cfg.run_id).strip() or cfg.run_id
@@ -117,14 +139,17 @@ def start_job(*, run_id: str | None = None, mock: bool = True) -> dict[str, Any]
         _JOB.status = "running"
         _JOB.run_id = rid
         _JOB.phase = "starting"
-        _JOB.mock = mock
+        _JOB.mock = resolved == "mock"
+        _JOB.kind = resolved
         _JOB.config_path = config_path
         _JOB.log = []
         _JOB.error = None
         _JOB.started_at = time.time()
         _JOB.finished_at = None
         snap = _JOB.snapshot()
-    threading.Thread(target=_execute, args=(rid, mock, config_path), daemon=True).start()
+    threading.Thread(
+        target=_execute, args=(rid, resolved == "mock", config_path), daemon=True
+    ).start()
     return snap
 
 

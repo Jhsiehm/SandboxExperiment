@@ -18,6 +18,10 @@ data/corpus-cache/
 *.warc.gz
 *.zim
 
+examples/e2012_forecast/agents/
+examples/e2012_forecast/SOCIETY.json
+examples/e2012_forecast/agent_specs.json
+
 third_party/
 .agentsociety/
 custom/.agentsociety/

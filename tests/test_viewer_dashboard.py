@@ -85,3 +85,36 @@ def test_compute_scores_does_not_borrow_another_run(monkeypatch):
     payload = compute_scores([], [], "phase1-e2012-docker")
     assert payload["run_id"] == "phase1-e2012-docker"
     assert payload["source"] == "baselines-only"
+
+
+def test_run_labels_match_hud_kinds():
+    from leaderboard.explain import run_label
+
+    assert "Practice" in run_label("phase1-e2012-smoke")
+    assert "6 species" in run_label("phase2-e2012-openrouter")
+    assert "median" in run_label("phase2-e2012-swarm-probe").lower()
+    assert "native" in run_label("phase2-e2012-real").lower()
+
+
+def test_dashboard_html_a11y_landmarks():
+    from pathlib import Path
+
+    html = Path("leaderboard/static/index.html").read_text()
+    assert 'lang="en"' in html
+    assert 'href="#main"' in html
+    assert "Skip to content" in html
+    assert 'href="#run-box"' in html
+    assert 'role="tablist"' in html
+    assert 'role="tab"' in html
+    assert 'role="tabpanel"' in html
+    assert 'id="run-swarm-btn"' in html
+    assert "Run live mix" in html
+    assert "Run live AI" not in html
+    assert "app.js?v=22" in html
+    assert "app.css?v=17" in html
+    assert "enchant.css?v=8" in html
+    assert 'id="perf-plots"' in html
+    assert 'aria-live="polite"' in html
+    assert "sr-only" in html
+    assert 'for="run-select"' in html
+    assert "tabindex=" not in html.split("enchant-menu")[1].split("</ol>")[0]

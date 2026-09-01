@@ -1,51 +1,202 @@
 {
-  "name": "e2012-forecast",
-  "description": "Contamination-controlled forecasting on frozen epoch e2012.",
-  "start_t": "2012-06-30T00:00:00",
-  "run_dir": "data/runs/phase1-e2012-society/society",
-  "agent_class_name": "ForecasterAgent",
-  "workspace_path": ".",
-  "custom_modules": {
-    "agents": ["custom/agents/forecaster_agent.py"],
-    "envs": ["custom/envs/frozen_epoch_env.py"]
-  },
   "env_modules": [
     {
-      "class_name": "FrozenEpochEnv",
-      "config": {
+      "module_type": "FrozenEpochEnv",
+      "kwargs": {
         "epoch_id": "e2012",
         "min_prominence": 0.0
       }
     }
   ],
-  "agent_specs": [
+  "agents": [
     {
-      "id": 1,
-      "profile": {
-        "name": "forecaster-frontier-a",
+      "agent_id": 1,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 1,
+        "name": "forecaster-openrouter-gpt-4.1-mini-00",
         "role": "historical forecaster",
-        "bio": "Uses only contemporaneous search as of 2012-06-30."
-      },
-      "config": { "model_id": "frontier-a" }
+        "bio": "Primary species. OpenAI mini, cheap JSON, no CoT.",
+        "model_id": "openrouter-gpt-4.1-mini",
+        "model_slug": "openai/gpt-4.1-mini",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
     },
     {
-      "id": 2,
-      "profile": {
-        "name": "forecaster-frontier-b",
+      "agent_id": 2,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 2,
+        "name": "forecaster-openrouter-gpt-4.1-mini-01",
         "role": "historical forecaster",
-        "bio": "Uses only contemporaneous search as of 2012-06-30."
-      },
-      "config": { "model_id": "frontier-b" }
+        "bio": "Primary species. OpenAI mini, cheap JSON, no CoT.",
+        "model_id": "openrouter-gpt-4.1-mini",
+        "model_slug": "openai/gpt-4.1-mini",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 3,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 3,
+        "name": "forecaster-openrouter-gpt-4o-mini-02",
+        "role": "historical forecaster",
+        "bio": "Same class as gpt-4.1-mini. Second OpenAI prior.",
+        "model_id": "openrouter-gpt-4o-mini",
+        "model_slug": "openai/gpt-4o-mini",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 4,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 4,
+        "name": "forecaster-openrouter-gpt-4o-mini-03",
+        "role": "historical forecaster",
+        "bio": "Same class as gpt-4.1-mini. Second OpenAI prior.",
+        "model_id": "openrouter-gpt-4o-mini",
+        "model_slug": "openai/gpt-4o-mini",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 5,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 5,
+        "name": "forecaster-openrouter-haiku-04",
+        "role": "historical forecaster",
+        "bio": "Cheap non-thinking Haiku (anthropic/claude-3-haiku).",
+        "model_id": "openrouter-haiku",
+        "model_slug": "anthropic/claude-3-haiku",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 6,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 6,
+        "name": "forecaster-openrouter-haiku-05",
+        "role": "historical forecaster",
+        "bio": "Cheap non-thinking Haiku (anthropic/claude-3-haiku).",
+        "model_id": "openrouter-haiku",
+        "model_slug": "anthropic/claude-3-haiku",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 7,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 7,
+        "name": "forecaster-openrouter-gemini-flash-lite-06",
+        "role": "historical forecaster",
+        "bio": "google/gemini-2.5-flash-lite. Person-on-the-street volume.",
+        "model_id": "openrouter-gemini-flash-lite",
+        "model_slug": "google/gemini-2.5-flash-lite",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 8,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 8,
+        "name": "forecaster-openrouter-gemini-flash-lite-07",
+        "role": "historical forecaster",
+        "bio": "google/gemini-2.5-flash-lite. Person-on-the-street volume.",
+        "model_id": "openrouter-gemini-flash-lite",
+        "model_slug": "google/gemini-2.5-flash-lite",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 9,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 9,
+        "name": "forecaster-openrouter-llama-3.1-8b-08",
+        "role": "historical forecaster",
+        "bio": "Open-weight 8B via OpenRouter. Cheap body, not a reasoner.",
+        "model_id": "openrouter-llama-3.1-8b",
+        "model_slug": "meta-llama/llama-3.1-8b-instruct",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 10,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 10,
+        "name": "forecaster-openrouter-llama-3.1-8b-09",
+        "role": "historical forecaster",
+        "bio": "Open-weight 8B via OpenRouter. Cheap body, not a reasoner.",
+        "model_id": "openrouter-llama-3.1-8b",
+        "model_slug": "meta-llama/llama-3.1-8b-instruct",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 11,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 11,
+        "name": "forecaster-openrouter-qwen-2.5-7b-10",
+        "role": "historical forecaster",
+        "bio": "Open-weight 7B via OpenRouter. Cheap body, not a reasoner.",
+        "model_id": "openrouter-qwen-2.5-7b",
+        "model_slug": "qwen/qwen-2.5-7b-instruct",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
+    },
+    {
+      "agent_id": 12,
+      "agent_type": "ForecasterAgent",
+      "kwargs": {
+        "id": 12,
+        "name": "forecaster-openrouter-qwen-2.5-7b-11",
+        "role": "historical forecaster",
+        "bio": "Open-weight 7B via OpenRouter. Cheap body, not a reasoner.",
+        "model_id": "openrouter-qwen-2.5-7b",
+        "model_slug": "qwen/qwen-2.5-7b-instruct",
+        "max_react_turns": 2,
+        "enable_memory": false,
+        "enable_todo_list": false
+      }
     }
   ],
-  "llm": {
-    "api_key_env": "AGENTSOCIETY_LLM_API_KEY",
-    "api_base_env": "AGENTSOCIETY_LLM_API_BASE",
-    "model_env": "AGENTSOCIETY_LLM_MODEL"
+  "codegen_router": {
+    "final_summary_enabled": false
   },
   "psbx": {
     "question_set": "data/questions/e2012.jsonl",
-    "run_config": "config/run-society.yaml",
-    "live_run_config": "config/run-phase2.yaml"
+    "run_config": "config/run-society-swarm.yaml",
+    "agentsociety_root": "../AgentSociety",
+    "note": "Votes stay on psbx OpenRouter (serialized). Install agentsociety2 from the sibling clone to run this file with the real CLI."
   }
 }

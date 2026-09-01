@@ -3,15 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0c0612">
   <title>Prediction Sandbox</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/app.css?v=13">
-  <link rel="stylesheet" href="/static/enchant.css?v=7">
+  <link rel="stylesheet" href="/static/app.css?v=17">
+  <link rel="stylesheet" href="/static/enchant.css?v=8">
 </head>
 <body>
-  <section class="enchant" id="enchant" data-pose="idle" aria-live="polite">
+  <section class="enchant" id="enchant" data-pose="idle">
     <div class="enchant-stage">
       <div class="enchant-room" aria-hidden="true">
         <div class="enchant-back"></div>
@@ -27,38 +29,51 @@
         <span class="enchant-lantern c"></span>
         <span class="enchant-lantern d"></span>
         <div class="enchant-aura"></div>
-        <div class="enchant-lapis" title="Lapis"></div>
-        <div class="enchant-desk" title="Desk"></div>
-        <div class="enchant-bench" title="Workbench">
+        <div class="enchant-lapis"></div>
+        <div class="enchant-desk"></div>
+        <div class="enchant-bench">
           <img src="/static/enchant/mc-workbench.png" alt="">
         </div>
-        <div class="enchant-table" title="Enchanting table">
+        <div class="enchant-table">
           <img src="/static/enchant/mc-enchant-table.png" alt="">
         </div>
         <div class="enchant-flybooks">
           <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
         </div>
-        <div class="enchant-agent" title="The agent">
+        <div class="enchant-agent">
           <img src="/static/enchant/mc-agent.png" alt="">
         </div>
         <ol class="enchant-menu">
-          <li tabindex="0"><span class="galactic">ᓭᓵ𝙹∷ᒷ ʖ∷╎ᒷ∷</span><span class="plain">Brier score</span><em>1</em></li>
-          <li tabindex="0"><span class="galactic">ᓵ𝙹リᓵ𝙹∷↸ ᔑ⚍ᓵ</span><span class="plain">C-index</span><em>2</em></li>
-          <li tabindex="0"><span class="galactic">ᔑᓵᓵ⚍∷ᔑᓵ||</span><span class="plain">Accuracy</span><em>3</em></li>
+          <li>
+            <span class="galactic" aria-hidden="true">ᓭᓵ𝙹∷ᒷ ʖ∷╎ᒷ∷</span>
+            <span class="plain">Brier score</span>
+            <em>1</em>
+          </li>
+          <li>
+            <span class="galactic" aria-hidden="true">ᓵ𝙹リᓵ𝙹∷↸ ᔑ⚍ᓵ</span>
+            <span class="plain">C-index</span>
+            <em>2</em>
+          </li>
+          <li>
+            <span class="galactic" aria-hidden="true">ᔑᓵᓵ⚍∷ᔑᓵ||</span>
+            <span class="plain">Accuracy</span>
+            <em>3</em>
+          </li>
         </ol>
-        <p class="enchant-xp">+XP</p>
-        <div class="enchant-xpbar" title="Experience"><span></span></div>
+        <p class="enchant-xp" aria-hidden="true">+XP</p>
+        <div class="enchant-xpbar" id="enchant-xpbar"><span></span></div>
       </div>
-      <canvas class="enchant-fx" id="enchant-fx"></canvas>
-      <button type="button" class="enchant-hit" id="enchant-hit" aria-label="Click the stone floor to preview poses"></button>
+      <canvas class="enchant-fx" id="enchant-fx" aria-hidden="true"></canvas>
+      <button type="button" class="enchant-hit" id="enchant-hit" aria-label="Preview workshop poses. Cycles shelves, table, done, idle."></button>
     </div>
-    <p class="enchant-caption" id="enchant-caption">Librarian at the desk. Click the room to preview.</p>
+    <p class="enchant-caption" id="enchant-caption" aria-live="polite">Librarian at the desk. Click the stone floor to preview.</p>
   </section>
 
   <div class="hud">
   <a class="skip" href="#main">Skip to content</a>
+  <a class="skip skip-runs" href="#run-box">Skip to run controls</a>
 
-  <header class="top">
+  <header class="top" role="banner">
     <div class="brand">
       <p class="kicker">Start here</p>
       <h1>Prediction Sandbox</h1>
@@ -78,16 +93,23 @@
         <dd id="mast-epoch">—</dd>
       </div>
     </dl>
-    <div class="run-box">
-      <label class="field">
+    <div class="run-box" id="run-box" role="region" aria-labelledby="run-heading">
+      <h2 class="sr-only" id="run-heading">Run the experiment</h2>
+      <label class="field" for="run-select">
         <span>Which run to look at</span>
         <select id="run-select"></select>
       </label>
-      <div class="run-acts">
-        <button type="button" class="act ghost" id="run-btn">Run practice</button>
-        <button type="button" class="act" id="run-live-btn">Run live AI</button>
+      <div class="run-acts" role="group" aria-label="Start a run">
+        <button type="button" class="act ghost" id="run-btn" aria-describedby="run-help-practice">Run practice</button>
+        <button type="button" class="act" id="run-live-btn" aria-describedby="run-help-live">Run live mix</button>
+        <button type="button" class="act" id="run-swarm-btn" aria-describedby="run-help-swarm">Run swarm</button>
       </div>
-      <p class="run-state" id="run-state" data-status="idle" aria-live="polite">
+      <p class="run-help" id="run-help">
+        <span id="run-help-practice">Practice is a keyword lookup with no API keys.</span>
+        <span id="run-help-live">Live mix scores six cheap models once on one question.</span>
+        <span id="run-help-swarm">Swarm is twelve sequential votes and a median probability.</span>
+      </p>
+      <p class="run-state" id="run-state" data-status="idle" aria-live="polite" aria-atomic="true">
         <span class="run-dot" aria-hidden="true"></span>
         <span id="run-state-label">Idle</span>
       </p>
@@ -96,19 +118,20 @@
 
   <section id="run-log-band" class="run-log-band" hidden>
     <h2>Run log</h2>
-    <pre id="run-log"></pre>
+    <pre id="run-log" tabindex="0"></pre>
   </section>
 
-  <nav class="tabs" aria-label="Read the experiment in order">
-    <button type="button" data-view="results" aria-current="page">1. Results</button>
-    <button type="button" data-view="forecasts">2. Each answer</button>
-    <button type="button" data-view="questions">3. The questions</button>
-    <button type="button" data-view="corpus">4. The 2012 library</button>
-    <button type="button" data-view="lab">5. Setup</button>
+  <nav class="tabs" role="tablist" aria-label="Read the experiment in order">
+    <button type="button" role="tab" id="tab-results" data-view="results" aria-controls="view-results" aria-selected="true" tabindex="0">1. Results</button>
+    <button type="button" role="tab" id="tab-forecasts" data-view="forecasts" aria-controls="view-forecasts" aria-selected="false" tabindex="-1">2. Each answer</button>
+    <button type="button" role="tab" id="tab-questions" data-view="questions" aria-controls="view-questions" aria-selected="false" tabindex="-1">3. The questions</button>
+    <button type="button" role="tab" id="tab-corpus" data-view="corpus" aria-controls="view-corpus" aria-selected="false" tabindex="-1">4. The 2012 library</button>
+    <button type="button" role="tab" id="tab-lab" data-view="lab" aria-controls="view-lab" aria-selected="false" tabindex="-1">5. Setup</button>
   </nav>
 
   <main id="main">
-    <section id="view-results" class="view" hidden>
+    <p class="sr-only" id="view-announce" aria-live="polite"></p>
+    <section id="view-results" class="view" role="tabpanel" aria-labelledby="tab-results">
       <ol class="ladder">
         <li class="rung">
           <p class="rung-num" aria-hidden="true">1</p>
@@ -140,16 +163,25 @@
           <div>
             <h2>Who did better</h2>
             <p class="rung-lead">Green is the 2012 public prior — beat that on probability error before calling it skill. Ranking can look strong even when percentages are sloppy.</p>
-            <div class="board-head" aria-hidden="true">
+            <div class="board-head">
               <span>Who</span>
               <span>Probability error <em>smaller better</em></span>
               <span>Ranking <em>larger better</em></span>
             </div>
-            <div id="scoreboard" class="scoreboard"></div>
+            <div id="scoreboard" class="scoreboard" role="table" aria-label="Who did better on probability error and ranking"></div>
           </div>
         </li>
         <li class="rung">
           <p class="rung-num" aria-hidden="true">5</p>
+          <div>
+            <h2>Performance</h2>
+            <p class="rung-lead">Seaborn charts of agent votes versus later truth. Use these to see whether the swarm median is wiser than the loudest species.</p>
+            <div id="perf-plots" class="plot-grid"></div>
+            <p class="note" id="perf-plots-empty" hidden>Charts appear after a scored run with forecasts (and swarm votes, when this is a swarm).</p>
+          </div>
+        </li>
+        <li class="rung">
+          <p class="rung-num" aria-hidden="true">6</p>
           <div>
             <details class="more">
               <summary>More detail (by topic, honesty of percentages, already-knew-it check)</summary>
@@ -160,7 +192,8 @@
                   <p>Same probability error, split into economic / legislative / geopolitical.</p>
                 </header>
                 <table class="sheet" id="cat-table">
-                  <thead><tr><th>Who</th><th>Topic</th><th>Probability error</th></tr></thead>
+                  <caption class="sr-only">Probability error by model and topic</caption>
+                  <thead><tr><th scope="col">Who</th><th scope="col">Topic</th><th scope="col">Probability error</th></tr></thead>
                   <tbody></tbody>
                 </table>
                 <div class="layout nested">
@@ -187,14 +220,14 @@
       </ol>
     </section>
 
-    <section id="view-forecasts" class="view" hidden>
+    <section id="view-forecasts" class="view" role="tabpanel" aria-labelledby="tab-forecasts" hidden>
       <header class="view-head">
         <p class="rung-kicker">Step 2 of 5</p>
         <h2>Each answer</h2>
         <p>One row is one model answering one question, using only documents from on or before the freeze date.</p>
       </header>
       <div class="toolbar">
-        <label class="field">
+        <label class="field" for="f-model">
           <span>Model</span>
           <select id="f-model"><option value="">All models</option></select>
         </label>
@@ -205,25 +238,28 @@
         <p class="count" id="f-count"></p>
       </div>
       <div id="forecasts-empty" class="empty" hidden>
-        <p>No answers on disk for this run. Use <strong>Run practice</strong> for a keyword lookup, or <strong>Run live AI</strong> with API keys.</p>
+        <p>No answers on disk for this run. Use <strong>Run practice</strong> for a keyword lookup, <strong>Run live mix</strong> for six species once, or <strong>Run swarm</strong> for the 12-vote median.</p>
       </div>
+      <div class="sheet-wrap">
       <table class="sheet" id="pred-table">
+        <caption class="sr-only">Each model answer for the selected run</caption>
         <thead>
           <tr>
-            <th>Who</th>
-            <th>Question</th>
-            <th>Their guess</th>
-            <th>2012 prior</th>
-            <th class="truth-col">Happened?</th>
-            <th class="truth-col">Error</th>
-            <th>What they searched</th>
+            <th scope="col">Who</th>
+            <th scope="col">Question</th>
+            <th scope="col">Their guess</th>
+            <th scope="col">2012 prior</th>
+            <th scope="col" class="truth-col">Happened?</th>
+            <th scope="col" class="truth-col">Error</th>
+            <th scope="col">What they searched</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
+      </div>
     </section>
 
-    <section id="view-questions" class="view" hidden>
+    <section id="view-questions" class="view" role="tabpanel" aria-labelledby="tab-questions" hidden>
       <header class="view-head">
         <p class="rung-kicker">Step 3 of 5</p>
         <h2>The questions</h2>
@@ -234,7 +270,7 @@
           <input type="checkbox" id="reveal-truth">
           <span>Reveal what actually happened</span>
         </label>
-        <label class="field">
+        <label class="field" for="q-category">
           <span>Topic</span>
           <select id="q-category">
             <option value="">All topics</option>
@@ -242,56 +278,62 @@
         </label>
         <p class="count" id="q-count"></p>
       </div>
+      <div class="sheet-wrap">
       <table class="sheet" id="q-table">
+        <caption class="sr-only">The frozen 2012 question set</caption>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Topic</th>
-            <th>Question</th>
-            <th>2012 prior</th>
-            <th>Where it came from</th>
-            <th class="truth-col">Happened?</th>
+            <th scope="col">ID</th>
+            <th scope="col">Topic</th>
+            <th scope="col">Question</th>
+            <th scope="col">2012 prior</th>
+            <th scope="col">Where it came from</th>
+            <th scope="col" class="truth-col">Happened?</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
+      </div>
     </section>
 
-    <section id="view-corpus" class="view" hidden>
+    <section id="view-corpus" class="view" role="tabpanel" aria-labelledby="tab-corpus" hidden>
       <header class="view-head">
         <p class="rung-kicker">Step 4 of 5</p>
         <h2>The 2012 library</h2>
         <p id="corpus-assertion" class="stamp-line">Only documents published on or before the freeze date. The 2012 library is Wayback (cutoff-locked), not the CC-MAIN-2012 dump and not CC-MAIN-2013-20.</p>
       </header>
-      <form id="search-form" class="search-bar">
-        <label class="field grow">
+      <form id="search-form" class="search-bar" role="search">
+        <label class="field grow" for="search-q">
           <span>Search the same index the agent uses</span>
-          <input type="search" id="search-q" name="query" placeholder="unemployment, NDAA, Syria" required>
+          <input type="search" id="search-q" name="query" placeholder="unemployment, NDAA, Syria" required autocomplete="off">
         </label>
-        <label class="field">
+        <label class="field" for="search-k">
           <span>How many</span>
           <input type="number" id="search-k" name="k" value="8" min="1" max="25">
         </label>
-        <label class="field">
+        <label class="field" for="search-prom">
           <span>Min prominence</span>
           <input type="number" id="search-prom" name="min_prominence" value="0" min="0" max="1" step="0.05">
         </label>
         <button type="submit" class="act">Search</button>
       </form>
-      <p class="note" id="search-status"></p>
+      <p class="note" id="search-status" aria-live="polite"></p>
+      <div class="sheet-wrap">
       <table class="sheet" id="search-table">
+        <caption class="sr-only">Documents in the cutoff-locked 2012 index</caption>
         <thead>
           <tr>
-            <th>Document</th>
-            <th>Title</th>
-            <th>Outlet</th>
-            <th>Published</th>
-            <th>Prominence</th>
-            <th>Snippet</th>
+            <th scope="col">Document</th>
+            <th scope="col">Title</th>
+            <th scope="col">Outlet</th>
+            <th scope="col">Published</th>
+            <th scope="col">Prominence</th>
+            <th scope="col">Snippet</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
+      </div>
       <article id="fetch-panel" class="dossier" hidden>
         <h3 id="fetch-title">Document</h3>
         <dl class="meta-grid" id="fetch-meta"></dl>
@@ -299,11 +341,11 @@
       </article>
     </section>
 
-    <section id="view-lab" class="view" hidden>
+    <section id="view-lab" class="view" role="tabpanel" aria-labelledby="tab-lab" hidden>
       <header class="view-head">
         <p class="rung-kicker">Step 5 of 5</p>
         <h2>Setup</h2>
-        <p>What is wired, which models are registered, and how practice vs live runs differ.</p>
+        <p>What is wired, which models are registered, and how practice, live mix, and swarm differ.</p>
       </header>
       <div class="layout">
         <article>
@@ -311,11 +353,14 @@
             <h3>Registered models</h3>
             <p>Training cutoff is what the vendor says the model should know, not a measurement of memorization.</p>
           </header>
+          <div class="sheet-wrap">
           <table class="sheet" id="overview-models">
-            <thead><tr><th>ID</th><th>Role</th><th>Provider</th><th>Training cutoff</th><th>Chat-tuned</th></tr></thead>
+            <caption class="sr-only">Registered models and declared training cutoffs</caption>
+            <thead><tr><th scope="col">ID</th><th scope="col">Role</th><th scope="col">Provider</th><th scope="col">Training cutoff</th><th scope="col">Chat-tuned</th></tr></thead>
             <tbody></tbody>
           </table>
-          <p class="note" id="overview-swarm">Live swarm is real: 8 × GPT-4.1 mini + 4 × Claude 3.5 Haiku via OpenRouter (12 sequential votes, shared retrieval, median probability). Run live AI stays a 1-question probe of the primary mini — it does not fire 12 bodies. A full 12×50 pass is hours at 2s/req; use <code>psbx run --config config/run-swarm.yaml --limit 1</code>. Llama 8B / Qwen 7B are local-only and need a vLLM endpoint.</p>
+          </div>
+          <p class="note" id="overview-swarm">Three HUD buttons: Run practice (keyword lookup, no keys), Run live mix (each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B once — 1 question), Run swarm (2 of each species, 12 sequential votes, shared retrieval, median p). That is the planned cheap mix, not the full OpenRouter catalog. A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only.</p>
         </article>
         <aside>
           <header class="block-head">
@@ -328,10 +373,10 @@
           </header>
           <ol class="plain numbered">
             <li>The 2012 library is Wayback with <code>to=20120630</code>. Grow it with <code>psbx corpus build --epoch e2012 --live --max-docs 400</code>. That is not the CC-MAIN-2012 HTML dump (legacy ARC, “check back later”) and not CC-MAIN-2013-20 (May–June 2013).</li>
-            <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys. Cheap.</li>
-            <li><strong>Run live AI</strong> scores a cheap 1-question OpenRouter probe (or native Claude+GPT if those keys are set). It does not run the 12-agent swarm. Needs <code>OPENROUTER_API_KEY</code>, or both Anthropic and OpenAI keys, in <code>.env</code>.</li>
-            <li>The 12-agent swarm is CLI-only: <code>psbx run --config config/run-swarm.yaml --limit 1</code>. Keep the limit at 1 unless you mean to wait hours (12×50 at 2s/req).</li>
-            <li>This page never overwrites a different run folder.</li>
+            <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys. Cheap. Folder <code>phase1-e2012-smoke</code>.</li>
+            <li><strong>Run live mix</strong> scores each of the six OpenRouter species once on 1 question (<code>phase2-e2012-openrouter</code>). Needs <code>OPENROUTER_API_KEY</code>. If that key is missing but both Anthropic and OpenAI keys are set, it uses native Claude+GPT instead. It does not fire 12 bodies.</li>
+            <li><strong>Run swarm</strong> is 12 sequential OpenRouter votes (2 × each species), shared retrieval, median probability (<code>phase2-e2012-swarm-probe</code>). Same key. Keep it at 1 question unless you mean to wait hours (12×50 at 2s/req).</li>
+            <li>This page never overwrites a different run folder. Pick a run in the dropdown to inspect it.</li>
           </ol>
         </aside>
       </div>
@@ -342,7 +387,7 @@
     <p>Search on this page is the same search the agent gets. Nothing published after the freeze date can appear.</p>
   </footer>
   </div>
-  <script src="/static/enchant.js?v=5"></script>
-  <script src="/static/app.js?v=17"></script>
+  <script src="/static/enchant.js?v=7"></script>
+  <script src="/static/app.js?v=22"></script>
 </body>
 </html>

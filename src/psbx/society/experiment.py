@@ -13,8 +13,9 @@ from psbx.io import read_jsonl, write_json, write_jsonl
 from psbx.paths import repo_root, resolve
 from psbx.sandbox.citations import validate_citations
 from psbx.sandbox.harness import run_question
-from psbx.schemas import Prediction, Question, RunConfig
+from psbx.schemas import Prediction, Question, RunConfig, SwarmVote
 from psbx.society.adapters import EnvSearchClient
+from psbx.society.as2_config import export_society_bundle, swarm_agent_specs
 
 WORKSPACE = repo_root()
 
@@ -60,8 +61,11 @@ def run_society(
     run: RunConfig,
     *,
     limit: int | None = None,
+    config_path: str | Path | None = None,
 ) -> list[Prediction]:
     """Route every search/fetch through FrozenEpochEnv, then existing scoring JSONL."""
+    if run.use_swarm:
+        return run_society_swarm(run, limit=limit, config_path=config_path)
     n = limit if limit is not None else run.n_questions
     env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence)
     models = load_models()
@@ -116,6 +120,85 @@ def run_society(
             preds.append(pred)
             done.add(key)
             write_jsonl(dest, preds)
+    return preds
+
+
+def run_society_swarm(
+    run: RunConfig,
+    *,
+    limit: int | None = None,
+    config_path: str | Path | None = None,
+) -> list[Prediction]:
+    """12-agent swarm through FrozenEpochEnv, plus AgentSociety 2 config export.
+
+    Votes stay on the serialized OpenRouter path (species mix + rate limits).
+    The sibling AgentSociety clone is used for InitConfig / workspaces / CLI
+    shape — not for Ray city simulation.
+    """
+    from psbx.agents.swarm import SWARM_MEDIAN_ID, load_roster, run_swarm
+
+    n = limit if limit is not None else run.n_questions
+    env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence)
+    qs = read_jsonl(run.question_set, Question)[:n]
+    dest = resolve(f"data/runs/{run.run_id}/predictions.jsonl")
+    votes_dest = resolve(f"data/runs/{run.run_id}/swarm_votes.jsonl")
+    run_dir = resolve(f"data/runs/{run.run_id}/society")
+    roster = load_roster(run.swarm_roster or "config/swarm.yaml")
+    specs = swarm_agent_specs(roster)
+    from psbx.society.perspectives import assign_personas, load_perspectives
+
+    try:
+        path = run.perspectives or "config/perspectives.yaml"
+        env.bind_personas(assign_personas(roster, load_perspectives(path)))
+    except (FileNotFoundError, ValueError):
+        pass
+    export_society_bundle(
+        run,
+        qs,
+        run_dir,
+        roster=roster,
+    )
+    write_steps_clock(run.run_id, epoch.cutoff_date.isoformat())
+    write_json(
+        run_dir / "agent_specs.json",
+        {
+            "agent_specs": specs,
+            "agent_class_name": "ForecasterAgent",
+            "backend": try_as2_router(env),
+            "n_agents": len(specs),
+        },
+    )
+    existing: list[Prediction] = []
+    if dest.exists() and dest.stat().st_size > 0:
+        existing = read_jsonl(dest, Prediction)
+    votes: list[SwarmVote] = []
+    if votes_dest.exists() and votes_dest.stat().st_size > 0:
+        votes = read_jsonl(votes_dest, SwarmVote)
+    done = {(p.model_id, p.question_id) for p in existing}
+    preds = list(existing)
+    n_fetch = max(1, run.max_tool_calls - 1) if run.max_tool_calls else 3
+    client = EnvSearchClient(env, agent_id=1)
+    for question in qs:
+        key = (SWARM_MEDIAN_ID, question.id)
+        if key in done:
+            continue
+        env.queries = []
+        env.n_calls = 0
+        result = run_swarm(
+            question,
+            epoch,
+            run.run_id,
+            client,
+            roster=roster,
+            max_retrieval=n_fetch,
+        )
+        pred = validate_citations(result.prediction, index)
+        preds.append(pred)
+        votes.extend(result.votes)
+        done.add(key)
+        write_jsonl(dest, preds)
+        write_jsonl(votes_dest, votes)
+    del config_path
     return preds
 
 

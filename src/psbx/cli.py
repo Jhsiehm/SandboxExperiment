@@ -24,10 +24,14 @@ app = typer.Typer(no_args_is_help=True, add_completion=False)
 questions_app = typer.Typer(no_args_is_help=True)
 corpus_app = typer.Typer(no_args_is_help=True)
 society_app = typer.Typer(no_args_is_help=True)
+eval_app = typer.Typer(no_args_is_help=True)
+epoch_app = typer.Typer(no_args_is_help=True)
 app.add_typer(questions_app, name="questions")
 app.add_typer(corpus_app, name="corpus")
 sandbox_app = typer.Typer(no_args_is_help=True)
 app.add_typer(society_app, name="society")
+app.add_typer(eval_app, name="eval")
+app.add_typer(epoch_app, name="epoch")
 app.add_typer(sandbox_app, name="sandbox")
 
 
@@ -59,6 +63,8 @@ def _config_for_run_id(run_id: str):
         "config/run-openrouter.yaml",
         "config/run-swarm.yaml",
         "config/run-society.yaml",
+        "config/run-society-swarm.yaml",
+        "config/run-society-swarm-mock.yaml",
         "config/run-sandbox.yaml",
     ):
         cfg = load_run(path)
@@ -129,6 +135,9 @@ def score_cmd(run: Annotated[str, typer.Option("--run")]) -> None:
     dest = resolve(f"data/runs/{run}")
     write_json(dest / "results.json", report)
     write_plots(report, dest)
+    from psbx.scoring.plots import write_performance_plots
+
+    write_performance_plots(run, qs, force=True)
     typer.echo(report.model_dump_json(indent=2))
     if report.models_beating_base_rate:
         typer.echo(f"beats base rate: {', '.join(report.models_beating_base_rate)}")
@@ -182,10 +191,65 @@ def society_cmd(
         raise typer.BadParameter(
             f"{config} has allow_mock: false; unset PSBX_MOCK_LLM to run live models"
         )
-    preds = run_society(run, limit=limit)
+    preds = run_society(run, limit=limit, config_path=config)
     dest = resolve(f"data/runs/{run.run_id}/predictions.jsonl")
     upsert_predictions(preds)
     typer.echo(f"society wrote {len(preds)} predictions to {dest}")
+
+
+@society_app.command("export")
+def society_export(
+    config: Annotated[Path, typer.Option("--config")] = Path("config/run-society-swarm.yaml"),
+    dest: Annotated[Path | None, typer.Option("--dest")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    """Write AgentSociety 2 InitConfig + 12 workspaces from config/swarm.yaml."""
+    from psbx.society.as2_config import export_society_bundle
+
+    run = load_run(config)
+    if limit is not None:
+        run = run.model_copy(update={"n_questions": limit})
+    qs = read_jsonl(run.question_set, Question)[: run.n_questions]
+    out = dest or Path(f"data/runs/{run.run_id}/society")
+    paths = export_society_bundle(run, qs, out)
+    typer.echo(f"exported {len(qs)} question(s) → {paths['init_config']}")
+    typer.echo(f"steps {paths['steps']}")
+    typer.echo(f"workspaces {paths['agents']}")
+
+
+@eval_app.command("baseline")
+def eval_baseline(
+    run: Annotated[str, typer.Option("--run")],
+    config: Annotated[Path, typer.Option("--config")] = Path("config/eval-baseline.yaml"),
+) -> None:
+    """Score swarm vs later outcomes (Track A) and demographic spread (Track B)."""
+    from psbx.eval.baseline import evaluate_human_baseline, write_human_baseline
+
+    report = evaluate_human_baseline(run, eval_config=config)
+    dest = write_human_baseline(report)
+    typer.echo(report.model_dump_json(indent=2))
+    typer.echo(f"wrote {dest}")
+    track_a = report.tracks.get("A_media_stimulus")
+    if track_a and track_a.brier_vs_later_outcomes is None:
+        typer.echo("no predictions yet — run the society swarm first")
+
+
+@epoch_app.command("propose")
+def epoch_propose(
+    from_epoch: Annotated[str, typer.Option("--from")] = "e2012",
+    years: Annotated[int, typer.Option("--years")] = 1,
+) -> None:
+    """Print the next cutoff. Does not ingest future documents or enable PolicySim."""
+    from psbx.epochs import propose_year_step
+    from psbx.io import write_json
+
+    payload = propose_year_step(from_epoch, years=years)
+    dest = resolve(f"data/runs/{from_epoch}-advance-propose.json")
+    write_json(dest, payload)
+    typer.echo(payload)
+    if payload.get("ingests_documents"):
+        raise typer.Exit(code=1)
+    typer.echo(f"wrote {dest} (hook only; no corpus built)")
 
 
 @app.command("search")

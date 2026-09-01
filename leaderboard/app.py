@@ -29,7 +29,11 @@ STATIC = Path(__file__).resolve().parent / "static"
 
 class RunRequest(BaseModel):
     mock: bool = True
-    run_id: str | None = Field(default=None, description="Defaults to config/run.yaml run_id")
+    kind: str | None = Field(
+        default=None,
+        description="mock | live | swarm. Overrides mock when set.",
+    )
+    run_id: str | None = Field(default=None, description="Defaults to the kind's config run_id")
 
 
 def create_viewer(state: ViewerState | None = None) -> FastAPI:
@@ -69,6 +73,8 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             "runs": runs,
             "errors": s.errors,
             "live_run_id": ready()["live_run_id"],
+            "mock_run_id": ready()["mock_run_id"],
+            "swarm_run_id": ready()["swarm_run_id"],
             "run_labels": {r["run_id"]: run_label(r["run_id"]) for r in runs},
             "connected": {
                 "questions": bool(s.questions),
@@ -145,6 +151,34 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             "predictions": rows,
         }
 
+    @app.get("/api/runs/{run_id}/plots")
+    def list_plots(run_id: str, force: bool = Query(False)) -> dict[str, Any]:
+        s: ViewerState = app.state.viewer
+        if not any(r["run_id"] == run_id for r in list_runs()) and not load_predictions(run_id):
+            raise HTTPException(status_code=404, detail="unknown run_id")
+        from psbx.scoring.plots import write_performance_plots
+
+        plots = write_performance_plots(run_id, s.questions, force=force)
+        return {"run_id": run_id, "run_label": run_label(run_id), "n": len(plots), "plots": plots}
+
+    @app.get("/api/runs/{run_id}/plots/{name}")
+    def get_plot(run_id: str, name: str) -> FileResponse:
+        import re
+
+        if not re.fullmatch(r"[a-z0-9_]+\.png", name):
+            raise HTTPException(status_code=400, detail="unknown plot")
+        from psbx.paths import resolve
+
+        path = resolve(f"data/runs/{run_id}/plots/{name}")
+        if not path.is_file():
+            s: ViewerState = app.state.viewer
+            from psbx.scoring.plots import write_performance_plots
+
+            write_performance_plots(run_id, s.questions)
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="plot not generated")
+        return FileResponse(path, media_type="image/png", headers={"Cache-Control": "no-store"})
+
     @app.get("/api/scores")
     def scores(run_id: str | None = None) -> dict[str, Any]:
         s: ViewerState = app.state.viewer
@@ -163,7 +197,7 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
     def job_start(body: RunRequest | None = None) -> dict[str, Any]:
         req = body or RunRequest()
         try:
-            return start_job(run_id=req.run_id, mock=req.mock)
+            return start_job(run_id=req.run_id, mock=req.mock, kind=req.kind)
         except JobBusy as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except LiveNotReady as exc:

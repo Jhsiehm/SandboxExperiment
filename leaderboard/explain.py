@@ -7,10 +7,10 @@ from typing import Any
 from psbx.schemas import ModelConfig
 
 RUN_LABELS = {
-    "phase1-e2012-smoke": "Practice run (no live AI)",
-    "phase2-e2012-real": "Live Claude + GPT",
-    "phase2-e2012-openrouter": "Live OpenRouter probe (GPT-4.1 mini)",
-    "phase2-e2012-swarm-probe": "Live swarm (median of 12)",
+    "phase1-e2012-smoke": "Practice run (keyword lookup)",
+    "phase2-e2012-real": "Live native Claude + GPT",
+    "phase2-e2012-openrouter": "Live mix (6 species × 1 question)",
+    "phase2-e2012-swarm-probe": "Live swarm (2× six species, median)",
     "phase1-e2012-society": "Society scaffold",
     "phase1-e2012-docker": "Practice run through Docker search",
 }
@@ -23,7 +23,9 @@ MODEL_LABELS = {
     "openrouter-gpt-4o-mini": "swarm worker · OpenAI mini (4o alternate)",
     "openrouter-haiku": "swarm species · Haiku",
     "swarm-median": "swarm · median of 12",
-    "openrouter-gemini-flash-lite": "optional scale-up · Gemini Flash-Lite",
+    "openrouter-gemini-flash-lite": "swarm species · Gemini Flash-Lite",
+    "openrouter-llama-3.1-8b": "swarm species · Llama 3.1 8B",
+    "openrouter-qwen-2.5-7b": "swarm species · Qwen 2.5 7B",
     "local-llama-3.1-8b": "local scale-up · Llama 3.1 8B",
     "local-qwen-2.5-7b": "local scale-up · Qwen2.5 7B",
     "prior_signal": "2012 public prior",
@@ -243,7 +245,7 @@ def _verdict(
         return {
             "tone": "empty",
             "headline": "Nothing has been scored yet.",
-            "detail": "Use Run practice to score a simple keyword lookup, or Run live once API keys are set.",
+            "detail": "Use Run practice for a keyword lookup, Run live mix for six species once, or Run swarm for the 12-vote median.",
             "ranking": "Ranking (C-index) will appear after a scored run.",
         }
     labels = {r["id"]: r["label"] for r in rows}

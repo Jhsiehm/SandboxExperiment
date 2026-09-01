@@ -1,9 +1,22 @@
 # Intended Prediction Sandbox swarm. Source of truth for the mix.
 # Implemented in src/psbx/agents/swarm.py: sequential OpenRouter + median p.
 #
-# Default experiment: 12 agents.
-#   8 × openai/gpt-4.1-mini  (OpenRouter slug; cheap JSON, no CoT)
-#   4 × anthropic/claude-3.5-haiku  (cheap non-thinking Haiku; different prior)
+# Demographic personas live in config/perspectives.yaml (slots 0–11 zip onto
+# these 12 bodies). Do not infer demographics from names or zips.
+#
+# Two complementary eval tracks share this swarm and FrozenEpochEnv:
+#   A) time-locked headlines as stimulus → predicted public response vs later history
+#   B) survey/ad/academic-conditioned demographic swarm
+# PolicySim is later. Do not weaken OpenRouter serialization.
+#
+# Default experiment: 12 agents — two of each planned low-end species,
+# not the full OpenRouter catalog.
+#   2 × openai/gpt-4.1-mini
+#   2 × openai/gpt-4o-mini
+#   2 × anthropic/claude-3-haiku
+#   2 × google/gemini-2.5-flash-lite
+#   2 × meta-llama/llama-3.1-8b-instruct
+#   2 × qwen/qwen-2.5-7b-instruct
 #
 # Each worker: JSON forecast, no chain-of-thought, max_tokens 256 (already capped
 # in psbx.openrouter), temperature ~0.8 for population variance.
@@ -15,10 +28,7 @@
 # Do not weaken those. 12 agents × N questions at ≥2s/req is slow on purpose —
 # keep n_questions / --limit small (default 1). A full 12×50 pass is hours.
 #
-# Not in the default 12:
-#   Gemini Flash-Lite  — optional cheapest volume / person-on-the-street
-#   Llama 3.1 8B + Qwen2.5 7B — local-only scale-up (needs vLLM). Never fan
-#   20 local bodies out through OPENROUTER_API_KEY.
+# local-* Llama/Qwen remain vLLM-only scale-up (not in this 12).
 name: default-12
 n_agents: 12
 n_questions_default: 1
@@ -30,34 +40,48 @@ rate_limit_note: >
   A full 12×50 pass is hours.
 bodies:
   - model_id: openrouter-gpt-4.1-mini
-    count: 8
+    count: 2
     temperature: 0.8
     json_forecast: true
     chain_of_thought: false
     max_tokens: 256
     notes: Primary species. OpenAI mini, cheap JSON, no CoT.
-  - model_id: openrouter-haiku
-    count: 4
-    temperature: 0.8
-    json_forecast: true
-    chain_of_thought: false
-    max_tokens: 256
-    notes: Second species. Cheap non-thinking Haiku (anthropic/claude-3.5-haiku).
-optional_scale_up:
-  - model_id: openrouter-gemini-flash-lite
-    count: 1
-    temperature: 0.8
-    json_forecast: true
-    chain_of_thought: false
-    max_tokens: 256
-    notes: Optional. google/gemini-2.5-flash-lite. Not in the default 12.
   - model_id: openrouter-gpt-4o-mini
-    count: 1
+    count: 2
     temperature: 0.8
     json_forecast: true
     chain_of_thought: false
     max_tokens: 256
-    notes: Same class as gpt-4.1-mini. Swap-in alternate, not extra default bodies.
+    notes: Same class as gpt-4.1-mini. Second OpenAI prior.
+  - model_id: openrouter-haiku
+    count: 2
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Cheap non-thinking Haiku (anthropic/claude-3-haiku).
+  - model_id: openrouter-gemini-flash-lite
+    count: 2
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: google/gemini-2.5-flash-lite. Person-on-the-street volume.
+  - model_id: openrouter-llama-3.1-8b
+    count: 2
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Open-weight 8B via OpenRouter. Cheap body, not a reasoner.
+  - model_id: openrouter-qwen-2.5-7b
+    count: 2
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Open-weight 7B via OpenRouter. Cheap body, not a reasoner.
+optional_scale_up: []
 local_scale_up:
   - model_id: local-llama-3.1-8b
     count: 1

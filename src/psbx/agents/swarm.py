@@ -2,8 +2,9 @@
 
 Default experiment lives in ``config/swarm.yaml`` (single source of truth):
 
-- 12 agents: 8 × ``openrouter-gpt-4.1-mini`` (``openai/gpt-4.1-mini``) plus
-  4 × ``openrouter-haiku`` (``anthropic/claude-3.5-haiku``, cheap non-thinking).
+- 12 agents, planned cheap mix (not the OpenRouter catalog), 2 of each:
+  ``gpt-4.1-mini``, ``gpt-4o-mini``, Haiku, Gemini Flash-Lite,
+  Llama 3.1 8B Instruct, Qwen2.5 7B Instruct (OpenRouter slugs).
 - Each worker: short JSON ``{p, rationale}``, no chain-of-thought, max_tokens
   256, temperature ~0.8. Agents only read a shared search pack.
 - OpenRouter calls stay serialized through the existing limiter
@@ -11,12 +12,8 @@ Default experiment lives in ``config/swarm.yaml`` (single source of truth):
   12 agents × N questions at ≥2s/req is slow on purpose — keep ``--limit`` /
   ``n_questions`` small (default 1). Do not weaken those env caps.
 
-Optional, not in the default 12:
-
-- Gemini Flash-Lite (``google/gemini-2.5-flash-lite``) for cheapest volume.
-- Llama 3.1 8B Instruct and Qwen2.5 7B Instruct as *local-only* scale-up
-  (``needs_endpoint``, ``local_vllm``). Never fan those out through
-  ``OPENROUTER_API_KEY``.
+``local-llama-3.1-8b`` / ``local-qwen-2.5-7b`` stay vLLM-only. The OpenRouter
+twins (``openrouter-llama-3.1-8b``, ``openrouter-qwen-2.5-7b``) are in the 12.
 
 The scored series is ``swarm-median``. Per-agent votes go to
 ``swarm_votes.jsonl`` (audit trail: inputs + model slug). Do not dump
@@ -42,9 +39,11 @@ from psbx.agents.runner import (
 from psbx.config import load_models, load_swarm
 from psbx.sandbox.client import SearchClient
 from psbx.schemas import (
+    CONDITIONER_SOURCE_TYPES,
     Citation,
     Epoch,
     ModelConfig,
+    PerspectivePersona,
     Prediction,
     Question,
     SwarmRoster,
@@ -66,6 +65,15 @@ HAIKU_VOICE = (
     "You are a terse newsroom skeptic. Discount hype and treat silence as "
     "information. Do not think out loud. Do not search. Forecast only from "
     "the evidence pack."
+)
+FLASH_LITE_VOICE = (
+    "You are an ordinary newspaper reader, not a specialist. Guess from the "
+    "pack the way a person on the street would. Do not think out loud. "
+    "Do not search. Forecast only from the evidence pack."
+)
+OPEN_WEIGHT_VOICE = (
+    "You are a small open-weight chat model. Be blunt and short. "
+    "Do not think out loud. Do not search. Forecast only from the evidence pack."
 )
 
 
@@ -149,15 +157,46 @@ def parse_swarm_json(raw: str) -> dict[str, Any]:
 
 
 def _voice_for(model: ModelConfig) -> str:
-    if "haiku" in model.id or "haiku" in (model.model_name or ""):
+    name = f"{model.id} {model.model_name or ''}".lower()
+    if "haiku" in name:
         return HAIKU_VOICE
+    if "gemini" in name or "flash-lite" in name or "flash_lite" in name:
+        return FLASH_LITE_VOICE
+    if "llama" in name or "qwen" in name:
+        return OPEN_WEIGHT_VOICE
     return MINI_VOICE
 
 
-def _worker_system(model: ModelConfig, cutoff) -> str:
-    frozen = system_prompt(cutoff)
+def _persona_for_index(
+    index: int, personas: list[PerspectivePersona]
+) -> PerspectivePersona | None:
+    if 0 <= index < len(personas):
+        return personas[index]
+    return None
+
+
+def _persona_block(persona: PerspectivePersona | None) -> str:
+    if persona is None:
+        return ""
     return (
-        f"{frozen}\n\n{_voice_for(model)}\n"
+        f"{persona.prompt_block()}\n"
+        "The evidence pack has two layers: (1) STIMULUS = contemporaneous "
+        "headlines/news/media the public saw; (2) CONDITIONERS = surveys, "
+        "political ads, and academic studies. Forecast the later public/"
+        "political outcome as this constituency would react. Do not browse."
+    )
+
+
+def _worker_system(
+    model: ModelConfig,
+    cutoff,
+    persona: PerspectivePersona | None = None,
+) -> str:
+    frozen = system_prompt(cutoff)
+    persona_txt = _persona_block(persona)
+    extra = f"\n\n{persona_txt}" if persona_txt else ""
+    return (
+        f"{frozen}\n\n{_voice_for(model)}{extra}\n"
         "Output ONLY a JSON object with this shape:\n"
         '{"p": 0.34, "rationale": "at most forty words, no chain of thought"}\n'
         "p is the probability the question resolves YES, in [0, 1]."
@@ -171,6 +210,27 @@ def _pack_excerpt(doc: dict[str, Any]) -> str:
     return text
 
 
+def _hit_line(hit: Any) -> str:
+    kind = getattr(hit, "source_type", None) or ""
+    prefix = f"{kind} | " if kind else ""
+    return (
+        f"{prefix}{hit.document_id} | {hit.outlet} | {hit.published_at.date()} | "
+        f"{hit.title} | {hit.snippet}"
+    )
+
+
+def _merge_hits(primary: list[Any], extra: list[Any]) -> list[Any]:
+    seen: set[str] = set()
+    merged: list[Any] = []
+    for hit in [*primary, *extra]:
+        doc_id = str(getattr(hit, "document_id", "") or "")
+        if not doc_id or doc_id in seen:
+            continue
+        seen.add(doc_id)
+        merged.append(hit)
+    return merged
+
+
 def build_search_pack(
     question: Question,
     client: SearchClient,
@@ -178,19 +238,60 @@ def build_search_pack(
     k: int = PACK_SEARCH_K,
     n_fetch: int = PACK_FETCH_DEFAULT,
 ) -> SearchPack:
-    """One retrieval per question. Workers only read the resulting pack."""
+    """One retrieval per question. Workers only read the resulting pack.
+
+    Main hits are the media stimulus. A second cutoff-filtered pull prefers
+    survey/ad/academic conditioners so Track B can see them without extra
+    OpenRouter calls.
+    """
     before = int(getattr(client, "n_calls", 0))
     hits = client.search(question.text, k=k)
-    if not hits:
+    cond_hits: list[Any] = []
+    try:
+        cond_hits = client.search(
+            question.text,
+            k=3,
+            source_types=sorted(CONDITIONER_SOURCE_TYPES),
+        )
+    except TypeError:
+        cond_hits = []
+    merged = _merge_hits(hits, cond_hits)
+    if not merged:
         raise ParseError("shared retrieval returned no documents")
-    lines = [
-        f"{h.document_id} | {h.outlet} | {h.published_at.date()} | {h.title} | {h.snippet}"
-        for h in hits
+    stimulus_lines = [
+        _hit_line(h)
+        for h in merged
+        if getattr(h, "source_type", None) not in CONDITIONER_SOURCE_TYPES
     ]
+    conditioner_lines = [
+        _hit_line(h)
+        for h in merged
+        if getattr(h, "source_type", None) in CONDITIONER_SOURCE_TYPES
+    ]
+    sections = []
+    if stimulus_lines:
+        sections.append("STIMULUS (contemporaneous media):\n" + "\n".join(stimulus_lines))
+    if conditioner_lines:
+        sections.append(
+            "CONDITIONERS (survey / ad / academic):\n" + "\n".join(conditioner_lines)
+        )
+    if not sections:
+        sections.append("\n".join(_hit_line(h) for h in merged))
     docs: list[dict[str, Any]] = []
-    for hit in hits[: max(1, n_fetch)]:
+    fetch_ids = [h.document_id for h in merged[: max(1, n_fetch)]]
+    for hit in merged:
+        if hit.document_id in fetch_ids:
+            continue
+        kind = getattr(hit, "source_type", None)
+        if kind in CONDITIONER_SOURCE_TYPES and len(fetch_ids) < n_fetch + 2:
+            fetch_ids.append(hit.document_id)
+    seen_fetch: set[str] = set()
+    for document_id in fetch_ids:
+        if document_id in seen_fetch:
+            continue
+        seen_fetch.add(document_id)
         try:
-            docs.append(client.fetch(hit.document_id))
+            docs.append(client.fetch(document_id))
         except Exception:
             continue
     citations: list[Citation] = []
@@ -213,7 +314,7 @@ def build_search_pack(
     n_calls = int(getattr(client, "n_calls", before + 1 + len(docs))) - before
     return SearchPack(
         queries=list(client.queries),
-        hits_text="\n".join(lines),
+        hits_text="\n\n".join(sections),
         docs=docs,
         n_tool_calls=n_calls,
         citations=citations,
@@ -224,21 +325,37 @@ def _pack_user_block(pack: SearchPack) -> str:
     blocks = [pack.hits_text]
     for doc in pack.docs:
         excerpt = _pack_excerpt(doc)
+        kind = doc.get("source_type") or ""
+        layer = (
+            "CONDITIONER"
+            if kind in CONDITIONER_SOURCE_TYPES
+            else "STIMULUS"
+        )
         blocks.append(
-            f"FETCH {doc.get('id')}\n"
+            f"{layer} FETCH {doc.get('id')} source_type={kind}\n"
             f"title={doc.get('title')}\n"
             f"published_at={doc.get('published_at')}\n{excerpt}"
         )
     return "\n\n".join(blocks)
 
 
-def _worker_user(question: Question, pack: SearchPack) -> str:
+def _worker_user(
+    question: Question,
+    pack: SearchPack,
+    persona: PerspectivePersona | None = None,
+) -> str:
+    persona_line = (
+        f"Persona: {persona.label} ({persona.id}).\n" if persona is not None else ""
+    )
     return (
+        f"{persona_line}"
         f"Question id: {question.id}\n"
         f"Resolution date: {question.resolution_date.isoformat()}\n"
         f"Resolution criteria: {question.resolution_criteria}\n\n"
         f"{question.text}\n\n"
-        "Shared contemporaneous evidence pack (do not browse; do not call tools):\n"
+        "Shared contemporaneous evidence pack (do not browse; do not call tools).\n"
+        "STIMULUS = headlines/news the public saw. "
+        "CONDITIONERS = surveys, ads, academic studies.\n"
         f"{_pack_user_block(pack)}\n\n"
         'Reply with JSON only: {"p": <0-1>, "rationale": "<≤40 words>"}.'
     )
@@ -281,17 +398,33 @@ def run_swarm(
     max_retrieval: int = PACK_FETCH_DEFAULT,
 ) -> SwarmResult:
     """One shared pack, sequential OpenRouter votes, median probability."""
+    from psbx.society.perspectives import assign_personas, load_perspectives
+
     t0 = time.perf_counter()
     roster = roster or load_roster()
     workers = require_swarm_ready(roster)
     output = model or load_models()[SWARM_MEDIAN_ID]
+    personas_path = getattr(roster, "perspectives", None)
+    try:
+        catalog = load_perspectives(personas_path or "config/perspectives.yaml")
+        personas = assign_personas(roster, catalog)
+    except FileNotFoundError:
+        personas = []
     pack = build_search_pack(question, client, n_fetch=max_retrieval)
+    env = getattr(client, "env", None)
+    bind = getattr(env, "bind_evidence", None)
+    if callable(bind):
+        bind(pack)
+    bind_p = getattr(env, "bind_personas", None)
+    if callable(bind_p) and personas:
+        bind_p(personas)
     votes: list[SwarmVote] = []
     if os.environ.get("PSBX_MOCK_LLM") == "1":
-        votes = _mock_votes(question, workers, pack, run_id)
+        votes = _mock_votes(question, workers, pack, run_id, personas)
     else:
         for index, worker in enumerate(workers):
-            votes.append(_live_vote(question, epoch, worker, pack, run_id, index))
+            persona = _persona_for_index(index, personas)
+            votes.append(_live_vote(question, epoch, worker, pack, run_id, index, persona))
     ps = [v.probability for v in votes]
     median = median_probability(ps)
     bits = " ".join(f"{v.agent_id}={v.probability:.3f}" for v in votes)
@@ -342,10 +475,11 @@ def _live_vote(
     pack: SearchPack,
     run_id: str,
     index: int,
+    persona: PerspectivePersona | None = None,
 ) -> SwarmVote:
     _refuse_local(worker)
-    system = _worker_system(worker, epoch.cutoff_date)
-    user = _worker_user(question, pack)
+    system = _worker_system(worker, epoch.cutoff_date, persona)
+    user = _worker_user(question, pack, persona)
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system},
         {"role": "user", "content": user},
@@ -398,6 +532,8 @@ def _live_vote(
         parse_attempts=attempts,
         system_prompt=system,
         search_queries=list(pack.queries),
+        perspective_id=persona.id if persona else "",
+        perspective_label=persona.label if persona else "",
     )
 
 
@@ -406,6 +542,7 @@ def _mock_votes(
     workers: list[ModelConfig],
     pack: SearchPack,
     run_id: str,
+    personas: list[PerspectivePersona] | None = None,
 ) -> list[SwarmVote]:
     """Deterministic spread around a retrieval heuristic. Not a silent Brier default."""
     from psbx.agents.single_agent import NO_CUES, YES_CUES
@@ -416,10 +553,12 @@ def _mock_votes(
     no = sum(1 for c in NO_CUES if c in lower)
     base = min(0.85, max(0.15, 0.5 + 0.08 * (yes - no)))
     n = max(len(workers), 1)
+    personas = personas or []
     votes: list[SwarmVote] = []
     for index, worker in enumerate(workers):
         offset = 0.02 * (index - (n - 1) / 2)
         p = min(0.95, max(0.05, base + offset))
+        persona = _persona_for_index(index, personas)
         votes.append(
             SwarmVote(
                 run_id=run_id,
@@ -436,6 +575,8 @@ def _mock_votes(
                 parse_attempts=1,
                 system_prompt="PSBX_MOCK_LLM=1",
                 search_queries=list(pack.queries),
+                perspective_id=persona.id if persona else "",
+                perspective_label=persona.label if persona else "",
             )
         )
     return votes

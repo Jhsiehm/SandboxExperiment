@@ -1,0 +1,40 @@
+# Historical human-baseline eval. Two complementary tracks share the frozen
+# corpus, cutoff, and Brier/C-index scoring. Neither is PolicySim.
+#
+# Track A — media stimulus: time-locked headlines/news/media (published_at ≤
+# cutoff) are the prompt. The swarm predicts public/political response; we
+# score against later observed outcomes (e2012 ground_truth) and against
+# contemporaneous human/analyst priors (prior_signal).
+#
+# Track B — demographic swarm: the same pack also contains survey / ad /
+# academic conditioners. Twelve explicit personas (config/perspectives.yaml)
+# should react differently to the same headline. Closeness to history first;
+# impressiveness is not the metric.
+name: historical-human-baseline
+epoch: e2012
+question_set: data/questions/e2012.jsonl
+perspectives: config/perspectives.yaml
+policy_sim: false
+tracks:
+  media_stimulus:
+    id: A
+    label: media stimulus → predicted public response vs later history
+    stimulus: contemporaneous_media_pack
+    score_against: later_outcomes
+    also_compare: prior_signal
+    items: e2012_questions
+    note: >
+      Reuses e2012 questions. Stimulus is FrozenEpochEnv search (headlines,
+      outlets, published_at ≤ cutoff). Score field is ground_truth. Optional
+      MAE vs prior_signal measures closeness to contemporaneous human thinking.
+  demographic_swarm:
+    id: B
+    label: survey/ad/academic-conditioned demographic swarm
+    perspectives: config/perspectives.yaml
+    conditioners: [survey, ad, academic]
+    score_against: later_outcomes
+    vote_spread: true
+    note: >
+      Same questions and pack. Personas are explicit config. Spread across
+      persona votes is necessary but not sufficient for demographic fidelity.
+      Do not infer protected class into scoring.

@@ -1,14 +1,30 @@
-# AgentSociety 2 step file for the frozen-epoch forecast.
-# Clock does not advance past the cutoff. Each step asks one question.
-name: e2012-forecast
-start_t: "2012-06-30T00:00:00"
-tick_seconds: 0
+start_t: '2012-06-30T00:00:00'
 steps:
-  - tick: 0
-    t: "2012-06-30T00:00:00"
-    action: ask
-    message: "Read FrozenEpochEnv.epoch_clock. That date is now. Search, fetch, then forecast."
-  - tick: 1
-    t: "2012-06-30T00:00:00"
-    action: ask
-    message: "Output calibrated probability JSON with verbatim citations from FrozenEpochEnv.fetch."
+- type: questionnaire
+  questionnaire_id: e2012-fred-unrate-2012-07
+  title: Frozen-epoch forecast fred-unrate-2012-07
+  description: Each ForecasterAgent returns calibrated JSON. psbx scores the median
+    p as swarm-median.
+  questions:
+  - id: fred-unrate-2012-07
+    prompt: 'Frozen clock is 2012-06-30. That date is now.
+
+      Call FrozenEpochEnv.epoch_clock, FrozenEpochEnv.evidence_pack, FrozenEpochEnv.search,
+      and FrozenEpochEnv.fetch only. Do not browse the live web.
+
+
+      Question id: fred-unrate-2012-07
+
+      Resolution date: 2012-08-03
+
+      Resolution criteria: Resolves YES if the ALFRED vintage of UNRATE for 2012-07-01
+      as of 2012-08-03 exceeds 8.2. Observed vintage value=8.3. Source: https://fred.stlouisfed.org/series/UNRATE.
+
+
+      Will the initial print of Civilian Unemployment Rate (UNRATE) for July 2012
+      exceed 8.2 percent?
+
+
+      Reply with JSON only: {"p": <0-1>, "rationale": "<at most forty words, no chain
+      of thought>"}.'
+    response_type: json

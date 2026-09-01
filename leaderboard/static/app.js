@@ -14,8 +14,23 @@ const state = {
   runListKey: "",
 };
 
+const RUN_ORDER = [
+  "phase2-e2012-swarm-probe",
+  "phase2-e2012-openrouter",
+  "phase2-e2012-real",
+  "phase1-e2012-smoke",
+];
+
 function $(sel) {
   return document.querySelector(sel);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function setText(sel, value) {
@@ -46,10 +61,22 @@ function setView(name) {
     const el = $(`#view-${view}`);
     if (el) el.hidden = view !== name;
   }
-  document.querySelectorAll("nav.tabs button").forEach((btn) => {
-    if (btn.dataset.view === name) btn.setAttribute("aria-current", "page");
+  const labels = {
+    results: "Results",
+    forecasts: "Each answer",
+    questions: "The questions",
+    corpus: "The 2012 library",
+    lab: "Setup",
+  };
+  document.querySelectorAll("nav.tabs [role='tab']").forEach((btn) => {
+    const on = btn.dataset.view === name;
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+    btn.setAttribute("tabindex", on ? "0" : "-1");
+    if (on) btn.setAttribute("aria-current", "page");
     else btn.removeAttribute("aria-current");
   });
+  const announce = $("#view-announce");
+  if (announce) announce.textContent = labels[name] || name;
   if (location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
   if (name === "results") loadScores();
   if (name === "forecasts") loadForecasts();
@@ -58,17 +85,58 @@ function setView(name) {
   if (name === "lab") renderLab();
 }
 
+function bindTablist() {
+  const tabs = [...document.querySelectorAll("nav.tabs [role='tab']")];
+  tabs.forEach((btn, i) => {
+    btn.addEventListener("click", () => setView(btn.dataset.view));
+    btn.addEventListener("keydown", (ev) => {
+      let next = null;
+      if (ev.key === "ArrowRight" || ev.key === "ArrowDown") next = tabs[(i + 1) % tabs.length];
+      if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") next = tabs[(i - 1 + tabs.length) % tabs.length];
+      if (ev.key === "Home") next = tabs[0];
+      if (ev.key === "End") next = tabs[tabs.length - 1];
+      if (!next) return;
+      ev.preventDefault();
+      next.focus();
+      setView(next.dataset.view);
+    });
+  });
+}
+
 function runOptionKey(runs) {
   return (runs || [])
     .map((r) => `${r.run_id}|${r.label || r.run_id}|${r.n_predictions || 0}`)
     .join("\n");
 }
 
+function sortRuns(runs) {
+  return (runs || []).slice().sort((a, b) => {
+    const ia = RUN_ORDER.indexOf(a.run_id);
+    const ib = RUN_ORDER.indexOf(b.run_id);
+    const ka = ia === -1 ? 100 : ia;
+    const kb = ib === -1 ? 100 : ib;
+    if (ka !== kb) return ka - kb;
+    return (a.run_id || "").localeCompare(b.run_id || "");
+  });
+}
+
+function pickPreferredRun(runs) {
+  if (state.selectedRun && (runs || []).some((r) => r.run_id === state.selectedRun)) {
+    return state.selectedRun;
+  }
+  const ready = state.ready || {};
+  const ids = [ready.swarm_run_id, ready.live_run_id, ready.mock_run_id];
+  for (const id of ids) {
+    if (id && (runs || []).some((r) => r.run_id === id && r.n_predictions > 0)) return id;
+  }
+  return (runs && runs[0] && runs[0].run_id) || "";
+}
+
 function fillRunSelect(runs, preferred) {
   const select = $("#run-select");
   if (!select) return;
-  const list = runs || [];
-  const current = preferred || state.selectedRun || (list[0] && list[0].run_id) || "";
+  const list = sortRuns(runs);
+  const current = preferred || pickPreferredRun(list) || "";
   const key = runOptionKey(list);
   if (key !== state.runListKey) {
     select.innerHTML = list.length
@@ -100,8 +168,14 @@ async function loadOverview() {
     label: (data.run_labels && data.run_labels[r.run_id]) || r.run_id,
   }));
   const liveId = (state.ready && state.ready.live_run_id) || data.live_run_id;
-  const liveHas = runs.some((r) => r.run_id === liveId && r.n_predictions > 0);
-  fillRunSelect(runs, state.selectedRun || (liveHas ? liveId : data.run.run_id));
+  const swarmId = (state.ready && state.ready.swarm_run_id) || data.swarm_run_id;
+  const mockId = (state.ready && state.ready.mock_run_id) || data.mock_run_id;
+  if (state.ready) {
+    state.ready.live_run_id = liveId;
+    state.ready.swarm_run_id = swarmId;
+    state.ready.mock_run_id = mockId;
+  }
+  fillRunSelect(runs, pickPreferredRun(runs));
 }
 
 function renderLab() {
@@ -439,6 +513,44 @@ async function loadScores() {
   $("#cal-note").textContent = eces || "This chart needs forecasts with known outcomes.";
   $("#contam-note").textContent = ex.contamination_note || "";
   $("#contam-chart").innerHTML = contaminationSVG(report.contamination || []);
+  await loadPlots(state.selectedRun || data.run_id);
+}
+
+async function loadPlots(runId) {
+  const grid = $("#perf-plots");
+  const empty = $("#perf-plots-empty");
+  if (!grid) return;
+  if (!runId) {
+    grid.innerHTML = "";
+    if (empty) empty.hidden = false;
+    return;
+  }
+  try {
+    const data = await getJSON(`/api/runs/${encodeURIComponent(runId)}/plots`);
+    const plots = data.plots || [];
+    if (!plots.length) {
+      grid.innerHTML = "";
+      if (empty) empty.hidden = false;
+      return;
+    }
+    if (empty) empty.hidden = true;
+    grid.innerHTML = plots
+      .map((plot, i) => {
+        const hero = plot.id === "vote_swarm" || (i === 0 && plots.length === 1);
+        const src = `${plot.url}?t=${Date.now()}`;
+        return `<figure class="perf-plot${hero ? " hero" : ""}">
+          <img src="${escapeHtml(src)}" alt="${escapeHtml(plot.title || "Performance chart")}" loading="lazy">
+          <figcaption><strong>${escapeHtml(plot.title || plot.id)}</strong><span>${escapeHtml(plot.caption || "")}</span></figcaption>
+        </figure>`;
+      })
+      .join("");
+  } catch (err) {
+    grid.innerHTML = "";
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = "Charts could not be drawn for this run.";
+    }
+  }
 }
 
 function reliabilitySVG(curves) {
@@ -447,10 +559,10 @@ function reliabilitySVG(curves) {
   const p = 36;
   const ids = Object.keys(curves);
   if (!ids.length) return `<p class="note">No calibration bins.</p>`;
-  let paths = `<line x1="${p}" y1="${h - p}" x2="${w - p}" y2="${p}" stroke="#1f6b56" stroke-dasharray="3 3"/>`;
+  let paths = `<line x1="${p}" y1="${h - p}" x2="${w - p}" y2="${p}" stroke="#80ff20" stroke-dasharray="3 3"/>`;
   ids.forEach((id, i) => {
     const bins = (curves[id].bins || []).filter((b) => b.n);
-    const color = i === 0 ? "#171c22" : i === 1 ? "#9b3b2e" : "#1f6b56";
+    const color = i === 0 ? "#80ff20" : i === 1 ? "#ffffa0" : "#d4c4ff";
     const pts = bins
       .map((b) => {
         const x = p + b.mean_forecast * (w - 2 * p);
@@ -465,7 +577,7 @@ function reliabilitySVG(curves) {
       paths += `<circle cx="${x}" cy="${y}" r="3" fill="${color}"/>`;
     });
   });
-  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Calibration">
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Calibration: forecast probability versus observed rate">
     ${paths}
     <text x="${p}" y="${h - 10}">Forecast 0</text>
     <text x="${w - 70}" y="${h - 10}">Forecast 1</text>
@@ -491,16 +603,16 @@ function contaminationSVG(curves) {
   const xmap = (x) => p + ((x - minX) / (maxX - minX || 1)) * (w - 2 * p);
   const ymap = (y) => h - p - y * (h - 2 * p);
   const zero = xmap(0);
-  let paths = `<line x1="${zero}" y1="${p}" x2="${zero}" y2="${h - p}" stroke="#9b3b2e"/>`;
+  let paths = `<line x1="${zero}" y1="${p}" x2="${zero}" y2="${h - p}" stroke="#ff6b6b"/>`;
   curves.forEach((c, i) => {
-    const color = i === 0 ? "#171c22" : i === 1 ? "#9b3b2e" : "#1f6b56";
+    const color = i === 0 ? "#80ff20" : i === 1 ? "#ffffa0" : "#d4c4ff";
     const pts = (c.buckets || [])
       .filter((b) => b.n && !Number.isNaN(b.mean_accuracy))
       .map((b) => `${xmap((b.gap_lo_days + b.gap_hi_days) / 2)},${ymap(b.mean_accuracy)}`)
       .join(" ");
     paths += `<polyline fill="none" stroke="${color}" points="${pts}"/>`;
   });
-  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Contamination">
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Contamination: accuracy by days from training cutoff">
     ${paths}
     <text x="${p}" y="${h - 10}">Gap (days)</text>
     <text x="8" y="${p}">Accuracy</text>
@@ -517,22 +629,45 @@ function poseFromJob(job) {
   else if (status === "done" && state.lastJobStatus === "running") Enchant.setPose("done");
 }
 
+function jobKind(job) {
+  if (job && job.kind) return job.kind;
+  if (job && job.mock) return "mock";
+  return "live";
+}
+
 function renderJob(job) {
   const status = job.status || "idle";
   const label = job.phase && status === "running" ? `${status} · ${job.phase}` : status;
   $("#run-state").dataset.status = status;
-  $("#run-state-label").textContent = job.error && status === "error" ? "error" : label;
+  $("#run-state").setAttribute("aria-busy", status === "running" ? "true" : "false");
+  const spoken = {
+    idle: "Idle",
+    running: label === "running" ? "Running" : label.replace("running · ", "Running, "),
+    done: "Done",
+    error: job.error ? `Error: ${String(job.error).slice(0, 80)}` : "Error",
+  };
+  $("#run-state-label").textContent =
+    job.error && status === "error" ? spoken.error : spoken[status] || label;
   const mockBtn = $("#run-btn");
   const liveBtn = $("#run-live-btn");
+  const swarmBtn = $("#run-swarm-btn");
   const busy = status === "running";
-  mockBtn.disabled = busy;
-  mockBtn.textContent = busy && job.mock ? "Running…" : "Run practice";
+  const kind = jobKind(job);
   const liveOk = state.ready && state.ready.live_ready;
+  mockBtn.disabled = busy;
+  mockBtn.textContent = busy && kind === "mock" ? "Running…" : "Run practice";
   liveBtn.disabled = busy || !liveOk;
-  liveBtn.textContent = busy && !job.mock ? "Running…" : "Run live AI";
-    liveBtn.title = liveOk
-    ? "Score the cheap 1-question OpenRouter probe (not the 12-agent swarm)"
+  liveBtn.textContent = busy && kind === "live" ? "Running…" : "Run live mix";
+  liveBtn.title = liveOk
+    ? "Score each of the six OpenRouter species once on 1 question (not the 12-agent swarm)"
     : "Add OPENROUTER_API_KEY, or both ANTHROPIC_API_KEY and OPENAI_API_KEY, to .env";
+  if (swarmBtn) {
+    swarmBtn.disabled = busy || !liveOk;
+    swarmBtn.textContent = busy && kind === "swarm" ? "Running…" : "Run swarm";
+    swarmBtn.title = liveOk
+      ? "12 sequential votes (2 of each species), median probability, 1 question"
+      : "Add OPENROUTER_API_KEY to .env for the 12-agent swarm";
+  }
   const log = (job.log || []).join("\n");
   const band = $("#run-log-band");
   if (status === "idle" && !log) {
@@ -575,22 +710,28 @@ async function refreshAfterJob(runId) {
   await loadForecasts();
 }
 
-async function startSimulation(mock) {
+async function startSimulation(kind) {
   const mockBtn = $("#run-btn");
   const liveBtn = $("#run-live-btn");
+  const swarmBtn = $("#run-swarm-btn");
   mockBtn.disabled = true;
   liveBtn.disabled = true;
-  if (mock) mockBtn.textContent = "Running…";
+  if (swarmBtn) swarmBtn.disabled = true;
+  const starting = {
+    mock: "Starting practice (keyword lookup)…",
+    live: "Starting live mix (6 species × 1 question)…",
+    swarm: "Starting swarm (12 sequential votes, median)…",
+  };
+  if (kind === "mock") mockBtn.textContent = "Running…";
+  else if (kind === "swarm" && swarmBtn) swarmBtn.textContent = "Running…";
   else liveBtn.textContent = "Running…";
   $("#run-log-band").hidden = false;
-  $("#run-log").textContent = mock
-    ? "Starting practice (keyword lookup)…"
-    : "Starting live models…";
+  $("#run-log").textContent = starting[kind] || "Starting…";
   if (window.Enchant) Enchant.setPose("search");
   const res = await fetch("/api/jobs/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mock }),
+    body: JSON.stringify({ kind, mock: kind === "mock" }),
   });
   if (res.status === 409) {
     await pollJob();
@@ -603,7 +744,8 @@ async function startSimulation(mock) {
     $("#run-log").textContent = `Start failed ${res.status}: ${detail}`;
     mockBtn.disabled = false;
     mockBtn.textContent = "Run practice";
-    liveBtn.textContent = "Run live AI";
+    liveBtn.textContent = "Run live mix";
+    if (swarmBtn) swarmBtn.textContent = "Run swarm";
     applyReady(state.ready);
     if (window.Enchant) Enchant.setPose("error");
     return;
@@ -615,20 +757,23 @@ async function startSimulation(mock) {
 function applyReady(ready) {
   state.ready = ready || state.ready;
   const liveBtn = $("#run-live-btn");
-  if (!liveBtn) return;
+  const swarmBtn = $("#run-swarm-btn");
   const ok = state.ready && state.ready.live_ready;
-  if (state.lastJobStatus !== "running") liveBtn.disabled = !ok;
+  if (state.lastJobStatus !== "running") {
+    if (liveBtn) liveBtn.disabled = !ok;
+    if (swarmBtn) swarmBtn.disabled = !ok;
+  }
 }
 
 function bind() {
-  document.querySelectorAll("nav.tabs button").forEach((btn) => {
-    btn.addEventListener("click", () => setView(btn.dataset.view));
-  });
+  bindTablist();
   $("#reveal-truth").addEventListener("change", loadQuestions);
   $("#q-category").addEventListener("change", loadQuestions);
   $("#search-form").addEventListener("submit", runSearch);
-  $("#run-btn").addEventListener("click", () => startSimulation(true));
-  $("#run-live-btn").addEventListener("click", () => startSimulation(false));
+  $("#run-btn").addEventListener("click", () => startSimulation("mock"));
+  $("#run-live-btn").addEventListener("click", () => startSimulation("live"));
+  const swarmBtn = $("#run-swarm-btn");
+  if (swarmBtn) swarmBtn.addEventListener("click", () => startSimulation("swarm"));
   $("#run-select").addEventListener("change", async () => {
     state.selectedRun = $("#run-select").value || null;
     try {
@@ -661,9 +806,11 @@ async function boot() {
     $("#overview-errors").textContent = String(err);
   }
   const hash = location.hash.replace("#", "");
-  const liveId = state.ready && state.ready.live_run_id;
-  const liveHas = (state.runs || []).some((r) => r.run_id === liveId && r.n_predictions > 0);
-  if (liveHas && !hash) setView("forecasts");
+  const preferred = pickPreferredRun(state.runs || []);
+  const preferredHas = (state.runs || []).some(
+    (r) => r.run_id === preferred && r.n_predictions > 0
+  );
+  if (preferredHas && !hash) setView("forecasts");
   else setView(hash || "results");
   pollJob();
 }

@@ -17,9 +17,16 @@ class EnvSearchClient:
     def queries(self) -> list[str]:
         return list(getattr(self.env, "queries", []))
 
-    def search(self, query: str, k: int = 10, min_prominence: float = 0.0) -> list[SearchHit]:
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        min_prominence: float = 0.0,
+        source_types: list[str] | None = None,
+    ) -> list[SearchHit]:
         del min_prominence
-        rows = self.env.search(self.agent_id, query, k)  # type: ignore[attr-defined]
+        kinds = ",".join(source_types) if source_types else ""
+        rows = self.env.search(self.agent_id, query, k, kinds)  # type: ignore[attr-defined]
         self.n_calls = int(getattr(self.env, "n_calls", self.n_calls + 1))
         hits: list[SearchHit] = []
         for row in rows:
@@ -31,6 +38,7 @@ class EnvSearchClient:
                     published_at=datetime.fromisoformat(str(row["published_at"]).replace("Z", "+00:00")),
                     snippet=row.get("snippet") or "",
                     prominence=float(row.get("prominence") or 0.0),
+                    source_type=row.get("source_type"),
                 )
             )
         return hits

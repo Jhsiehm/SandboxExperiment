@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timezone
 
+from psbx.corpus.aggregate_sources import ingest_aggregate_sources
 from psbx.corpus.embed import embed_texts
 from psbx.corpus.fetch_commoncrawl import ingest_commoncrawl
 from psbx.corpus.fetch_gdelt import ingest_gdelt
@@ -20,6 +21,7 @@ def collect_documents(
 ) -> list[Document]:
     docs = [
         *seed_documents(),
+        *ingest_aggregate_sources(epoch),
         *ingest_wikipedia(epoch, live=live),
         *ingest_commoncrawl(epoch, live=live),
         *ingest_wayback(epoch, live=live, max_docs=max_docs),

@@ -13,7 +13,8 @@ OracleProto already cover live or near-term questions. The contribution here:
 
 1. Deep-history epochs those benchmarks do not test.
 2. Legislative and policy outcome questions.
-3. Later: single-agent vs swarm (`config/swarm.yaml`: 8 mini + 4 Haiku, sequential median).
+3. A training-area **society swarm** of cheap models with explicit simulation
+   personas (`config/swarm.yaml` + `config/perspectives.yaml`).
 
 Epoch **e2012**: cutoff `2012-06-30`, resolution window through `2013-06-30`.
 Fifty binary questions (20 economic, 20 legislative, 10 geopolitical). Scoring
@@ -24,6 +25,40 @@ Agent-loop layout follows [AgentSociety 2](https://github.com/tsinghua-fib-lab/A
 (`custom/envs`, `custom/agents`, `examples/e2012_forecast`). Cite Piao et al.
 (arXiv:2607.11895). Do not copy their urban simulator into this repo.
 
+## Two complementary tracks (Phase 1)
+
+They share the frozen corpus, cutoff, sequential OpenRouter swarm, and
+Brier/C-index scoring. Neither is PolicySim.
+
+**Track A — media stimulus.** Time-locked headlines / news / media
+(`published_at` ≤ cutoff) are the prompt. The swarm predicts public or
+political response. We score that against **later observed history** (e2012
+`ground_truth`) and against contemporaneous human/analyst thinking
+(`prior_signal`). This is the “how close to historical human response”
+test using media as the stimulus.
+
+**Track B — demographic society swarm.** The same pack also contains
+**surveys, ad metadata, and academic studies** as conditioners. Twelve
+explicit constituency personas (`config/perspectives.yaml`: region,
+urban/rural, party ID, age band, education, media diet) should react
+differently to the **same headline**. Personas are labeled simulation
+roles, never inferred from names or zips, and are not a scoring feature
+that guesses protected class.
+
+Roadmap (conservative): **baseline eval → yearly epoch advance → event /
+response prediction → PolicySim (later).** Year-step is a hook
+(`psbx epoch propose`); it does not ingest future documents. PolicySim
+(constituents drafting bills that are statistically likely to pass) is
+explicitly out of Phase 1.
+
+## Progress (1 September 2026)
+
+- **HUD run options.** Three buttons, each bound to the right config: **Run practice** (`config/run.yaml` / `phase1-e2012-smoke`), **Run live mix** (six OpenRouter species × 1 question, `config/run-openrouter.yaml`), **Run swarm** (12 sequential votes, median, `config/run-swarm.yaml`). Live mix stays the cheap probe when `OPENROUTER_API_KEY` is set; it does not silently switch to native Claude+GPT or fire 12 bodies.
+- **Seaborn performance charts** on Results: vote swarm (dots vs later truth, median, and 2012 prior), Brier bars by species, signed-error lollipops (too skeptical vs too sure). Practice runs get bars plus a per-question Brier violin. `psbx score` writes the same PNGs next to the run.
+- **Cheap mix is complete.** 2 × each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B. `local-*` twins stay vLLM-only. OpenRouter limiter stays 1 req / 2s, 20/min, concurrency 1, `max_tokens` 256.
+- **Society / Track A+B.** Explicit simulation personas, cutoff-locked survey/ad/academic fixtures, `psbx eval baseline`, `psbx epoch propose` (year-step hook, no future ingest), AgentSociety 2 workspace export.
+- **Corpus note.** Primary 2012 web is Wayback `to=20120630`. CC-MAIN-2013-20 is after cutoff; CC-MAIN-2012 HTML dump is still legacy ARC.
+
 ## Status
 
 Working today:
@@ -33,11 +68,22 @@ Working today:
 - Docker search sidecar: clock frozen at 2012-06-30, outbound traffic dropped.
 - Optional Internet Archive ingest at **index-build** time only.
 - Cheap live OpenRouter probe (`config/run-openrouter.yaml`) when `OPENROUTER_API_KEY` is set.
-  Swarm mix is `config/swarm.yaml` (8 × `openai/gpt-4.1-mini` + 4 × `anthropic/claude-3.5-haiku`).
+  Swarm mix is `config/swarm.yaml` (2 × each of `openai/gpt-4.1-mini`, `openai/gpt-4o-mini`,
+  `anthropic/claude-3-haiku`, `google/gemini-2.5-flash-lite`,
+  `meta-llama/llama-3.1-8b-instruct`, `qwen/qwen-2.5-7b-instruct`).
+  `local-*` Llama 3.1 8B / Qwen2.5 7B skip unless `VLLM_BASE_URL` is up.
 - Sequential swarm (`psbx run --config config/run-swarm.yaml --limit 1`): one shared
   search pack, 12 serialized OpenRouter votes, median probability (`swarm-median`).
   Individual votes are written to `swarm_votes.jsonl`. A full 12×50 pass is hours
-  at 2s/req — keep `--limit` small. Dashboard **Run live AI** does not fire this.
+  at 2s/req — keep `--limit` small. Dashboard **Run swarm** fires this (1 question).
+  **Run live mix** stays on `config/run-openrouter.yaml` (six species once).
+- Training-area society swarm: explicit personas (`config/perspectives.yaml`),
+  survey/ad/academic fixtures in the cutoff-locked index, `psbx eval baseline`
+  (Track A media-stimulus vs later outcomes + Track B persona spread),
+  `psbx epoch propose` (year-step hook, no future ingest).
+- AgentSociety 2 export (`psbx society export`): 12 ForecasterAgent workspaces +
+  real `InitConfig` / questionnaire `steps.yaml` from `config/swarm.yaml`. Clone
+  lives next to this repo (`../AgentSociety`). We do not vendor their city simulator.
 
 Not working yet:
 
@@ -79,7 +125,7 @@ Copy `.env.example` to `.env` when you want live models. Do not commit `.env`.
 | Config | `config/run.yaml` | `config/run-phase2.yaml` | `config/run-openrouter.yaml` |
 | Run id | `phase1-e2012-smoke` | `phase2-e2012-real` | `phase2-e2012-openrouter` |
 | Needs | Nothing | Anthropic + OpenAI keys | `OPENROUTER_API_KEY` |
-| What it measures | Pipeline + heuristic | Claude + GPT forecasts | Cheap `openai/gpt-4.1-mini` probe (not the 12-agent swarm) |
+| What it measures | Pipeline + heuristic | Claude + GPT forecasts | Cheap mix: all six planned low-end species once (not the 12-agent swarm) |
 
 Live will not fall back to the heuristic. If keys are missing it fails loud.
 
@@ -88,7 +134,7 @@ OpenRouter is rate-limited in-process: 1 request / 2s, max 20/min, concurrency 1
 Completions cap at 256 tokens unless `OPENROUTER_MAX_TOKENS` is raised. On HTTP 429 the
 client waits 15s then 30s and retries at most twice.
 
-Cheap OpenRouter probe (one question; do not omit `--limit` on bigger configs).
+Cheap OpenRouter probe (one question across the planned low-end mix; do not omit `--limit` on bigger configs).
 Dashboard live click uses this. It does **not** expand the 12-agent mix:
 
 ```bash
@@ -105,6 +151,71 @@ psbx run --config config/run-swarm.yaml --limit 1
 Needs `OPENROUTER_API_KEY`. Local Llama/Qwen are not in this mix and are never
 auto-routed onto that key. Scorer reads `swarm-median`; per-agent votes are
 `data/runs/phase2-e2012-swarm-probe/swarm_votes.jsonl`.
+
+## Training-area society swarm (Phase 1)
+
+Rebuild the index so survey/ad/academic fixtures are searchable, then run the
+12-persona swarm (mock first). Headlines are the stimulus; conditioners are
+in the same cutoff-locked pack.
+
+```bash
+psbx corpus build --epoch e2012
+PSBX_MOCK_LLM=1 psbx society run --config config/run-society-swarm-mock.yaml --limit 1
+psbx eval baseline --run phase1-e2012-society-swarm-mock
+psbx epoch propose --from e2012 --years 1
+```
+
+Live (serialized OpenRouter, `allow_mock: false`):
+
+```bash
+psbx society run --config config/run-society-swarm.yaml --limit 1
+psbx eval baseline --run phase2-e2012-society-swarm
+```
+
+Personas: `config/perspectives.yaml` (add a persona to expand the catalog;
+slots 0–11 zip onto the 12 bodies). Eval config: `config/eval-baseline.yaml`.
+Year-step: `config/epoch-advance.yaml` — **does not** load 2013+ documents.
+
+Still needed for a fuller conditioner set (fixtures, not live scrape): more
+pre-cutoff Gallup/Pew vintages, FEC independent-expenditure metadata through
+2012-06-30, and attributed academic summaries. Do not ingest respondent
+microdata, ad creative, or full papers.
+
+## AgentSociety 2 (sibling clone)
+
+This repo already uses the AgentSociety 2 **module layout** (`custom/envs`,
+`custom/agents`). The full platform is cloned beside this project, not copied in:
+
+```bash
+# already present as ../AgentSociety after `gh repo clone tsinghua-fib-lab/AgentSociety`
+export PSBX_AGENTSOCIETY_ROOT="$(cd ../AgentSociety && pwd)"
+psbx society export --config config/run-society-swarm.yaml --limit 1
+```
+
+That writes 12 `agent_0001`…`agent_0012` workspaces, `init_config.json`, and a
+questionnaire `steps.yaml` under `data/runs/phase2-e2012-society-swarm/society/`.
+Search still goes through `FrozenEpochEnv`. Votes still use serialized OpenRouter
+(`config/swarm.yaml`: 2× mini, 4o-mini, Haiku, Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B).
+
+Mock society swarm (no keys):
+
+```bash
+PSBX_MOCK_LLM=1 psbx society run --config config/run-society.yaml --limit 1
+```
+
+Optional live AgentSociety CLI (Python 3.11–3.13, Ray, `AGENTSOCIETY_LLM_API_KEY`):
+
+```bash
+pip install -e "../AgentSociety/packages/agentsociety2"
+export WORKSPACE_PATH="$(pwd)"
+export AGENTSOCIETY_LLM_API_KEY="$OPENROUTER_API_KEY"
+export AGENTSOCIETY_LLM_API_BASE=https://openrouter.ai/api/v1
+export AGENTSOCIETY_LLM_MODEL=openai/gpt-4.1-mini
+# python -m agentsociety2.society.cli \
+#   --config examples/e2012_forecast/init_config.json \
+#   --steps examples/e2012_forecast/steps.yaml \
+#   --run-dir data/runs/phase2-e2012-society-swarm/society
+```
 
 Native live (edit `config/run-phase2.yaml` to `models: [frontier-b]` first):
 
@@ -161,7 +272,8 @@ Optional local WARCs (or a converted ARC slice) can be dropped in
 `data/corpus-cache/wikipedia/` — ingested offline. Do not ingest CC-MAIN-2013-20
 into e2012.
 
-The fixture seed (~33 documents) is enough to exercise the 50-question smoke.
+The fixture seed (news/gov plus survey/ad/academic snapshots) is enough to
+exercise the 50-question smoke and the training-area conditioner tools.
 
 ## Design constraints
 
@@ -178,12 +290,14 @@ The fixture seed (~33 documents) is enough to exercise the 50-question smoke.
 ## Layout
 
 ```
-config/          epochs, models, swarm roster, run profiles
-src/psbx/        CLI, index, agent loop, scoring, Docker sidecar
+config/          epochs, models, swarm roster, perspectives, eval tracks, run profiles
+src/psbx/        CLI, index, agent loop, scoring, Docker sidecar, eval tracks
 leaderboard/     dashboard (port 8765)
 custom/          AgentSociety-shaped env + forecaster
-data/questions/  e2012 question set
-data/sources/    ALFRED / Congress / GDELT / Gallup snapshots
+examples/        e2012 AgentSociety 2 InitConfig + questionnaire steps
+../AgentSociety  sibling clone (gh repo clone tsinghua-fib-lab/AgentSociety)
+data/questions/  e2012 question set (also Track A media-stimulus items)
+data/sources/    ALFRED / Congress / GDELT / Gallup / survey / ad / academic snapshots
 data/corpus/     built index (gitignored)
 data/runs/       predictions and scores (gitignored)
 tests/

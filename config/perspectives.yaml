@@ -1,0 +1,148 @@
+# e2012 constituency-shaped simulation personas.
+#
+# These are labeled simulation roles for the political training-area swarm.
+# They are NOT inferred from names, zips, school prestige, or protected-class
+# proxies. Expand the catalog by adding personas; do not add silent scoring
+# features that guess demographics.
+#
+# Slots 0–11 zip onto the 12 swarm bodies in config/swarm.yaml (index order).
+# Personas with slot: null are catalog-only (expandable roster, unused until assigned).
+name: e2012-constituency-12
+simulation_only: true
+not_inferred: true
+notes: >
+  Phase 1 demographic roster. Same FrozenEpochEnv media pack is the stimulus
+  for every persona; surveys/ads/academic studies condition the reaction.
+  Different districts should react differently to the same headline.
+personas:
+  - id: urban-northeast-dem-young
+    slot: 0
+    label: Urban Northeast Democrat, 25-34, bachelor
+    region: northeast
+    urbanicity: urban
+    party_id: democrat
+    age_band: "25-34"
+    education: bachelor
+    media_diet: [nyt, npr, msnbc]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: rural-south-gop-older
+    slot: 1
+    label: Rural South Republican, 55-64, high school
+    region: south
+    urbanicity: rural
+    party_id: republican
+    age_band: "55-64"
+    education: high_school
+    media_diet: [fox, am_radio, local_paper]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: suburban-midwest-ind
+    slot: 2
+    label: Suburban Midwest Independent, 35-44, some college
+    region: midwest
+    urbanicity: suburban
+    party_id: independent
+    age_band: "35-44"
+    education: some_college
+    media_diet: [local_tv, usa_today, cnn]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: urban-west-dem-mid
+    slot: 3
+    label: Urban Pacific Democrat, 45-54, graduate
+    region: west
+    urbanicity: urban
+    party_id: democrat
+    age_band: "45-54"
+    education: graduate
+    media_diet: [npr, latimes, economist]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: rural-mountain-gop
+    slot: 4
+    label: Rural Mountain Republican, 45-54, some college
+    region: mountain
+    urbanicity: rural
+    party_id: republican
+    age_band: "45-54"
+    education: some_college
+    media_diet: [fox, talk_radio, local_paper]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: suburban-south-gop-young
+    slot: 5
+    label: Suburban South Republican, 25-34, bachelor
+    region: south
+    urbanicity: suburban
+    party_id: republican
+    age_band: "25-34"
+    education: bachelor
+    media_diet: [fox, facebook, local_tv]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: urban-midwest-dem-older
+    slot: 6
+    label: Urban Midwest Democrat, 55-64, high school
+    region: midwest
+    urbanicity: urban
+    party_id: democrat
+    age_band: "55-64"
+    education: high_school
+    media_diet: [local_tv, cnn, union_newsletter]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: suburban-northeast-ind-retiree
+    slot: 7
+    label: Suburban Northeast Independent, 65+, bachelor
+    region: northeast
+    urbanicity: suburban
+    party_id: independent
+    age_band: "65+"
+    education: bachelor
+    media_diet: [wsj, pbs, local_paper]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: rural-midwest-gop
+    slot: 8
+    label: Rural Midwest Republican, 35-44, high school
+    region: midwest
+    urbanicity: rural
+    party_id: republican
+    age_band: "35-44"
+    education: high_school
+    media_diet: [am_radio, local_paper, fox]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: urban-south-dem
+    slot: 9
+    label: Urban South Democrat, 35-44, bachelor
+    region: south
+    urbanicity: urban
+    party_id: democrat
+    age_band: "35-44"
+    education: bachelor
+    media_diet: [cnn, local_tv, npr]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: suburban-west-ind-young
+    slot: 10
+    label: Suburban West Independent, 25-34, bachelor
+    region: west
+    urbanicity: suburban
+    party_id: independent
+    age_band: "25-34"
+    education: bachelor
+    media_diet: [npr, reddit, latimes]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  - id: rural-northeast-gop
+    slot: 11
+    label: Rural Northeast Republican, 45-54, some college
+    region: northeast
+    urbanicity: rural
+    party_id: republican
+    age_band: "45-54"
+    education: some_college
+    media_diet: [wsj, fox, local_paper]
+    notes: Simulation role. Forecast as this constituency would given the pack.
+  # Catalog-only extra: proves the roster can grow without changing n_agents=12.
+  - id: catalog-pacific-urban-ind-grad
+    slot: null
+    label: Pacific urban Independent, 35-44, graduate (unassigned catalog extra)
+    region: west
+    urbanicity: urban
+    party_id: independent
+    age_band: "35-44"
+    education: graduate
+    media_diet: [npr, economist, podcasts]
+    notes: Unassigned. Assign a slot to put this persona on a swarm body.

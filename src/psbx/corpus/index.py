@@ -74,7 +74,14 @@ class HybridIndex:
             raise KeyError(document_id)
         return self._enforce(doc)
 
-    def search(self, query: str, k: int = 10, min_prominence: float = 0.0) -> list[SearchHit]:
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        min_prominence: float = 0.0,
+        source_types: list[str] | None = None,
+    ) -> list[SearchHit]:
+        allowed = set(source_types) if source_types else None
         bm25_scores = self._bm25.get_scores(tokenize(query))
         bm25_order = list(np.argsort(bm25_scores)[::-1])
         qvec = embed_texts([query], backend="hashing")[0]
@@ -86,6 +93,8 @@ class HybridIndex:
             doc = self.docs[idx]
             if doc.prominence < min_prominence:
                 continue
+            if allowed is not None and doc.source_type not in allowed:
+                continue
             self._enforce(doc)
             snippet = _snippet(doc.text, query)
             hits.append(
@@ -96,6 +105,7 @@ class HybridIndex:
                     published_at=doc.published_at,
                     snippet=snippet,
                     prominence=doc.prominence,
+                    source_type=doc.source_type,
                 )
             )
             if len(hits) >= k:

@@ -24,7 +24,12 @@ def create_app(index: HybridIndex) -> FastAPI:
 
     @app.post("/search", response_model=list[SearchHit])
     def search(body: SearchRequest) -> list[SearchHit]:
-        hits = index.search(body.query, k=body.k, min_prominence=body.min_prominence)
+        hits = index.search(
+            body.query,
+            k=body.k,
+            min_prominence=body.min_prominence,
+            source_types=list(body.source_types) or None,
+        )
         for hit in hits:
             assert hit.published_at.date() <= index.cutoff
         query_log.append({"query": body.query, "k": body.k, "n": len(hits)})

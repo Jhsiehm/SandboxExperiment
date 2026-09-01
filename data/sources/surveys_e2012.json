@@ -1,0 +1,62 @@
+{
+  "note": "Attributed public summaries of contemporaneous surveys. Aggregates only — no respondent PII, no live 2026 scrape. published_at must be on or before the epoch cutoff to enter the index. Post-cutoff Gallup MIP points stay in gallup_mip_2012.json for eval targets only.",
+  "minimize_data": "Metadata and published toplines. Do not store interview content or microdata.",
+  "records": [
+    {
+      "url": "https://news.gallup.com/poll/obama-job-approval-2012-06",
+      "outlet": "Gallup",
+      "published_at": "2012-06-17T12:00:00",
+      "title": "Gallup: Obama job approval mid-June 2012 (public summary)",
+      "source_type": "survey",
+      "provenance": "Gallup public tracking summaries, June 2012. Attributed aggregate, not a SHORTLIST or psbx claim about any person.",
+      "geography": "US adults",
+      "sample_note": "National adults; public topline only",
+      "syndication_count": 30,
+      "gdelt_mention_count": 40,
+      "front_page_minutes": 60,
+      "text": "Gallup's public mid-June 2012 tracking summary put President Obama's job approval near 46 percent, with disapproval near 47 percent. Independents remained split. The figures are contemporaneous published toplines as of 2012-06-17, not later revised series."
+    },
+    {
+      "url": "https://news.gallup.com/poll/generic-ballot-2012-06",
+      "outlet": "Gallup",
+      "published_at": "2012-06-20T12:00:00",
+      "title": "Gallup generic congressional ballot, June 2012 (public summary)",
+      "source_type": "survey",
+      "provenance": "Gallup public summaries, June 2012. Attributed aggregate.",
+      "geography": "US registered voters",
+      "sample_note": "Public topline only",
+      "syndication_count": 18,
+      "gdelt_mention_count": 22,
+      "front_page_minutes": 30,
+      "text": "Gallup's June 2012 public generic-ballot summaries showed a close national House race, with neither party holding a large durable lead among registered voters. Treat as an attributed contemporaneous topline, not a precinct forecast."
+    },
+    {
+      "url": "https://www.pewresearch.org/politics/2012/06/party-identification",
+      "outlet": "Pew Research Center",
+      "published_at": "2012-06-04T12:00:00",
+      "title": "Pew: party identification, early June 2012 (public summary)",
+      "source_type": "survey",
+      "provenance": "Pew Research Center public political typology / party ID summaries, 2012. Attributed aggregate.",
+      "geography": "US adults",
+      "sample_note": "Public topline; no microdata",
+      "syndication_count": 12,
+      "gdelt_mention_count": 15,
+      "front_page_minutes": 20,
+      "text": "Pew's publicly summarized 2012 party-identification series described a closely divided electorate, with large independent and leaner groups. Party ID remained a stable long-term orientation in the published commentary. This is an attributed summary of public Pew material as of early June 2012."
+    },
+    {
+      "url": "https://www.realclearpolitics.com/epolls/2012/president/us/2012-06",
+      "outlet": "RealClearPolitics",
+      "published_at": "2012-06-28T18:00:00",
+      "title": "RCP national presidential average, late June 2012 (public summary)",
+      "source_type": "survey",
+      "provenance": "RealClearPolitics public poll average, late June 2012. Attributed aggregate of published polls.",
+      "geography": "US likely/registered voters (poll-dependent)",
+      "sample_note": "Average of published national polls; not microdata",
+      "syndication_count": 25,
+      "gdelt_mention_count": 35,
+      "front_page_minutes": 50,
+      "text": "Public poll averages in late June 2012 showed a close Obama–Romney national race, within a few points either way depending on the house effects of the component polls. This is an attributed contemporaneous summary of published averages, not a later election result."
+    }
+  ]
+}

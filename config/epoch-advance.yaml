@@ -1,0 +1,16 @@
+# Year-step / epoch-advance hook (Phase 1).
+#
+# Later: fast-forward the dataset year by year, rebuilding the cutoff-locked
+# corpus and re-running the human-baseline eval. This file does NOT ingest
+# 2013+ documents and does NOT enable PolicySim.
+#
+# `psbx epoch propose --from e2012 --years 1` prints the next cutoff without
+# loading future docs. Agents must never see published_at > the new cutoff.
+from_epoch: e2012
+step_years: 1
+enabled: false
+ingests_documents: false
+policy_sim: false
+note: >
+  Phase 1 hook only. Do not silently leak future docs. PolicySim (constituents
+  drafting bills that are statistically likely to pass) is explicitly later.

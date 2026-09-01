@@ -80,7 +80,14 @@ def test_openrouter_config_is_cheap():
     cfg = load_run("config/run-openrouter.yaml")
     assert cfg.allow_mock is False
     assert cfg.n_questions == 1
-    assert cfg.models == ["openrouter-gpt-4.1-mini"]
+    assert cfg.models == [
+        "openrouter-gpt-4.1-mini",
+        "openrouter-gpt-4o-mini",
+        "openrouter-haiku",
+        "openrouter-gemini-flash-lite",
+        "openrouter-llama-3.1-8b",
+        "openrouter-qwen-2.5-7b",
+    ]
     assert cfg.swarm_roster == "config/swarm.yaml"
 
 
@@ -96,8 +103,33 @@ def test_jobs_pick_openrouter_config(monkeypatch):
     assert snap["live_config"] == OPENROUTER_CONFIG
     assert snap["live_config"] != "config/run-swarm.yaml"
     assert snap["swarm_run_config"] == "config/run-swarm.yaml"
-    assert "8 × gpt-4.1-mini" in snap["swarm_roster"]
+    assert "2 × each" in snap["swarm_roster"]
+    assert "Llama 3.1 8B" in snap["swarm_roster"]
+    assert "Qwen 2.5 7B" in snap["swarm_roster"]
+    assert snap["swarm_run_id"] == "phase2-e2012-swarm-probe"
+    assert "Three HUD buttons" in snap["swarm_note"]
     assert "sk-test" not in str(snap)
+
+
+def test_live_mix_prefers_openrouter_even_with_native_keys(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-oa")
+    from leaderboard.jobs import (
+        LIVE_CONFIG,
+        MOCK_CONFIG,
+        OPENROUTER_CONFIG,
+        SWARM_CONFIG,
+        config_for_kind,
+        live_config_path,
+    )
+
+    assert live_config_path() == OPENROUTER_CONFIG
+    assert live_config_path() != LIVE_CONFIG
+    assert config_for_kind("mock") == MOCK_CONFIG
+    assert config_for_kind("live") == OPENROUTER_CONFIG
+    assert config_for_kind("swarm") == SWARM_CONFIG
+    assert config_for_kind("swarm") != OPENROUTER_CONFIG
 
 
 def test_chat_completion_headers_and_429(monkeypatch):
@@ -182,6 +214,31 @@ def test_chat_completion_includes_400_body(monkeypatch):
 
     monkeypatch.setattr("psbx.openrouter.httpx.post", bad)
     with pytest.raises(RuntimeError, match="unmatched tool_calls"):
+        chat_completion(
+            model="openai/gpt-4.1-mini",
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=16,
+        )
+
+
+def test_chat_completion_surfaces_expired_key_message(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-not-real")
+    monkeypatch.setenv("OPENROUTER_MIN_INTERVAL_SEC", "0")
+    reset_gate_for_tests()
+
+    def expired(url, headers=None, json=None, timeout=None):
+        req = httpx.Request("POST", url)
+        return httpx.Response(
+            401,
+            request=req,
+            text=(
+                '{"error":{"message":"API key expired.","code":401,'
+                '"metadata":{"headers":{"WWW-Authenticate":"Bearer realm=\\"api\\""}}}}'
+            ),
+        )
+
+    monkeypatch.setattr("psbx.openrouter.httpx.post", expired)
+    with pytest.raises(RuntimeError, match="API key expired"):
         chat_completion(
             model="openai/gpt-4.1-mini",
             messages=[{"role": "user", "content": "ping"}],

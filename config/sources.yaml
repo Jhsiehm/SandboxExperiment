@@ -122,6 +122,41 @@ outlets:
     tier: 2
     source_type: wiki
     outlet_weight: 0.80
+  - domain: news.gallup.com
+    name: Gallup
+    tier: 2
+    source_type: survey
+    outlet_weight: 0.70
+  - domain: pewresearch.org
+    name: Pew Research Center
+    tier: 2
+    source_type: survey
+    outlet_weight: 0.62
+  - domain: realclearpolitics.com
+    name: RealClearPolitics
+    tier: 2
+    source_type: survey
+    outlet_weight: 0.48
+  - domain: fec.gov
+    name: FEC public filings (summary)
+    tier: 3
+    source_type: ad
+    outlet_weight: 0.30
+  - domain: opensecrets.org
+    name: OpenSecrets public summary
+    tier: 3
+    source_type: ad
+    outlet_weight: 0.28
+  - domain: press.princeton.edu
+    name: Princeton University Press (public summary)
+    tier: 3
+    source_type: academic
+    outlet_weight: 0.22
+  - domain: archive.org
+    name: University of Chicago Press (public summary)
+    tier: 3
+    source_type: academic
+    outlet_weight: 0.20
 
 wayback:
   # Live CDX/snapshot pulls identify as PredictionSandbox (see psbx.corpus.ia_http).

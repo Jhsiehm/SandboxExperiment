@@ -11,7 +11,13 @@ from psbx.schemas import SearchHit
 
 
 class SearchClient(Protocol):
-    def search(self, query: str, k: int = 10, min_prominence: float = 0.0) -> list[SearchHit]: ...
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        min_prominence: float = 0.0,
+        source_types: list[str] | None = None,
+    ) -> list[SearchHit]: ...
     def fetch(self, document_id: str) -> dict: ...
     @property
     def queries(self) -> list[str]: ...
@@ -28,11 +34,19 @@ class LocalSearchClient:
     def queries(self) -> list[str]:
         return list(self._queries)
 
-    def search(self, query: str, k: int = 10, min_prominence: float | None = None) -> list[SearchHit]:
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        min_prominence: float | None = None,
+        source_types: list[str] | None = None,
+    ) -> list[SearchHit]:
         self._queries.append(query)
         self.n_calls += 1
         floor = self.min_prominence if min_prominence is None else min_prominence
-        return self.index.search(query, k=k, min_prominence=floor)
+        return self.index.search(
+            query, k=k, min_prominence=floor, source_types=source_types
+        )
 
     def fetch(self, document_id: str) -> dict:
         self.n_calls += 1
@@ -52,12 +66,21 @@ class HttpSearchClient:
     def queries(self) -> list[str]:
         return list(self._queries)
 
-    def search(self, query: str, k: int = 10, min_prominence: float = 0.0) -> list[SearchHit]:
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        min_prominence: float = 0.0,
+        source_types: list[str] | None = None,
+    ) -> list[SearchHit]:
         self._queries.append(query)
         self.n_calls += 1
+        payload = {"query": query, "k": k, "min_prominence": min_prominence}
+        if source_types:
+            payload["source_types"] = list(source_types)
         resp = self._http.post(
             f"{self.base_url}/search",
-            json={"query": query, "k": k, "min_prominence": min_prominence},
+            json=payload,
         )
         resp.raise_for_status()
         return [SearchHit.model_validate(row) for row in resp.json()]

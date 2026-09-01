@@ -1,14 +1,26 @@
 # Cheap OpenRouter live probe. Defaults to one question so a dashboard click
 # cannot burn a 50-item dual-model run. Override with --limit if needed.
 #
-# Intended swarm (this file does NOT expand it — dashboard live stays cheap):
-#   8 × openai/gpt-4.1-mini + 4 × anthropic/claude-3.5-haiku
-#   see config/swarm.yaml; run with config/run-swarm.yaml --limit 1
-# This probe names the primary worker only. 12 agents × N questions at
-# OPENROUTER_MIN_INTERVAL_SEC=2 is slow on purpose; a full 12×50 pass is hours.
+# Planned low-end mix (this file scores each species once — not the catalog):
+#   openai/gpt-4.1-mini, openai/gpt-4o-mini, anthropic/claude-3-haiku,
+#   google/gemini-2.5-flash-lite, meta-llama/llama-3.1-8b-instruct,
+#   qwen/qwen-2.5-7b-instruct.
+#
+# Intended swarm (this file does NOT expand it — dashboard Run live mix stays
+# 6 species × 1 question; Run swarm uses config/run-swarm.yaml):
+#   2 × each of those six species — see config/swarm.yaml
+#   run with config/run-swarm.yaml --limit 1
+# 12 agents × N questions at OPENROUTER_MIN_INTERVAL_SEC=2 is slow on purpose;
+# a full 12×50 pass is hours.
 run_id: phase2-e2012-openrouter
 epoch: e2012
-models: [openrouter-gpt-4.1-mini]
+models:
+  - openrouter-gpt-4.1-mini
+  - openrouter-gpt-4o-mini
+  - openrouter-haiku
+  - openrouter-gemini-flash-lite
+  - openrouter-llama-3.1-8b
+  - openrouter-qwen-2.5-7b
 swarm_roster: config/swarm.yaml
 question_set: data/questions/e2012.jsonl
 max_tool_calls: 4

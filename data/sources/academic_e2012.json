@@ -1,0 +1,45 @@
+{
+  "note": "Short original summaries of well-known pre-cutoff academic findings used as conditioners. Not full papers (copyright). published_at is the work's public date, all ≤ 2012-06-30.",
+  "minimize_data": "Attributed findings only. Do not ingest copyrighted full text.",
+  "records": [
+    {
+      "url": "https://archive.org/details/americanvoter00camp",
+      "outlet": "University of Chicago Press (public summary)",
+      "published_at": "1960-01-01T00:00:00",
+      "title": "The American Voter (1960): party identification as a long-term orientation",
+      "source_type": "academic",
+      "provenance": "Campbell, Converse, Miller, and Stokes, The American Voter (1960). Original summary of a widely reported finding; not the book text.",
+      "geography": "US",
+      "syndication_count": 4,
+      "gdelt_mention_count": 2,
+      "front_page_minutes": 0,
+      "text": "Campbell, Converse, Miller, and Stokes (1960) reported that party identification is a durable psychological orientation and the strongest long-term correlate of presidential vote in their National Election Study analyses. Short-term forces (candidates, issues) move the residual. This is an attributed summary of a public academic finding, not a copy of the book."
+    },
+    {
+      "url": "https://press.princeton.edu/books/paperback/9780691136639/unequal-democracy",
+      "outlet": "Princeton University Press (public summary)",
+      "published_at": "2008-01-01T00:00:00",
+      "title": "Unequal Democracy (2008): partisan vote and economic performance",
+      "source_type": "academic",
+      "provenance": "Larry M. Bartels, Unequal Democracy (Princeton, 2008). Original summary of a widely cited finding; not the book text.",
+      "geography": "US",
+      "syndication_count": 5,
+      "gdelt_mention_count": 3,
+      "front_page_minutes": 0,
+      "text": "Bartels (2008) argued from ANES and income data that presidential economic performance and partisan attachments jointly structure vote choice, and that income groups do not respond identically. Treat as an attributed academic conditioner for simulation personas, not as an inferred protected-class scoring feature."
+    },
+    {
+      "url": "https://doi.org/10.1086/266687",
+      "outlet": "Public Opinion Quarterly (public summary)",
+      "published_at": "1944-01-01T00:00:00",
+      "title": "The People's Choice (1944): media more often reinforces than converts",
+      "source_type": "academic",
+      "provenance": "Lazarsfeld, Berelson, and Gaudet, The People's Choice (1944). Original summary of a widely reported finding; not the book text.",
+      "geography": "US (1940 Erie County study)",
+      "syndication_count": 3,
+      "gdelt_mention_count": 1,
+      "front_page_minutes": 0,
+      "text": "Lazarsfeld, Berelson, and Gaudet (1944) reported that campaign media more often reinforced existing partisan predispositions than converted opponents, with interpersonal discussion mediating much of the effect. Useful as a conditioner when personas read the same headline pack: identical stimulus, different prior attachments."
+    }
+  ]
+}

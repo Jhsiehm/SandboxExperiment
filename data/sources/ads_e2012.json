@@ -1,0 +1,45 @@
+{
+  "note": "Political ad / independent-expenditure metadata as of the e2012 cutoff. Public FEC-style aggregates only: committee, lean, theme, market, spend band. No ad creative, no targeting lists, no live 2026 scrape.",
+  "minimize_data": "Do not store video, scripts, or voter-file segments. Metadata and published spend bands only.",
+  "records": [
+    {
+      "url": "https://www.fec.gov/data/committee/C00490045/2012-06",
+      "outlet": "FEC public filings (summary)",
+      "published_at": "2012-06-20T00:00:00",
+      "title": "Restore Our Future independent expenditures, H1 2012 (public summary)",
+      "source_type": "ad",
+      "provenance": "Public FEC independent-expenditure summaries through mid-June 2012, reconstructed as an attributed aggregate. Not a live scrape.",
+      "geography": "US; battleground TV markets",
+      "syndication_count": 8,
+      "gdelt_mention_count": 20,
+      "front_page_minutes": 10,
+      "text": "Restore Our Future, a super PAC supporting Mitt Romney, had reported independent expenditures in the tens of millions of dollars by mid-June 2012 (public FEC summaries). Published coverage described a heavy economy and jobs theme in battleground television markets. Amounts are bands from contemporaneous public filings, not later cycle totals."
+    },
+    {
+      "url": "https://www.fec.gov/data/committee/C00495861/2012-06",
+      "outlet": "FEC public filings (summary)",
+      "published_at": "2012-06-20T00:00:00",
+      "title": "Priorities USA Action independent expenditures, H1 2012 (public summary)",
+      "source_type": "ad",
+      "provenance": "Public FEC independent-expenditure summaries through mid-June 2012, attributed aggregate.",
+      "geography": "US; battleground TV markets",
+      "syndication_count": 8,
+      "gdelt_mention_count": 18,
+      "front_page_minutes": 10,
+      "text": "Priorities USA Action, a super PAC supporting President Obama, had reported independent expenditures by mid-June 2012 in public FEC summaries, at a lower published total than the leading Romney-aligned committee at that date. Coverage described economy and Bain-related themes. Use as contemporaneous metadata, not later cycle totals."
+    },
+    {
+      "url": "https://www.opensecrets.org/outsidespending/2012-06-crossroads",
+      "outlet": "OpenSecrets public summary",
+      "published_at": "2012-06-15T00:00:00",
+      "title": "American Crossroads / Crossroads GPS issue ads, H1 2012 (public summary)",
+      "source_type": "ad",
+      "provenance": "OpenSecrets/FEC public outside-spending summaries as of mid-June 2012. Attributed aggregate.",
+      "geography": "US; issue-ad markets",
+      "syndication_count": 6,
+      "gdelt_mention_count": 14,
+      "front_page_minutes": 8,
+      "text": "American Crossroads and Crossroads GPS were among the largest publicly reported outside spenders in the first half of 2012. Contemporaneous summaries described issue advertising on the economy, spending, and the president's record. This record stores committee, theme, and spend-band metadata only — not creative or targeting files."
+    }
+  ]
+}

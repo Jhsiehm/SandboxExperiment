@@ -2,14 +2,16 @@
 # n_questions: 1 so a careless click cannot fire 12×50.
 # A full 12×50 pass at OPENROUTER_MIN_INTERVAL_SEC=2 is hours — keep --limit small.
 #
-# Dashboard "Run live AI" stays on config/run-openrouter.yaml (primary mini only).
-# This file is the real society: 8 × gpt-4.1-mini + 4 × Haiku via OpenRouter.
-# Local Llama/Qwen are not in the default 12 and are never auto-routed onto the key.
+# Dashboard "Run live mix" stays on config/run-openrouter.yaml (planned cheap
+# mix, 1 question each). "Run swarm" is this file: 2 × each of mini,
+# 4o-mini, Haiku, Flash-Lite, Llama 8B, Qwen 7B via OpenRouter.
+# local-* Llama/Qwen stay vLLM-only.
 run_id: phase2-e2012-swarm-probe
 epoch: e2012
 models: [swarm-median]
 use_swarm: true
 swarm_roster: config/swarm.yaml
+perspectives: config/perspectives.yaml
 question_set: data/questions/e2012.jsonl
 max_tool_calls: 4
 min_prominence: 0.0

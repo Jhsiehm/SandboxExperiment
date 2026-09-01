@@ -6,7 +6,14 @@ from typing import Any
 import yaml
 
 from psbx.paths import resolve
-from psbx.schemas import Epoch, ModelConfig, RunConfig, SwarmRoster
+from psbx.schemas import (
+    Epoch,
+    EpochAdvanceSpec,
+    ModelConfig,
+    PerspectiveCatalog,
+    RunConfig,
+    SwarmRoster,
+)
 
 
 def load_yaml(path: str | Path) -> dict[str, Any]:
@@ -39,3 +46,15 @@ def load_swarm(path: str | Path = "config/swarm.yaml") -> SwarmRoster:
 
 def load_sources(path: str | Path = "config/sources.yaml") -> dict[str, Any]:
     return load_yaml(path)
+
+
+def load_perspectives(path: str | Path = "config/perspectives.yaml") -> PerspectiveCatalog:
+    from psbx.society.perspectives import load_perspectives as _load
+
+    return _load(path)
+
+
+def load_epoch_advance(path: str | Path = "config/epoch-advance.yaml") -> EpochAdvanceSpec:
+    from psbx.epochs import load_advance_spec
+
+    return load_advance_spec(path)

@@ -6,6 +6,10 @@ from typer.testing import CliRunner
 
 from psbx.agents.runner import skip_reason
 from psbx.agents.swarm import (
+    FLASH_LITE_VOICE,
+    HAIKU_VOICE,
+    MINI_VOICE,
+    OPEN_WEIGHT_VOICE,
     SWARM_MEDIAN_ID,
     expand_bodies,
     load_roster,
@@ -14,6 +18,7 @@ from psbx.agents.swarm import (
     require_swarm_ready,
     run_swarm,
     worker_models,
+    _voice_for,
 )
 from psbx.config import load_models, load_run, load_swarm
 from psbx.schemas import Epoch, ModelConfig, Question, SearchHit, SwarmRoster, SwarmSpecies
@@ -51,10 +56,12 @@ class FakeClient:
     def queries(self) -> list[str]:
         return list(self._queries)
 
-    def search(self, query, k=10, min_prominence=0.0):
+    def search(self, query, k=10, min_prominence=0.0, source_types=None):
         del k, min_prominence
         self.n_calls += 1
         self._queries.append(query)
+        if source_types:
+            return []
         return [
             SearchHit(
                 document_id="d1",
@@ -79,30 +86,46 @@ class FakeClient:
         }
 
 
-def test_swarm_roster_is_eight_mini_four_haiku():
+def test_swarm_roster_is_planned_cheap_mix():
     roster = load_swarm()
     assert roster.n_agents == 12
     assert roster.n_questions_default == 1
     assert roster.serialize_openrouter is True
     counts = {b.model_id: b.count for b in roster.bodies}
-    assert counts == {"openrouter-gpt-4.1-mini": 8, "openrouter-haiku": 4}
+    assert counts == {
+        "openrouter-gpt-4.1-mini": 2,
+        "openrouter-gpt-4o-mini": 2,
+        "openrouter-haiku": 2,
+        "openrouter-gemini-flash-lite": 2,
+        "openrouter-llama-3.1-8b": 2,
+        "openrouter-qwen-2.5-7b": 2,
+    }
     assert all(b.json_forecast and not b.chain_of_thought for b in roster.bodies)
     assert all(b.max_tokens == 256 and b.temperature == 0.8 for b in roster.bodies)
-    optional = {b.model_id for b in roster.optional_scale_up}
+    assert roster.optional_scale_up == []
     local = {b.model_id for b in roster.local_scale_up}
-    assert "openrouter-gemini-flash-lite" in optional
-    assert "openrouter-gpt-4o-mini" in optional
     assert local == {"local-llama-3.1-8b", "local-qwen-2.5-7b"}
     default_ids = {b.model_id for b in roster.bodies}
-    assert "openrouter-gemini-flash-lite" not in default_ids
+    assert default_ids == {
+        "openrouter-gpt-4.1-mini",
+        "openrouter-gpt-4o-mini",
+        "openrouter-haiku",
+        "openrouter-gemini-flash-lite",
+        "openrouter-llama-3.1-8b",
+        "openrouter-qwen-2.5-7b",
+    }
     assert not (local & default_ids)
 
 
 def test_expand_bodies_twelve_and_no_local():
     expanded = expand_bodies()
     assert len(expanded) == 12
-    assert sum(1 for b in expanded if b.model_id == "openrouter-gpt-4.1-mini") == 8
-    assert sum(1 for b in expanded if b.model_id == "openrouter-haiku") == 4
+    assert sum(1 for b in expanded if b.model_id == "openrouter-gpt-4.1-mini") == 2
+    assert sum(1 for b in expanded if b.model_id == "openrouter-gpt-4o-mini") == 2
+    assert sum(1 for b in expanded if b.model_id == "openrouter-haiku") == 2
+    assert sum(1 for b in expanded if b.model_id == "openrouter-gemini-flash-lite") == 2
+    assert sum(1 for b in expanded if b.model_id == "openrouter-llama-3.1-8b") == 2
+    assert sum(1 for b in expanded if b.model_id == "openrouter-qwen-2.5-7b") == 2
     workers = worker_models()
     assert len(workers) == 12
     assert all(not m.needs_endpoint for m in workers)
@@ -114,8 +137,12 @@ def test_registered_openrouter_slugs_and_local_guard():
     models = load_models()
     assert models["openrouter-gpt-4.1-mini"].model_name == "openai/gpt-4.1-mini"
     assert models["openrouter-gpt-4o-mini"].model_name == "openai/gpt-4o-mini"
-    assert models["openrouter-haiku"].model_name == "anthropic/claude-3.5-haiku"
+    assert models["openrouter-haiku"].model_name == "anthropic/claude-3-haiku"
     assert models["openrouter-gemini-flash-lite"].model_name == "google/gemini-2.5-flash-lite"
+    assert models["openrouter-llama-3.1-8b"].model_name == "meta-llama/llama-3.1-8b-instruct"
+    assert models["openrouter-qwen-2.5-7b"].model_name == "qwen/qwen-2.5-7b-instruct"
+    assert models["openrouter-llama-3.1-8b"].provider == "openrouter"
+    assert models["openrouter-qwen-2.5-7b"].needs_endpoint is False
     assert models[SWARM_MEDIAN_ID].model_name == "swarm-median"
     llama = models["local-llama-3.1-8b"]
     qwen = models["local-qwen-2.5-7b"]
@@ -126,7 +153,18 @@ def test_registered_openrouter_slugs_and_local_guard():
     assert qwen.openrouter_fallback == "qwen/qwen-2.5-7b-instruct"
     assert models["openrouter-gpt-4.1-mini"].label.startswith("swarm worker")
     assert models["openrouter-haiku"].label.startswith("swarm species")
+    assert models["openrouter-gemini-flash-lite"].label.startswith("swarm species")
     assert models[SWARM_MEDIAN_ID].label.startswith("swarm")
+
+
+def test_swarm_voices_split_species():
+    models = load_models()
+    assert _voice_for(models["openrouter-gpt-4.1-mini"]) == MINI_VOICE
+    assert _voice_for(models["openrouter-gpt-4o-mini"]) == MINI_VOICE
+    assert _voice_for(models["openrouter-haiku"]) == HAIKU_VOICE
+    assert _voice_for(models["openrouter-gemini-flash-lite"]) == FLASH_LITE_VOICE
+    assert _voice_for(models["openrouter-llama-3.1-8b"]) == OPEN_WEIGHT_VOICE
+    assert _voice_for(models["openrouter-qwen-2.5-7b"]) == OPEN_WEIGHT_VOICE
 
 
 def test_needs_endpoint_refuses_openrouter_rewrite(monkeypatch):
@@ -195,16 +233,31 @@ def test_run_swarm_shared_pack_and_median(monkeypatch):
     client = FakeClient()
     result = run_swarm(_question(), _epoch(), "phase2-e2012-swarm-probe", client)
     assert n["i"] == 12
-    assert client.n_calls == 2
+    assert client.n_calls == 3
     assert result.prediction.model_id == SWARM_MEDIAN_ID
     assert result.prediction.probability == pytest.approx(0.375)
     assert len(result.votes) == 12
-    assert {v.model_id for v in result.votes} == {"openrouter-gpt-4.1-mini", "openrouter-haiku"}
+    assert {v.model_id for v in result.votes} == {
+        "openrouter-gpt-4.1-mini",
+        "openrouter-gpt-4o-mini",
+        "openrouter-haiku",
+        "openrouter-gemini-flash-lite",
+        "openrouter-llama-3.1-8b",
+        "openrouter-qwen-2.5-7b",
+    }
     slugs = {v.model_slug for v in result.votes}
-    assert slugs == {"openai/gpt-4.1-mini", "anthropic/claude-3.5-haiku"}
+    assert slugs == {
+        "openai/gpt-4.1-mini",
+        "openai/gpt-4o-mini",
+        "anthropic/claude-3-haiku",
+        "google/gemini-2.5-flash-lite",
+        "meta-llama/llama-3.1-8b-instruct",
+        "qwen/qwen-2.5-7b-instruct",
+    }
     assert all(v.system_prompt for v in result.votes)
-    assert result.prediction.n_tool_calls == 2
+    assert result.prediction.n_tool_calls == 3
     assert result.prediction.search_queries
+    assert {v.perspective_id for v in result.votes}
 
 
 def test_run_swarm_mock_heuristic_does_not_call_openrouter(monkeypatch):
@@ -220,7 +273,8 @@ def test_run_swarm_mock_heuristic_does_not_call_openrouter(monkeypatch):
     assert result.prediction.model_id == SWARM_MEDIAN_ID
     assert 0.0 <= result.prediction.probability <= 1.0
     assert len(result.votes) == 12
-    assert client.n_calls == 2
+    assert client.n_calls == 3
+    assert all(v.perspective_id for v in result.votes)
 
 
 def test_worker_models_skips_local_even_if_on_roster():
@@ -236,10 +290,20 @@ def test_worker_models_skips_local_even_if_on_roster():
     assert [w.id for w in workers] == ["openrouter-gpt-4.1-mini"]
 
 
+CHEAP_OPENROUTER_PROBE = [
+    "openrouter-gpt-4.1-mini",
+    "openrouter-gpt-4o-mini",
+    "openrouter-haiku",
+    "openrouter-gemini-flash-lite",
+    "openrouter-llama-3.1-8b",
+    "openrouter-qwen-2.5-7b",
+]
+
+
 def test_openrouter_probe_stays_cheap_and_swarm_run_is_median():
     probe = load_run("config/run-openrouter.yaml")
     assert probe.n_questions == 1
-    assert probe.models == ["openrouter-gpt-4.1-mini"]
+    assert probe.models == CHEAP_OPENROUTER_PROBE
     assert probe.use_swarm is False
     assert probe.swarm_roster == "config/swarm.yaml"
     assert probe.allow_mock is False

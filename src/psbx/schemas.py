@@ -9,10 +9,18 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 Category = Literal["economic", "legislative", "geopolitical", "electoral", "corporate"]
 PriorKind = Literal["market", "poll", "analyst_consensus", "base_rate"]
-SourceType = Literal["news", "wire", "wiki", "gov", "trade"]
+SourceType = Literal["news", "wire", "wiki", "gov", "trade", "survey", "ad", "academic"]
 CitationSupport = Literal["yes", "no", "context"]
 Provider = Literal["openai", "anthropic", "together", "local_vllm", "openrouter"]
 SandboxMode = Literal["host", "container"]
+Urbanicity = Literal["urban", "suburban", "rural"]
+PartyId = Literal["democrat", "republican", "independent"]
+ResponseKind = Literal["binary_outcome", "poll_share"]
+StimulusKind = Literal["contemporaneous_media"]
+
+# Conditioners for the demographic swarm (Track B). Headlines remain the stimulus (Track A).
+CONDITIONER_SOURCE_TYPES = frozenset({"survey", "ad", "academic"})
+MEDIA_STIMULUS_SOURCE_TYPES = frozenset({"news", "wire", "wiki", "gov", "trade"})
 
 
 class Epoch(BaseModel):
@@ -81,6 +89,7 @@ class Document(BaseModel):
     embedding: Optional[list[float]] = None
     gdelt_mention_count: int = 0
     front_page_minutes: float = 0.0
+    provenance: str | None = None
 
     @field_validator("prominence")
     @classmethod
@@ -166,6 +175,8 @@ class SwarmVote(BaseModel):
     parse_attempts: int = 1
     system_prompt: str = ""
     search_queries: list[str] = Field(default_factory=list)
+    perspective_id: str = ""
+    perspective_label: str = ""
 
     @field_validator("probability")
     @classmethod
@@ -195,7 +206,7 @@ class SwarmSpecies(BaseModel):
 
 
 class SwarmRoster(BaseModel):
-    """Source of truth for the default 12-agent mix (8 mini + 4 Haiku)."""
+    """Source of truth for the default 12-agent cheap mix."""
 
     name: str = "default-12"
     n_agents: int = 12
@@ -229,6 +240,7 @@ class RunConfig(BaseModel):
     allow_mock: bool = True
     swarm_roster: Optional[str] = None
     use_swarm: bool = False
+    perspectives: str | None = None
 
 
 class SearchHit(BaseModel):
@@ -238,12 +250,14 @@ class SearchHit(BaseModel):
     published_at: datetime
     snippet: str
     prominence: float
+    source_type: SourceType | None = None
 
 
 class SearchRequest(BaseModel):
     query: str
     k: int = 10
     min_prominence: float = 0.0
+    source_types: list[str] = Field(default_factory=list)
 
 
 class FetchRequest(BaseModel):
@@ -300,3 +314,104 @@ class ScoreReport(BaseModel):
     c_index_by_model: dict[str, Optional[float]] = Field(default_factory=dict)
     c_index_pairs_by_model: dict[str, int] = Field(default_factory=dict)
     c_index_baselines: dict[str, Optional[float]] = Field(default_factory=dict)
+
+
+class PerspectivePersona(BaseModel):
+    """Explicit simulation persona. Never inferred from names, zips, or protected-class proxies."""
+
+    id: str
+    slot: int | None = None
+    label: str
+    region: str
+    urbanicity: Urbanicity
+    party_id: PartyId
+    age_band: str
+    education: str
+    media_diet: list[str] = Field(default_factory=list)
+    extra: dict[str, str] = Field(default_factory=dict)
+    notes: str = ""
+
+    def prompt_block(self) -> str:
+        diet = ", ".join(self.media_diet) if self.media_diet else "unspecified"
+        extra = ""
+        if self.extra:
+            bits = ", ".join(f"{k}={v}" for k, v in self.extra.items())
+            extra = f" Extra labeled fields (explicit config only): {bits}."
+        return (
+            f"Simulation persona (not a real person; not inferred from a name or zip): "
+            f"{self.label}. Region={self.region}; urbanicity={self.urbanicity}; "
+            f"party_id={self.party_id}; age_band={self.age_band}; education={self.education}; "
+            f"media_diet={diet}.{extra} {self.notes} "
+            "Do not invent facts about identifiable people. Do not infer additional "
+            "protected-class attributes that are not in this card."
+        )
+
+
+class PerspectiveCatalog(BaseModel):
+    """Config-driven demographic roster. Expand by adding personas; do not infer them."""
+
+    name: str
+    simulation_only: bool = True
+    not_inferred: bool = True
+    notes: str = ""
+    personas: list[PerspectivePersona]
+
+    def assigned(self, n: int) -> list[PerspectivePersona]:
+        slotted = sorted(
+            [p for p in self.personas if p.slot is not None],
+            key=lambda p: int(p.slot or 0),
+        )
+        if len(slotted) < n:
+            raise ValueError(f"need {n} slotted personas, have {len(slotted)}")
+        slots = [int(p.slot or 0) for p in slotted[:n]]
+        if slots != list(range(n)):
+            raise ValueError(f"slotted personas must be 0..{n - 1}, got {slots}")
+        return slotted[:n]
+
+    def catalog_only(self) -> list[PerspectivePersona]:
+        return [p for p in self.personas if p.slot is None]
+
+
+class EpochAdvanceSpec(BaseModel):
+    """Year-step hook. Does not ingest future documents or enable PolicySim."""
+
+    from_epoch: str = "e2012"
+    step_years: int = 1
+    enabled: bool = False
+    ingests_documents: bool = False
+    policy_sim: bool = False
+    note: str = ""
+
+
+class MediaStimulusItem(BaseModel):
+    """Track A: headlines as stimulus; score predicted public response vs later history."""
+
+    id: str
+    question_id: str
+    epoch_id: str
+    stimulus_kind: StimulusKind = "contemporaneous_media"
+    response_kind: ResponseKind = "binary_outcome"
+    score_field: str = "ground_truth"
+    note: str = ""
+
+
+class TrackScore(BaseModel):
+    track_id: str
+    label: str
+    n: int = 0
+    brier_vs_later_outcomes: float | None = None
+    mae_vs_prior_signal: float | None = None
+    vote_spread: float | None = None
+    note: str = ""
+
+
+class HumanBaselineReport(BaseModel):
+    """Closeness to historical human/public response — not an impressiveness contest."""
+
+    run_id: str
+    epoch_id: str
+    n_questions: int
+    tracks: dict[str, TrackScore] = Field(default_factory=dict)
+    brier_by_model: dict[str, float] = Field(default_factory=dict)
+    note: str = ""
+

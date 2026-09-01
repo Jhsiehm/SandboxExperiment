@@ -2,7 +2,7 @@
 
 Never log the API key. Swarm/worker completions default to a short max_tokens cap.
 
-A 12-agent swarm (8 mini + 4 Haiku) × N questions at MIN_INTERVAL 2s is slow
+A 12-agent swarm (2 of each planned low-end species) × N questions at MIN_INTERVAL 2s is slow
 on purpose. Keep concurrency at 1. Do not weaken OPENROUTER_MIN_INTERVAL_SEC,
 OPENROUTER_MAX_PER_MINUTE, or OPENROUTER_MAX_CONCURRENCY.
 """
@@ -41,8 +41,21 @@ def _emit(msg: str) -> None:
 
 def _error_snippet(resp: httpx.Response) -> str:
     """Short provider error for logs. Never echo API keys or auth headers."""
-    text = (resp.text or "").strip().replace("\r", " ").replace("\n", " ")
     key = os.environ.get("OPENROUTER_API_KEY") or ""
+    try:
+        data = resp.json()
+        err = data.get("error") if isinstance(data, dict) else None
+        if isinstance(err, dict):
+            msg = str(err.get("message") or err.get("code") or "").strip()
+            if key and key in msg:
+                msg = msg.replace(key, "[redacted]")
+            if "sk-" in msg.lower() or "bearer " in msg.lower():
+                return f"code={err.get('code')}"
+            if msg:
+                return msg[:200]
+    except Exception:
+        pass
+    text = (resp.text or "").strip().replace("\r", " ").replace("\n", " ")
     if key and key in text:
         text = text.replace(key, "[redacted]")
     low = text.lower()
