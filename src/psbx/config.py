@@ -16,11 +16,21 @@ from psbx.schemas import (
 )
 
 
+_YAML_CACHE: dict[str, tuple[float, int, dict[str, Any]]] = {}
+
+
 def load_yaml(path: str | Path) -> dict[str, Any]:
-    with resolve(path).open(encoding="utf-8") as f:
+    resolved = resolve(path)
+    st = resolved.stat()
+    key = str(resolved)
+    hit = _YAML_CACHE.get(key)
+    if hit is not None and hit[0] == st.st_mtime and hit[1] == st.st_size:
+        return hit[2]
+    with resolved.open(encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"expected mapping in {path}")
+    _YAML_CACHE[key] = (st.st_mtime, st.st_size, data)
     return data
 
 

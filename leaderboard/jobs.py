@@ -22,13 +22,13 @@ OPENROUTER_CONFIG = "config/run-openrouter.yaml"
 SWARM_CONFIG = "config/run-swarm.yaml"
 
 
-def live_config_path() -> str:
+def live_config_path(status: dict[str, bool] | None = None) -> str:
     """Dashboard **Run live mix** is the 6-species OpenRouter probe when that key exists.
 
     Native Claude+GPT (run-phase2.yaml) only if OpenRouter is missing but both
     native keys are set. The 12-agent median is **Run swarm** / run-swarm.yaml.
     """
-    status = provider_status()
+    status = status if status is not None else provider_status()
     if status["openrouter"]:
         return OPENROUTER_CONFIG
     if status["anthropic"] and status["openai"]:
@@ -91,7 +91,7 @@ def get_job() -> dict[str, Any]:
 def ready() -> dict[str, Any]:
     load_dotenv()
     status = provider_status()
-    live_cfg = live_config_path()
+    live_cfg = live_config_path(status)
     return {
         "providers": status,
         "live_ready": live_ready(),
