@@ -360,7 +360,7 @@
             <tbody></tbody>
           </table>
           </div>
-          <p class="note" id="overview-swarm">Three HUD buttons: Run practice (keyword lookup, no keys), Run live mix (each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B once — 1 question), Run swarm (2 of each species, 12 sequential votes, shared retrieval, median p). That is the planned cheap mix, not the full OpenRouter catalog. A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only.</p>
+          <p class="note" id="overview-swarm">Three HUD buttons: Run practice (keyword lookup, no keys), Run live mix (each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B once — 1 question), Run swarm (2 of each species, 12 sequential votes, shared retrieval, median p; not a stub). Results draws seaborn charts of votes vs later truth. That is the planned cheap mix, not the full OpenRouter catalog. A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only. Native Claude+GPT still needs both Anthropic and OpenAI keys.</p>
         </article>
         <aside>
           <header class="block-head">
@@ -374,9 +374,9 @@
           <ol class="plain numbered">
             <li>The 2012 library is Wayback with <code>to=20120630</code>. Grow it with <code>psbx corpus build --epoch e2012 --live --max-docs 400</code>. That is not the CC-MAIN-2012 HTML dump (legacy ARC, “check back later”) and not CC-MAIN-2013-20 (May–June 2013).</li>
             <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys. Cheap. Folder <code>phase1-e2012-smoke</code>.</li>
-            <li><strong>Run live mix</strong> scores each of the six OpenRouter species once on 1 question (<code>phase2-e2012-openrouter</code>). Needs <code>OPENROUTER_API_KEY</code>. If that key is missing but both Anthropic and OpenAI keys are set, it uses native Claude+GPT instead. It does not fire 12 bodies.</li>
-            <li><strong>Run swarm</strong> is 12 sequential OpenRouter votes (2 × each species), shared retrieval, median probability (<code>phase2-e2012-swarm-probe</code>). Same key. Keep it at 1 question unless you mean to wait hours (12×50 at 2s/req).</li>
-            <li>This page never overwrites a different run folder. Pick a run in the dropdown to inspect it.</li>
+            <li><strong>Run live mix</strong> scores each of the six OpenRouter species once on 1 question (<code>phase2-e2012-openrouter</code>). Needs <code>OPENROUTER_API_KEY</code>. It does not fire 12 bodies. Native Claude+GPT (<code>run-phase2.yaml</code>) still needs both Anthropic and OpenAI keys; the HUD only uses that path if OpenRouter is missing.</li>
+            <li><strong>Run swarm</strong> is real: 12 sequential OpenRouter votes (2 × each species), shared retrieval, median probability (<code>phase2-e2012-swarm-probe</code>). Same key. Keep it at 1 question unless you mean to wait hours (12×50 at 2s/req).</li>
+            <li>Results draws seaborn charts (vote swarm, Brier bars, signed error). Brier + C-index both score. This page never overwrites a different run folder.</li>
           </ol>
         </aside>
       </div>

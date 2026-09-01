@@ -2,6 +2,8 @@
 
 A sealed 2012 newsroom for language models.
 
+Clone: `git@github.com:Jhsiehm/SandboxExperiment.git`
+
 Agents are dropped into a frozen historical epoch. They may only search a
 reconstructed contemporaneous corpus (`published_at` on or before the cutoff),
 then they are scored on real later outcomes. They are not trained on that
@@ -51,54 +53,66 @@ response prediction → PolicySim (later).** Year-step is a hook
 (constituents drafting bills that are statistically likely to pass) is
 explicitly out of Phase 1.
 
-## Progress (1 September 2026)
-
-- **HUD run options.** Three buttons, each bound to the right config: **Run practice** (`config/run.yaml` / `phase1-e2012-smoke`), **Run live mix** (six OpenRouter species × 1 question, `config/run-openrouter.yaml`), **Run swarm** (12 sequential votes, median, `config/run-swarm.yaml`). Live mix stays the cheap probe when `OPENROUTER_API_KEY` is set; it does not silently switch to native Claude+GPT or fire 12 bodies.
-- **Seaborn performance charts** on Results: vote swarm (dots vs later truth, median, and 2012 prior), Brier bars by species, signed-error lollipops (too skeptical vs too sure). Practice runs get bars plus a per-question Brier violin. `psbx score` writes the same PNGs next to the run.
-- **Cheap mix is complete.** 2 × each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B. `local-*` twins stay vLLM-only. OpenRouter limiter stays 1 req / 2s, 20/min, concurrency 1, `max_tokens` 256.
-- **Society / Track A+B.** Explicit simulation personas, cutoff-locked survey/ad/academic fixtures, `psbx eval baseline`, `psbx epoch propose` (year-step hook, no future ingest), AgentSociety 2 workspace export.
-- **Corpus note.** Primary 2012 web is Wayback `to=20120630`. CC-MAIN-2013-20 is after cutoff; CC-MAIN-2012 HTML dump is still legacy ARC.
-
 ## Status
 
-Working today:
+Working today (aligned 1 September 2026):
 
-- Question set, seed corpus, cutoff-filtered search, Brier + C-index scoring, dashboard.
-- Mock pipeline (retrieval heuristic, no API keys).
-- Docker search sidecar: clock frozen at 2012-06-30, outbound traffic dropped.
-- Optional Internet Archive ingest at **index-build** time only.
-- Cheap live OpenRouter probe (`config/run-openrouter.yaml`) when `OPENROUTER_API_KEY` is set.
-  Swarm mix is `config/swarm.yaml` (2 × each of `openai/gpt-4.1-mini`, `openai/gpt-4o-mini`,
+- e2012 freeze: cutoff `2012-06-30`, resolution through `2013-06-30`, 50 binary
+  questions. Brier **and** Harrell C-index.
+- Dashboard at `:8765` (Minecraft enchant workshop HUD overlay). Three HUD
+  buttons: **Run practice** (`config/run.yaml`, `phase1-e2012-smoke`),
+  **Run live mix** (`config/run-openrouter.yaml`, six species × 1 question,
+  `phase2-e2012-openrouter`), **Run swarm** (`config/run-swarm.yaml`, 12 votes
+  median, `phase2-e2012-swarm-probe`).
+- `OPENROUTER_API_KEY` is enough for live mix **and** swarm. Anthropic + OpenAI
+  are only for optional native Claude+GPT (`config/run-phase2.yaml`). If
+  OpenRouter is set, HUD live stays on the cheap probe even when native keys
+  exist. HUD live uses native only when OpenRouter is unset and both vendor
+  keys are present.
+- Sequential swarm is **real**. `src/psbx/agents/swarm.py` has no
+  `NotImplementedError`. Shared retrieval, 12 sequential OpenRouter votes
+  (2 × each of `openai/gpt-4.1-mini`, `openai/gpt-4o-mini`,
   `anthropic/claude-3-haiku`, `google/gemini-2.5-flash-lite`,
-  `meta-llama/llama-3.1-8b-instruct`, `qwen/qwen-2.5-7b-instruct`).
-  `local-*` Llama 3.1 8B / Qwen2.5 7B skip unless `VLLM_BASE_URL` is up.
-- Sequential swarm (`psbx run --config config/run-swarm.yaml --limit 1`): one shared
-  search pack, 12 serialized OpenRouter votes, median probability (`swarm-median`).
-  Individual votes are written to `swarm_votes.jsonl`. A full 12×50 pass is hours
-  at 2s/req — keep `--limit` small. Dashboard **Run swarm** fires this (1 question).
-  **Run live mix** stays on `config/run-openrouter.yaml` (six species once).
-- Training-area society swarm: explicit personas (`config/perspectives.yaml`),
-  survey/ad/academic fixtures in the cutoff-locked index, `psbx eval baseline`
-  (Track A media-stimulus vs later outcomes + Track B persona spread),
-  `psbx epoch propose` (year-step hook, no future ingest).
-- AgentSociety 2 export (`psbx society export`): 12 ForecasterAgent workspaces +
-  real `InitConfig` / questionnaire `steps.yaml` from `config/swarm.yaml`. Clone
-  lives next to this repo (`../AgentSociety`). We do not vendor their city simulator.
+  `meta-llama/llama-3.1-8b-instruct`, `qwen/qwen-2.5-7b-instruct`), median
+  `swarm-median`, votes in `swarm_votes.jsonl`. Rate limit 1 req / 2s, 20/min,
+  concurrency 1, `max_tokens` 256. A full 12×50 pass is hours — keep `--limit 1`.
+- `local-*` Llama 3.1 8B / Qwen2.5 7B stay vLLM-only (`VLLM_BASE_URL`). They
+  are never auto-routed onto `OPENROUTER_API_KEY`.
+- Seaborn charts on Results: vote swarm vs later truth / median / 2012 prior,
+  Brier bars by species, signed-error lollipops. Practice (≥8 questions) also
+  gets a per-question Brier violin. `psbx score` writes the same PNGs next to
+  the run.
+- Mock pipeline (retrieval heuristic, no API keys). Docker search sidecar:
+  clock frozen at 2012-06-30, outbound traffic dropped. Viewer search is the
+  same index (`GET /archive?url=` returns 200 only if that URL is already in
+  the frozen index).
+- Wayback ingest at **index-build** time only (`to=20120630`). Not the
+  CC-MAIN-2012 HTML dump (legacy ARC) and not CC-MAIN-2013-20 (after cutoff).
+  No live origin fetch at query time.
+- Society Track A (media stimulus) + Track B (personas + survey/ad/academic
+  fixtures), `psbx eval baseline`, `psbx epoch propose` (no future ingest),
+  `psbx society export` to an AgentSociety 2 sibling clone (`../AgentSociety`).
+  PolicySim is later.
 
 Not working yet:
 
-- Native Claude + GPT live scores still need both `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`.
-- Sequential / time-to-event questions (C-index is wired for binary ranking now;
-  the same pairwise definition will cover ordered events when those items exist).
+- Native Claude + GPT still needs **both** `ANTHROPIC_API_KEY` and
+  `OPENAI_API_KEY` (`config/run-phase2.yaml`). That path is optional; OpenRouter
+  covers live mix and swarm.
+- Sequential / time-to-event questions (C-index is binary ranking now; the same
+  pairwise definition will cover ordered events when those items exist).
+- A contamination curve that **crosses** 2024/2025 training cutoffs on this
+  epoch. Every e2012 outcome is 2012–2013, so frontier configs already sit
+  inside the training window. The curve code runs; this set cannot show a
+  before/after split. That is still worth scoring: Brier asks whether
+  percentages are honest; C-index asks whether true events rank above false
+  ones. A leaked model can look excellent on ranking and mediocre on Brier.
+- PolicySim (constituents drafting bills) is later. Fuller conditioner coverage
+  (more pre-cutoff Gallup/Pew vintages, FEC independent-expenditure metadata
+  through 2012-06-30) is still fixture work, not a live scrape.
 
-Frontier models on e2012 already *could* know the answers from pretraining
-(cutoffs 2024–2025, outcomes 2012–2013). That is still worth running. Brier
-asks whether probabilities are calibrated. C-index asks whether the model
-*ranks* true events above false ones. A leaked model can look excellent on
-ranking and mediocre on Brier.
-
-Built indices and run folders are gitignored. After clone, rebuild the index
-before you run.
+`data/corpus` and `data/runs` are gitignored. After clone, rebuild the index
+before you run. Do not commit `.env`.
 
 ## Quick start
 
@@ -113,29 +127,36 @@ psbx score --run phase1-e2012-smoke
 psbx viewer --host 127.0.0.1 --port 8765
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). With no API keys, `psbx run`
-uses the retrieval heuristic so the loop is exercisable.
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765). The page is a Minecraft
+enchant workshop with a HUD overlay. With no API keys, **Run practice** (and
+plain `psbx run`) uses the retrieval heuristic so the loop is exercisable.
 
-Copy `.env.example` to `.env` when you want live models. Do not commit `.env`.
+Copy `.env.example` to `.env` when you want live models. `OPENROUTER_API_KEY`
+unlocks HUD **Run live mix** and **Run swarm**. Do not commit `.env`.
 
-## Mock vs live
+## Practice / live mix / swarm / native
 
-| | Mock | Live (native) | Live (OpenRouter) |
-|---|---|---|---|
-| Config | `config/run.yaml` | `config/run-phase2.yaml` | `config/run-openrouter.yaml` |
-| Run id | `phase1-e2012-smoke` | `phase2-e2012-real` | `phase2-e2012-openrouter` |
-| Needs | Nothing | Anthropic + OpenAI keys | `OPENROUTER_API_KEY` |
-| What it measures | Pipeline + heuristic | Claude + GPT forecasts | Cheap mix: all six planned low-end species once (not the 12-agent swarm) |
+| | Practice | Live mix | Swarm | Native Claude+GPT |
+|---|---|---|---|---|
+| HUD | **Run practice** | **Run live mix** | **Run swarm** | CLI (HUD live uses this only if OpenRouter is unset) |
+| Config | `config/run.yaml` | `config/run-openrouter.yaml` | `config/run-swarm.yaml` | `config/run-phase2.yaml` |
+| Run id | `phase1-e2012-smoke` | `phase2-e2012-openrouter` | `phase2-e2012-swarm-probe` | `phase2-e2012-real` |
+| Needs | Nothing | `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` | Anthropic **and** OpenAI keys |
+| What it measures | Keyword heuristic | Six species × 1 question | 12 votes, median `p` | Claude + GPT forecasts |
 
 Live will not fall back to the heuristic. If keys are missing it fails loud.
+If `OPENROUTER_API_KEY` is set, HUD live stays on the six-species probe even
+when native vendor keys exist. Native Claude+GPT is
+`psbx run --config config/run-phase2.yaml`.
 
 OpenRouter is rate-limited in-process: 1 request / 2s, max 20/min, concurrency 1
 (`OPENROUTER_MIN_INTERVAL_SEC`, `OPENROUTER_MAX_PER_MINUTE`, `OPENROUTER_MAX_CONCURRENCY`).
 Completions cap at 256 tokens unless `OPENROUTER_MAX_TOKENS` is raised. On HTTP 429 the
 client waits 15s then 30s and retries at most twice.
 
-Cheap OpenRouter probe (one question across the planned low-end mix; do not omit `--limit` on bigger configs).
-Dashboard live click uses this. It does **not** expand the 12-agent mix:
+Cheap OpenRouter probe (one question across the planned low-end mix; do not omit
+`--limit` on bigger configs). Dashboard **Run live mix** uses this. It does
+**not** expand the 12-agent mix:
 
 ```bash
 psbx run --config config/run-openrouter.yaml --limit 1
@@ -148,9 +169,9 @@ question. A full 12×50 pass at `OPENROUTER_MIN_INTERVAL_SEC=2` is hours:
 psbx run --config config/run-swarm.yaml --limit 1
 ```
 
-Needs `OPENROUTER_API_KEY`. Local Llama/Qwen are not in this mix and are never
-auto-routed onto that key. Scorer reads `swarm-median`; per-agent votes are
-`data/runs/phase2-e2012-swarm-probe/swarm_votes.jsonl`.
+Needs `OPENROUTER_API_KEY`. `local-*` Llama/Qwen are not in this mix and are
+never auto-routed onto that key. Scorer reads `swarm-median`; per-agent votes
+are `data/runs/phase2-e2012-swarm-probe/swarm_votes.jsonl`.
 
 ## Training-area society swarm (Phase 1)
 
@@ -179,7 +200,7 @@ Year-step: `config/epoch-advance.yaml` — **does not** load 2013+ documents.
 Still needed for a fuller conditioner set (fixtures, not live scrape): more
 pre-cutoff Gallup/Pew vintages, FEC independent-expenditure metadata through
 2012-06-30, and attributed academic summaries. Do not ingest respondent
-microdata, ad creative, or full papers.
+microdata, ad creative, or full papers. PolicySim is later.
 
 ## AgentSociety 2 (sibling clone)
 
@@ -196,14 +217,16 @@ That writes 12 `agent_0001`…`agent_0012` workspaces, `init_config.json`, and a
 questionnaire `steps.yaml` under `data/runs/phase2-e2012-society-swarm/society/`.
 Search still goes through `FrozenEpochEnv`. Votes still use serialized OpenRouter
 (`config/swarm.yaml`: 2× mini, 4o-mini, Haiku, Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B).
+We do not vendor their city simulator.
 
-Mock society swarm (no keys):
+Non-swarm society scaffolding (heuristic models, not the 12-vote median):
 
 ```bash
 PSBX_MOCK_LLM=1 psbx society run --config config/run-society.yaml --limit 1
 ```
 
-Optional live AgentSociety CLI (Python 3.11–3.13, Ray, `AGENTSOCIETY_LLM_API_KEY`):
+Optional live AgentSociety CLI (Python 3.11–3.13, Ray, `AGENTSOCIETY_LLM_API_KEY`).
+Commented on purpose — do not dump AgentSociety source here:
 
 ```bash
 pip install -e "../AgentSociety/packages/agentsociety2"
@@ -215,12 +238,6 @@ export AGENTSOCIETY_LLM_MODEL=openai/gpt-4.1-mini
 #   --config examples/e2012_forecast/init_config.json \
 #   --steps examples/e2012_forecast/steps.yaml \
 #   --run-dir data/runs/phase2-e2012-society-swarm/society
-```
-
-Native live (edit `config/run-phase2.yaml` to `models: [frontier-b]` first):
-
-```bash
-psbx run --config config/run-phase2.yaml --limit 5
 ```
 
 Search does not use those keys. Keys are only for the model APIs. Vendor calls
@@ -242,9 +259,11 @@ PSBX_MOCK_LLM=1 psbx run --config config/run-sandbox.yaml
 psbx sandbox down
 ```
 
-Viewer stays on **8765**. Search sidecar is **8766**. Without Docker, search
-stays in-process (`sandbox_mode: host`). The prompt still injects the cutoff;
-the index still hard-filters.
+Viewer / HUD stays on **8765**. Search sidecar is **8766**. Without Docker,
+search stays in-process (`sandbox_mode: host`). The prompt still injects the
+cutoff; the index still hard-filters. `GET /archive?url=` is the frozen index
+only — 200 if that URL is already indexed with `published_at <= cutoff`, 404
+otherwise. No live web at query time.
 
 ## Corpus
 
@@ -263,9 +282,7 @@ psbx corpus build --epoch e2012 --live --max-docs 400
 `--live` uses User-Agent `PredictionSandbox/0.1.0 (psbx; corpus-builder)`,
 5s pacing, and 429 / Retry-After. Default `--max-docs` is 400 (hundreds, not
 unbounded). Re-run the same command to resume: snapshots cache under
-`data/corpus-cache/wayback/`. Frozen search also exposes `GET /archive?url=`
-on the sidecar/viewer: 200 only if that URL is in the index with
-`published_at <= cutoff`; 404 otherwise. No live origin fetch at query time.
+`data/corpus-cache/wayback/`. Wayback ingest is **index-build only**.
 
 Optional local WARCs (or a converted ARC slice) can be dropped in
 `data/corpus-cache/commoncrawl/` and dated wiki JSONL in
@@ -282,17 +299,24 @@ exercise the 50-question smoke and the training-area conditioner tools.
 2. **No future leakage through the clock.** Prompt injects the frozen date;
    the sidecar also fakes wall-clock time.
 3. **No live web for the agent.** Search is the local index, not the 2026
-   internet.
-4. **Contamination is measured.** Every model declares a pretraining cutoff.
+   internet. `GET /archive?url=` does not fetch origin.
+4. **Contamination is measured, but e2012 cannot split on 2024/2025 cutoffs.**
+   Every model declares a pretraining cutoff; the curve code runs. Every
+   outcome here is 2012–2013, so frontier models already sit inside the
+   training window.
 5. **Citations required.** Uncited or non-supporting spans are flagged.
 6. **Reproducible.** Questions, source snapshots, and scoring are in-repo.
+   Built indices and run folders stay gitignored.
 
 ## Layout
 
 ```
 config/          epochs, models, swarm roster, perspectives, eval tracks, run profiles
 src/psbx/        CLI, index, agent loop, scoring, Docker sidecar, eval tracks
-leaderboard/     dashboard (port 8765)
+src/psbx/agents/swarm.py   sequential 12-vote median (not a stub)
+src/psbx/scoring/plots.py  seaborn vote swarm / Brier bars / signed-error / violin
+leaderboard/     HUD overlay on a Minecraft enchant workshop (port 8765)
+leaderboard/jobs.py        Run practice / live mix / swarm button wiring
 custom/          AgentSociety-shaped env + forecaster
 examples/        e2012 AgentSociety 2 InitConfig + questionnaire steps
 ../AgentSociety  sibling clone (gh repo clone tsinghua-fib-lab/AgentSociety)
@@ -308,6 +332,11 @@ tests/
 ```bash
 pytest
 ```
+
+Covers cutoff lock, 50-question e2012 set, Brier + C-index, swarm roster
+(no `NotImplementedError`, local models stay vLLM-only), OpenRouter HUD
+routing (`live_config_path` prefers the cheap probe), seaborn plots, Docker
+clock / archive-index-only, society Track A/B, and the year-step hook.
 
 ## License
 

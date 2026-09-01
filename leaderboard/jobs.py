@@ -107,10 +107,14 @@ def ready() -> dict[str, Any]:
         "swarm_run_config": SWARM_CONFIG,
         "swarm_run_id": load_run(SWARM_CONFIG).run_id,
         "swarm_note": (
-            "Three HUD buttons: Run practice (keyword lookup), Run live mix "
-            "(each of the six OpenRouter species once, 1 question), Run swarm "
-            "(12 sequential votes — 2 of each species — median p). "
-            "A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only."
+            "Three HUD buttons: Run practice (keyword lookup, no keys), "
+            "Run live mix (each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, "
+            "Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B once — 1 question), "
+            "Run swarm (2 of each species, 12 sequential votes, shared retrieval, "
+            "median p; not a stub). Results draws seaborn charts (vote swarm, "
+            "Brier bars, signed error). A full 12×50 pass is hours at 2s/req. "
+            "local-* Llama/Qwen stay vLLM-only. Native Claude+GPT still needs "
+            "both Anthropic and OpenAI keys."
         ),
     }
 
