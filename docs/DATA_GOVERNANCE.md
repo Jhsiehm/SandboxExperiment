@@ -18,6 +18,19 @@ Every source artifact must record:
 - cutoff decision;
 - transformations applied.
 
+### Digest verification policy
+
+Filesystem metadata (path, size, inode, mtime, or ctime) is never accepted as
+content identity. Independent verification, resume checks, and manifest acceptance
+rehash the complete file and compare the bytes with the pinned SHA-256.
+
+The Census batch runner may reuse a digest only inside one explicit top-level batch
+that treats its raw input tree as immutable. This avoids repeatedly hashing shared
+multi-gigabyte support archives while processing adjacent states. The session is
+discarded when the batch ends; a later or resumed invocation rehashes the inputs.
+Generated manifest code may carry forward a digest already verified in the same
+operation, but metadata-only caches must not decide whether an artifact is trusted.
+
 ## Cutoff rules
 
 In `sealed_forecast` mode, a population-build source must:

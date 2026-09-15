@@ -13,6 +13,7 @@ from psbx.population.census_ingest import (
     NORMALIZER_VERSION,
     _adjusted_income,
     _cached_sha256,
+    _DigestSession,
     _household_income,
     _household_size,
     _normalized_inputs_current,
@@ -289,6 +290,49 @@ def test_digest_cache_detects_same_size_same_mtime_replacement(tmp_path):
     path.write_bytes(b"bravo")
     os.utime(path, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
     assert _cached_sha256(path) != original
+
+
+def test_authoritative_digest_ignores_a_forced_metadata_collision(tmp_path, monkeypatch):
+    path = tmp_path / "artifact.bin"
+    path.write_bytes(b"alpha")
+    frozen_stat = path.stat()
+    monkeypatch.setattr(Path, "stat", lambda self: frozen_stat)
+    original = _cached_sha256(path)
+    path.write_bytes(b"bravo")
+    assert _cached_sha256(path) != original
+
+
+def test_authoritative_digest_rehashes_rapid_same_size_writes(tmp_path):
+    path = tmp_path / "artifact.bin"
+    digests = []
+    for payload in (b"aaaaa", b"bbbbb", b"ccccc", b"ddddd"):
+        path.write_bytes(payload)
+        digests.append(_cached_sha256(path))
+    assert len(set(digests)) == 4
+
+
+def test_batch_digest_session_reuses_only_unchanged_operation_inputs(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "shared-archive.zip"
+    path.write_bytes(b"stable")
+    calls = 0
+
+    def counted_sha256(candidate):
+        nonlocal calls
+        calls += 1
+        return sha256_file(candidate)
+
+    monkeypatch.setattr("psbx.population.census_ingest.sha256_file", counted_sha256)
+    session = _DigestSession()
+    first = _cached_sha256(path, session=session)
+    second = _cached_sha256(path, session=session)
+    assert first == second
+    assert calls == 1
+
+    # A separate authoritative operation always reads the bytes again.
+    assert _cached_sha256(path) == first
+    assert calls == 2
 
 
 @pytest.mark.parametrize(

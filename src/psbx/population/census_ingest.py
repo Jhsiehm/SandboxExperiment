@@ -79,7 +79,26 @@ PERSON_CELL_FIELDS = [
     "household_size",
 ]
 HOUSEHOLD_CELL_FIELDS = ["household_size", "household_income_band", "tenure"]
-_DIGEST_CACHE: dict[tuple[str, int, int, int, int, int], str] = {}
+
+
+class _DigestSession:
+    """Explicit, operation-scoped digest reuse for immutable batch inputs.
+
+    Callers may share a session only while they own a top-level operation whose raw
+    input directory is treated as immutable. Independent verification calls never
+    receive a session and therefore always read the complete file again.
+    """
+
+    def __init__(self) -> None:
+        self._digests: dict[Path, str] = {}
+
+    def sha256(self, path: Path) -> str:
+        resolved = path.resolve()
+        digest = self._digests.get(resolved)
+        if digest is None:
+            digest = sha256_file(resolved)
+            self._digests[resolved] = digest
+        return digest
 
 
 def _now() -> str:
@@ -135,28 +154,24 @@ def _input_artifact_ids(area: CensusArea, *, include_pums: bool) -> list[str]:
     return ids
 
 
-def _cached_sha256(path: Path) -> str:
-    stat = path.stat()
-    # ctime and inode/device identity prevent a same-size replacement with a restored
-    # mtime from reusing a digest for different bytes. The cache is important because
-    # state builds share multi-gigabyte Census support archives.
-    key = (
-        str(path.resolve()),
-        stat.st_dev,
-        stat.st_ino,
-        stat.st_size,
-        stat.st_mtime_ns,
-        stat.st_ctime_ns,
-    )
-    cached = _DIGEST_CACHE.get(key)
-    if cached is None:
-        cached = sha256_file(path)
-        _DIGEST_CACHE[key] = cached
-    return cached
+def _cached_sha256(path: Path, *, session: _DigestSession | None = None) -> str:
+    """Return a SHA-256 without treating filesystem metadata as content identity.
+
+    The legacy name is retained for internal compatibility. With no explicit batch
+    session this is an authoritative verification and re-reads every byte. A session
+    is an opt-in performance boundary for one controlled batch whose source tree is
+    not modified during the operation; it must never outlive that operation.
+    """
+    if session is not None:
+        return session.sha256(path)
+    return sha256_file(path)
 
 
 def _verified_area_artifacts(
-    census_root: Path, area: CensusArea
+    census_root: Path,
+    area: CensusArea,
+    *,
+    digest_session: _DigestSession | None = None,
 ) -> list[dict[str, Any]]:
     """Verify the current bytes and cutoff status before any derived file is written."""
     index = _artifact_index(census_root)
@@ -194,7 +209,7 @@ def _verified_area_artifacts(
                 archive.infolist()
         except zipfile.BadZipFile as exc:
             raise ValueError(f"artifact is not a readable ZIP: {artifact_id}") from exc
-        actual = _cached_sha256(local_path)
+        actual = _cached_sha256(local_path, session=digest_session)
         if actual != expected:
             raise ValueError(f"artifact checksum mismatch: {artifact_id}")
         verified.append(
@@ -770,6 +785,7 @@ def normalize_census_area(
     census_root: str | Path = DEFAULT_CENSUS_ROOT,
     normalized_root: str | Path = DEFAULT_NORMALIZED_ROOT,
     force: bool = False,
+    _digest_session: _DigestSession | None = None,
 ) -> dict[str, Any]:
     census_root = Path(census_root)
     destination = Path(normalized_root) / area.abbreviation
@@ -778,7 +794,9 @@ def normalize_census_area(
         raise FileNotFoundError(
             f"required population source registry is missing: {source_registry}"
         )
-    verified_artifacts = _verified_area_artifacts(census_root, area)
+    verified_artifacts = _verified_area_artifacts(
+        census_root, area, digest_session=_digest_session
+    )
     if not force and _normalized_inputs_current(
         destination,
         census_root,
@@ -981,9 +999,18 @@ def build_state_population(
     seed: int = 20120630,
     reasoning_budget: int = 100,
     force: bool = False,
+    _digest_session: _DigestSession | None = None,
 ) -> dict[str, Any]:
     normalized = Path(normalized_root) / area.abbreviation
-    if not _normalized_inputs_current(normalized, Path(census_root), area):
+    verified_artifacts = _verified_area_artifacts(
+        Path(census_root), area, digest_session=_digest_session
+    )
+    if not _normalized_inputs_current(
+        normalized,
+        Path(census_root),
+        area,
+        verified_artifacts=verified_artifacts,
+    ):
         raise ValueError(
             f"current verified normalization required before state build: {area.abbreviation}"
         )
@@ -1304,6 +1331,10 @@ def run_census_population_batch(
     progress: Callable[[str, CensusArea, int, int], None] | None = None,
 ) -> dict[str, Any]:
     selected = list(areas)
+    # Raw Census inputs are read-only for this command. Reuse their verified hashes
+    # only inside this batch so shared support archives are not re-read for every
+    # state. A new invocation creates a new session and performs fresh verification.
+    digest_session = _DigestSession()
     status_path = Path(normalized_root) / "batch_status.json"
     results: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
@@ -1316,6 +1347,7 @@ def run_census_population_batch(
                 census_root=census_root,
                 normalized_root=normalized_root,
                 force=force,
+                _digest_session=digest_session,
             )
             if progress:
                 progress("build", area, index, len(selected))
@@ -1327,6 +1359,7 @@ def run_census_population_batch(
                 seed=seed,
                 reasoning_budget=reasoning_budget,
                 force=force,
+                _digest_session=digest_session,
             )
             if built.get("status") not in {"built", "skipped_valid"}:
                 raise RuntimeError(
@@ -1358,6 +1391,7 @@ def run_census_population_batch(
                 census_root=census_root,
                 normalized_root=normalized_root,
                 force=force,
+                _digest_session=digest_session,
             )
             national = build_national_aggregate(
                 normalized_root=normalized_root,
