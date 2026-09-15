@@ -252,7 +252,11 @@ function renderEras() {
   setText("#era-current-cutoff", active ? active.cutoff_date : "—");
   setText(
     "#era-current-evidence",
-    active ? `${active.n_documents} documents · ${active.n_questions} questions` : "—"
+    active
+      ? active.has_corpus
+        ? `${active.n_documents} generated documents · ${active.n_questions} questions`
+        : `tracked practice fixtures in memory · ${active.n_questions} questions`
+      : "—"
   );
   grid.innerHTML = state.eras.length
     ? state.eras
@@ -260,16 +264,22 @@ function renderEras() {
           const on = era.id === state.selectedEra;
           const sources = (era.source_types || []).length
             ? era.source_types.join(" · ")
-            : "No indexed source silos yet";
+            : era.practice_ready
+              ? "Tracked practice fixtures · generated index absent"
+              : "No indexed source silos yet";
           const missing = [
             !era.has_corpus ? "corpus" : "",
             !era.has_questions ? "questions" : "",
           ].filter(Boolean);
-          const status = era.ready ? (on ? "Selected" : "Ready to select") : `Needs ${missing.join(" + ")}`;
+          const status = era.isolated_run_ready
+            ? on ? "Selected · run assets built" : "Ready to select"
+            : era.practice_ready
+              ? on ? "Selected · inspect only" : "Practice inspection available"
+              : `Needs ${missing.join(" + ")}`;
           return `<button type="button" class="era-card" data-era="${escapeHtml(era.id)}" aria-pressed="${on}" ${era.ready ? "" : "disabled"}>
             <span class="era-card-top"><strong>${escapeHtml(String(era.year))}</strong><span class="era-status" data-ready="${era.ready}">${escapeHtml(status)}</span></span>
             <span class="era-dates">Freeze ${escapeHtml(era.cutoff_date)} → resolve by ${escapeHtml(era.resolution_window_end)}</span>
-            <span class="era-counts"><b>${era.n_documents}</b> documents <b>${era.n_questions}</b> questions</span>
+            <span class="era-counts"><b>${era.n_documents}</b> generated documents <b>${era.n_questions}</b> questions</span>
             <span class="era-sources">${escapeHtml(sources)}</span>
           </button>`;
         })
@@ -277,10 +287,11 @@ function renderEras() {
     : `<p class="empty">No epochs are configured.</p>`;
   const readyCount = state.eras.filter((era) => era.ready).length;
   const configured = state.eras.length;
+  const runnableCount = state.eras.filter((era) => era.isolated_run_ready).length;
   const suffix = configured === 1
-    ? "Only one era is populated today; new configured datasets will appear here automatically."
-    : "Each ready era stays isolated from every other era.";
-  setText("#era-note", `${readyCount} of ${configured} configured eras ready. ${suffix}`);
+    ? "Tracked fixtures remain inspectable without creating files; an isolated run needs prepared assets and a verified sidecar."
+    : "Each prepared era stays isolated from every other era.";
+  setText("#era-note", `${readyCount} of ${configured} eras inspectable; ${runnableCount} have generated run assets. ${suffix}`);
 }
 
 async function loadEras() {
@@ -323,7 +334,7 @@ async function selectEra(epochId) {
   setText("#run-state-label", `Loading ${era.id}…`);
   try {
     await loadOverview();
-    applyReady(state.ready);
+    await loadReady();
     setView(location.hash.replace("#", "") || "results");
   } catch (err) {
     setText("#era-note", `Could not load ${era.id}: ${String(err)}`);
@@ -587,12 +598,15 @@ function updateSwarmEstimate() {
   const launch = $("#swarm-launch");
   const liveOk = Boolean(state.ready && state.ready.live_ready);
   const eraRunnable = Boolean(state.ready && state.ready.run_epoch === state.selectedEra);
+  const practiceOk = Boolean(state.ready && state.ready.practice_ready && eraRunnable);
   if (launch) {
-    launch.disabled = invalid || state.lastJobStatus === "running" || !liveOk || !eraRunnable;
+    launch.disabled = invalid || state.lastJobStatus === "running" || !liveOk || !practiceOk;
     launch.title = !eraRunnable
       ? `No swarm run config targets ${state.selectedEra || "this era"} yet`
+      : !practiceOk
+        ? state.ready.practice_blocking_reason || "Prepare and seal the frozen corpus first"
       : !liveOk
-        ? "Add OPENROUTER_API_KEY and set PSBX_ENABLE_PAID_MODELS=1 for an intentional live session"
+        ? state.ready.live_blocking_reason || "Live research prerequisites are incomplete"
         : error || "Run this bounded, preflighted swarm";
   }
   if (state.populationSelection) {
@@ -908,7 +922,7 @@ function renderActivity(data) {
   $("#activity-docs tbody").innerHTML = docs.length
     ? docs.map((doc) => `<tr>
         <td><strong>${escapeHtml(doc.title)}</strong><small class="doc-id">${escapeHtml(doc.document_id.slice(0, 12))}</small></td>
-        <td>${escapeHtml(doc.source_type)} · ${escapeHtml(doc.outlet)}</td>
+        <td>${escapeHtml(doc.source_type)} · ${escapeHtml(doc.outlet)}<small>${escapeHtml(doc.authenticity || "unverified")}</small></td>
         <td class="num">${escapeHtml(String(doc.published_at || "").slice(0, 10))}</td>
         <td class="${doc.within_cutoff ? "ok" : "warn"}">${doc.within_cutoff ? "inside epoch" : "blocked"}</td>
       </tr>`).join("")
@@ -957,6 +971,7 @@ async function sealContainer(ev) {
       throw new Error(payload.detail || `HTTP ${res.status}`);
     }
     await loadActivity();
+    await loadReady();
   } catch (err) {
     setText("#scope-help", `Container was not changed: ${String(err)}`);
   } finally {
@@ -1677,6 +1692,7 @@ function renderPopulation(data) {
   const convergence = data.convergence || {};
   const behavior = data.behavior_validation || {};
   const fixture = builds.fixture || {};
+  const profileContract = data.profile_contract || {};
   const inputsComplete = census.status === "verified";
   const populationsComplete =
     Number(builds.state_populations || 0) === Number(builds.expected_state_populations || 51)
@@ -1693,6 +1709,10 @@ function renderPopulation(data) {
     "#population-headline",
     complete
       ? "All 51 state and D.C. populations plus the national aggregate are validated."
+      : profileContract.status === "practice_fixture_ready"
+        ? "One offline fixture profile is validated; nationwide profiles are not built."
+        : profileContract.status === "no_validated_profiles"
+          ? "No validated population profile is built in this workspace."
       : census.status === "not_downloaded"
         ? "The Census input pack has not been downloaded in this workspace."
         : "The Census input pack is incomplete and needs verification."
@@ -1701,9 +1721,22 @@ function renderPopulation(data) {
     "#population-detail",
     complete
       ? `${census.artifact_count} source archives and ${builds.validated_profiles} weighted builds are checksum-bound. ${convergence.passed ? `${convergence.conditions} convergence budgets were tested offline.` : "Convergence is pending."} ${behavior.passed ? "One mechanically sealed neutral-baseline behavior calibration is available; it is not analyst-blind validation." : "Held-out behavior validation is still pending."}`
-      : "Run the population Census sync and verifier before building state-scale populations."
+      : profileContract.status === "practice_fixture_ready"
+        ? "The runnable fixture is synthetic practice data for its declared fictional geography. Run the Census pipeline before making state or national coverage claims."
+        : profileContract.status === "no_validated_profiles"
+          ? `Build the provider-free fixture with ${profileContract.build_command || "psbx practice prepare --epoch e2012"}. State-scale profiles remain a separate Census workflow.`
+          : "Run the population Census sync and verifier before building state-scale populations."
   );
-  setText("#population-stamp", complete ? "POPULATIONS VALIDATED" : inputsComplete ? "BUILD INCOMPLETE" : "ACTION NEEDED");
+  setText(
+    "#population-stamp",
+    complete
+      ? "POPULATIONS VALIDATED"
+      : profileContract.status === "practice_fixture_ready"
+        ? "FIXTURE ONLY"
+        : inputsComplete
+          ? "BUILD INCOMPLETE"
+          : "PROFILE NEEDED"
+  );
 
   $("#population-pipeline").innerHTML = (data.pipeline || [])
     .map(
@@ -1827,17 +1860,21 @@ async function loadQuestions() {
 
 async function loadCorpus() {
   const data = await getJSON(withEra("/api/corpus"));
-  $("#corpus-assertion").textContent = `Only documents published on or before ${data.cutoff_date}. Leaked rows: ${data.n_leaked}.`;
+  const classes = Object.entries(data.authenticity_counts || {})
+    .map(([key, value]) => `${key} ${value}`)
+    .join(" · ") || "none";
+  $("#corpus-assertion").textContent = `Only documents dated on or before ${data.cutoff_date}. Evidence classes: ${classes}. Research eligible: ${data.research_eligible_documents || 0}. Leaked rows: ${data.n_leaked}.`;
   $("#search-status").textContent = `${data.n_documents} documents in the index`;
   if (!$("#search-table tbody").children.length) {
     $("#search-table tbody").innerHTML = data.documents
       .slice(0, 12)
       .map(
         (d) => `<tr>
-          <td><button class="linkish" data-fetch="${d.document_id}">${d.document_id.slice(0, 12)}</button></td>
-          <td>${d.title}</td>
-          <td>${d.outlet}</td>
-          <td class="num">${d.published_at.slice(0, 10)}</td>
+          <td><button class="linkish" data-fetch="${escapeHtml(d.document_id)}">${escapeHtml(d.document_id.slice(0, 12))}</button></td>
+          <td>${escapeHtml(d.title)}</td>
+          <td>${escapeHtml(d.outlet)}</td>
+          <td class="num">${escapeHtml(d.published_at.slice(0, 10))}</td>
+          <td>${escapeHtml(d.authenticity || "unverified")}</td>
           <td class="num">${fmt(d.prominence, 2)}</td>
           <td class="q-text">Open to read</td>
         </tr>`
@@ -1868,12 +1905,13 @@ async function runSearch(ev) {
   $("#search-table tbody").innerHTML = hits
     .map(
       (h) => `<tr>
-        <td><button class="linkish" data-fetch="${h.document_id}">${h.document_id.slice(0, 12)}</button></td>
-        <td>${h.title}</td>
-        <td>${h.outlet}</td>
-        <td class="num">${String(h.published_at).slice(0, 10)}</td>
+        <td><button class="linkish" data-fetch="${escapeHtml(h.document_id)}">${escapeHtml(h.document_id.slice(0, 12))}</button></td>
+        <td>${escapeHtml(h.title)}</td>
+        <td>${escapeHtml(h.outlet)}</td>
+        <td class="num">${escapeHtml(String(h.published_at).slice(0, 10))}</td>
+        <td>${escapeHtml(h.authenticity || "unverified")}</td>
         <td class="num">${fmt(h.prominence, 2)}</td>
-        <td class="q-text">${h.snippet || ""}</td>
+        <td class="q-text">${escapeHtml(h.snippet || "")}</td>
       </tr>`
     )
     .join("");
@@ -1894,10 +1932,14 @@ async function fetchDoc(id) {
     ["Outlet", doc.outlet],
     ["Published", doc.published_at],
     ["Source", doc.source_type],
+    ["Evidence class", doc.authenticity || "unverified"],
+    ["Research eligible", doc.authenticity && doc.authenticity.startsWith("authenticated_") ? "yes" : "no"],
+    ["Content SHA-256", doc.content_sha256 || "not recorded"],
+    ["Source reference", doc.source_reference || "not independently established"],
     ["Prominence", fmt(doc.prominence, 3)],
     ["URL", doc.url],
   ]
-    .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
+    .map(([k, v]) => `<div><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`)
     .join("");
   $("#fetch-text").textContent = doc.text;
 }
@@ -2215,15 +2257,20 @@ async function loadScores() {
     .join("");
 
   const board = ex.scoreboard || [];
+  setText("#prior-rung-lead", ex.comparison_scope || "Scores disclose their question coverage and comparison scope.");
   $("#scoreboard").innerHTML = board.length
     ? board
         .map((row) => {
           const win = row.kind === "model" && row.beats_prior;
           const lose = row.kind === "model" && !row.beats_prior && row.delta_vs_prior != null;
+          const coverage = row.coverage || {};
+          const coverageNote = row.kind === "model"
+            ? `Answered ${coverage.answered_questions || 0}/${coverage.expected_questions || 0} · ${row.display_scope}`
+            : row.display_scope;
           return `<div class="board-row" data-kind="${row.kind}" data-reference="${row.reference}" data-win="${win}" data-lose="${lose}">
-            <div class="board-name">${row.label}<small>${row.note || row.id}</small><span class="board-tag">${tagFor(row)}</span></div>
-            ${boardCell("brier", row.bar, fmt(row.brier), "brier-fill")}
-            ${boardCell("c", row.c_bar, row.c_index == null ? "—" : fmt(row.c_index), "c-fill")}
+            <div class="board-name">${row.label}<small>${row.note || row.id}</small><small>${coverageNote}</small><span class="board-tag">${tagFor(row)}</span></div>
+            ${boardCell("brier", row.bar, row.display_brier == null ? "—" : fmt(row.display_brier), "brier-fill")}
+            ${boardCell("c", row.c_bar, row.display_c_index == null ? "—" : fmt(row.display_c_index), "c-fill")}
           </div>`;
         })
         .join("")
@@ -2232,7 +2279,10 @@ async function loadScores() {
   const facts = [
     ["This run", ex.run_label || data.run_id || "—"],
     ["Answers scored", ex.n_predictions || 0],
-    ["Citations flagged", ex.n_flagged || 0],
+    ["Benchmark questions", ex.question_count || 0],
+    ["Matched questions", ex.matched_question_count || 0],
+    ["Citation verification failures", ex.n_citation_verification_failed || 0],
+    ["Contamination-review flags", ex.n_flagged || 0],
     ["Score source", data.source || "—"],
   ];
   $("#result-facts").innerHTML = facts
@@ -2351,11 +2401,11 @@ function contaminationSVG(curves) {
   const ptsAll = [];
   curves.forEach((c) => {
     (c.buckets || []).forEach((b) => {
-      if (!b.n || Number.isNaN(b.mean_accuracy)) return;
+      if (!b.n || b.mean_accuracy == null || Number.isNaN(b.mean_accuracy)) return;
       ptsAll.push({ x: (b.gap_lo_days + b.gap_hi_days) / 2, y: b.mean_accuracy });
     });
   });
-  if (!ptsAll.length) return `<p class="note">No usable leakage buckets for this epoch.</p>`;
+  if (!ptsAll.length) return `<p class="note">No usable declared-cutoff gap buckets for this epoch.</p>`;
   const xs = ptsAll.map((p0) => p0.x);
   const minX = Math.min(...xs, -10);
   const maxX = Math.max(...xs, 10);
@@ -2366,12 +2416,12 @@ function contaminationSVG(curves) {
   curves.forEach((c, i) => {
     const color = i === 0 ? "#80ff20" : i === 1 ? "#ffffa0" : "#d4c4ff";
     const pts = (c.buckets || [])
-      .filter((b) => b.n && !Number.isNaN(b.mean_accuracy))
+      .filter((b) => b.n && b.mean_accuracy != null && !Number.isNaN(b.mean_accuracy))
       .map((b) => `${xmap((b.gap_lo_days + b.gap_hi_days) / 2)},${ymap(b.mean_accuracy)}`)
       .join(" ");
     paths += `<polyline fill="none" stroke="${color}" points="${pts}"/>`;
   });
-  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Contamination: accuracy by days from training cutoff">
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Descriptive accuracy by days from declared training cutoff metadata">
     ${paths}
     <text x="${p}" y="${h - 10}">Gap (days)</text>
     <text x="8" y="${p}">Accuracy</text>
@@ -2405,30 +2455,33 @@ function renderJob(job) {
   const kind = jobKind(job);
   const liveOk = state.ready && state.ready.live_ready;
   const eraRunnable = state.ready && state.ready.run_epoch === state.selectedEra;
-  mockBtn.disabled = busy || !eraRunnable;
+  const practiceOk = Boolean(state.ready && state.ready.practice_ready && eraRunnable);
+  mockBtn.disabled = busy || !practiceOk;
   mockBtn.textContent = busy && kind === "mock" ? "Running…" : "Run practice";
-  liveBtn.disabled = busy || !liveOk || !eraRunnable;
+  liveBtn.disabled = busy || !liveOk || !practiceOk;
   liveBtn.textContent = busy && kind === "live" ? "Running…" : "Run live mix";
-  mockBtn.title = eraRunnable
-    ? "Run the configured practice experiment for this era"
-    : `No practice run config targets ${state.selectedEra || "this era"} yet`;
+  mockBtn.title = !eraRunnable
+    ? `No practice run config targets ${state.selectedEra || "this era"} yet`
+    : practiceOk
+      ? "Run the configured practice experiment for this era"
+      : state.ready.practice_blocking_reason || "Practice prerequisites are incomplete";
   liveBtn.title = !eraRunnable
     ? `No live run config targets ${state.selectedEra || "this era"} yet`
     : liveOk
     ? "Score each of the six OpenRouter species once on 1 question (not the 12-agent swarm)"
-    : "Add provider keys and set PSBX_ENABLE_PAID_MODELS=1 for an intentional live session";
+    : state.ready.live_blocking_reason || "Live research prerequisites are incomplete";
   if (swarmBtn) {
-    swarmBtn.disabled = busy || !liveOk || !eraRunnable;
+    swarmBtn.disabled = busy || !liveOk || !practiceOk;
     swarmBtn.textContent = busy && kind === "swarm" ? "Running…" : "Run configured swarm";
     swarmBtn.title = !eraRunnable
       ? `No swarm run config targets ${state.selectedEra || "this era"} yet`
       : liveOk
       ? "Launch the roster and question count configured in the Runs tab"
-      : "Add OPENROUTER_API_KEY and set PSBX_ENABLE_PAID_MODELS=1 for an intentional live session";
+      : state.ready.live_blocking_reason || "Live research prerequisites are incomplete";
   }
   if (launchBtn) {
     const estimate = updateSwarmEstimate();
-    launchBtn.disabled = busy || !liveOk || !eraRunnable || estimate.invalid;
+    launchBtn.disabled = busy || !liveOk || !practiceOk || estimate.invalid;
     launchBtn.textContent = busy && kind === "swarm" ? "Swarm running…" : "Run this swarm";
   }
   const log = (job.log || []).join("\n");
@@ -2478,6 +2531,13 @@ async function startSimulation(kind) {
   const mockBtn = $("#run-btn");
   const liveBtn = $("#run-live-btn");
   const swarmBtn = $("#run-swarm-btn");
+  if (!state.ready || !state.ready.practice_ready) {
+    $("#run-log-band").hidden = false;
+    $("#run-log").textContent = state.ready?.practice_blocking_reason
+      || "Practice prerequisites are incomplete. Prepare the corpus and seal the sidecar first.";
+    applyReady(state.ready);
+    return;
+  }
   mockBtn.disabled = true;
   liveBtn.disabled = true;
   if (swarmBtn) swarmBtn.disabled = true;
@@ -2554,15 +2614,36 @@ function applyReady(ready) {
   const swarmBtn = $("#run-swarm-btn");
   const ok = state.ready && state.ready.live_ready;
   const eraRunnable = state.ready && state.ready.run_epoch === state.selectedEra;
+  const practiceOk = Boolean(state.ready && state.ready.practice_ready && eraRunnable);
   if (state.ready && state.ready.swarm_options) {
     renderSwarmBuilder(state.ready.swarm_options);
   }
   if (state.lastJobStatus !== "running") {
-    if (mockBtn) mockBtn.disabled = !eraRunnable;
-    if (liveBtn) liveBtn.disabled = !ok || !eraRunnable;
-    if (swarmBtn) swarmBtn.disabled = !ok || !eraRunnable;
+    if (mockBtn) mockBtn.disabled = !practiceOk;
+    if (liveBtn) liveBtn.disabled = !ok || !practiceOk;
+    if (swarmBtn) swarmBtn.disabled = !ok || !practiceOk;
+  }
+  const prerequisite = $("#run-prerequisite");
+  if (prerequisite) {
+    prerequisite.dataset.status = practiceOk ? "ready" : "blocked";
+    prerequisite.textContent = practiceOk
+      ? `Ready: ${state.selectedEra}/${state.ready.requested_source_type || "all"} corpus and sealed sidecar verified.`
+      : state.ready?.practice_blocking_reason
+        || "Run prerequisites are unavailable; inspect Setup before launching.";
   }
   updateSwarmEstimate();
+}
+
+async function loadReady() {
+  const params = new URLSearchParams();
+  if (state.selectedEra) params.set("epoch", state.selectedEra);
+  const scope = state.activity?.access?.selection;
+  if (scope && scope !== "all" && scope !== "unknown") {
+    params.set("source_type", scope);
+  }
+  state.ready = await getJSON(`/api/jobs/ready?${params}`);
+  applyReady(state.ready);
+  return state.ready;
 }
 
 function bind() {
@@ -2745,8 +2826,7 @@ async function boot() {
     setText("#era-note", `Could not load the epoch registry: ${String(err)}`);
   }
   try {
-    state.ready = await getJSON("/api/jobs/ready");
-    applyReady(state.ready);
+    await loadReady();
   } catch (err) {
     applyReady({ live_ready: false });
   }

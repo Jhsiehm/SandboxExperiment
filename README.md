@@ -27,7 +27,7 @@ systems:
 | Forecast engines | Runs an offline practice heuristic, direct provider models, fixed benchmark personas, or a sequential multi-model swarm whose individual ballots and aggregate forecast are retained. |
 | Population laboratory | Builds deterministic weighted synthetic populations, validates their marginals, compresses them into representative cells, and measures agent-count convergence separately from behavioral validity. |
 | Election and demographic comparison | Catalogs and imports election results and Census comparison layers outside model runtime, with explicit vintage, geography, checksum, and access-state metadata. |
-| Scoring and safeguards | Scores forecasts against later truth, checks citations and contamination boundaries, fingerprints resumable runs, and enforces paid-model request, token, origin, and dollar limits. |
+| Scoring and safeguards | Scores comparable question sets against later truth, verifies citation document IDs and literal quotations, reports descriptive declared-cutoff gaps, fingerprints resumable runs, and enforces paid-model request, token, origin, and dollar limits. |
 | Local research console | Serves a tactical U.S. World Model, run controls, agent traces, results, population evidence, and an Arena leaderboard for agents, swarms, model families, and corporations. |
 
 The evidence chain is the product: source date → frozen index → run manifest →
@@ -148,12 +148,11 @@ Not working yet:
   covers live mix and swarm.
 - Sequential / time-to-event questions (C-index is binary ranking now; the same
   pairwise definition will cover ordered events when those items exist).
-- A contamination curve that **crosses** 2024/2025 training cutoffs on this
-  epoch. Every e2012 outcome is 2012–2013, so frontier configs already sit
-  inside the training window. The curve code runs; this set cannot show a
-  before/after split. That is still worth scoring: Brier asks whether
-  percentages are honest; C-index asks whether true events rank above false
-  ones. A leaked model can look excellent on ranking and mediocre on Brier.
+- A causal contamination claim from declared model cutoff dates. The cutoff-gap
+  chart is descriptive metadata analysis only; it cannot establish training
+  membership, leakage, retrieval use, or causality. Use the paired evidence
+  experiment for bounded no-evidence, authenticated-evidence, and shuffled-pack
+  contrasts.
 - PolicySim (constituents drafting bills) is later. Fuller conditioner coverage
   (more pre-cutoff Gallup/Pew vintages, FEC independent-expenditure metadata
   through 2012-06-30) is still fixture work, not a live scrape.
@@ -168,7 +167,9 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-psbx corpus build --epoch e2012
+psbx practice status --epoch e2012
+psbx practice prepare --epoch e2012
+psbx sandbox up --epoch e2012
 PSBX_MOCK_LLM=1 psbx run --config config/run.yaml
 psbx score --run phase1-e2012-smoke
 psbx viewer --host 127.0.0.1 --port 8765
@@ -176,8 +177,10 @@ psbx viewer --host 127.0.0.1 --port 8765
 
 Open [http://127.0.0.1:8765](http://127.0.0.1:8765). The page is a local tactical
 workbench with a 3D U.S. geography model and evidence inspector. With no API
-keys, **Run practice** (and plain `psbx run`) uses the retrieval heuristic so the
-loop is exercisable.
+keys, plain `psbx run` uses the retrieval heuristic. The dashboard keeps **Run
+practice** disabled until the generated corpus exists and the sidecar reports
+the selected epoch, scope, frozen clock, and isolation controls. `psbx practice
+prepare` builds deterministic local assets and makes zero provider calls.
 
 The viewer is intentionally local-only and rejects wildcard or remote bind
 addresses because it has no user-account layer. Put an authenticated reverse
@@ -195,13 +198,27 @@ live session. Do not commit `.env`.
 | HUD | **Run practice** | **Run live mix** | **Run swarm** | CLI (HUD live uses this only if OpenRouter is unset) |
 | Config | `config/run.yaml` | `config/run-openrouter.yaml` | `config/run-swarm.yaml` | `config/run-phase2.yaml` |
 | Run id | `phase1-e2012-smoke` | `phase2-e2012-openrouter` | `phase2-e2012-swarm-probe-container` | `phase2-e2012-real` |
-| Needs | Nothing | OpenRouter key + paid switch | OpenRouter key + paid switch | Anthropic + OpenAI keys + paid switch |
+| Needs | Prepared corpus + sealed sidecar | Authenticated corpus + sealed sidecar + OpenRouter key + paid switch | Authenticated corpus + sealed sidecar + OpenRouter key + paid switch | Authenticated corpus + sealed sidecar + Anthropic + OpenAI keys + paid switch |
 | What it measures | Keyword heuristic | Six species × 1 question | 12 votes, median `p` | Claude + GPT forecasts |
 
 Live will not fall back to the heuristic. If keys are missing it fails loud.
 If `OPENROUTER_API_KEY` is set, HUD live stays on the six-species probe even
 when native vendor keys exist. Native Claude+GPT is
 `psbx run --config config/run-phase2.yaml`.
+
+The causal evidence comparison is a separate paired protocol:
+
+```bash
+PSBX_MOCK_LLM=1 psbx experiment evidence \
+  --config config/evidence-experiment.yaml --limit 2
+```
+
+Each model/question/replication unit receives the same call, token, and
+temperature budget under no factual evidence, matched authenticated evidence,
+and a shuffled eligible pack. Assignments, pack hashes, observations, and
+question-cluster bootstrap intervals are persisted under the experiment run ID.
+The mock form validates mechanics only; research conclusions require declared
+live models and authenticated corpus material.
 
 OpenRouter is rate-limited in-process: 1 request / 2s, max 20/min, concurrency 1
 (`OPENROUTER_MIN_INTERVAL_SEC`, `OPENROUTER_MAX_PER_MINUTE`, `OPENROUTER_MAX_CONCURRENCY`).

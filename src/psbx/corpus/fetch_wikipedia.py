@@ -55,7 +55,7 @@ def wiki_cache_dir() -> Path:
 def ingest_wikipedia(epoch: Epoch, live: bool = False) -> list[Document]:
     """Dated fixture pages plus optional Kiwix/JSONL dump under corpus-cache."""
     del live
-    docs = _fixture_pages(epoch)
+    docs = fixture_wikipedia_documents(epoch)
     cache = wiki_cache_dir()
     if not cache.exists():
         return docs
@@ -98,7 +98,7 @@ def ingest_wikipedia(epoch: Epoch, live: bool = False) -> list[Document]:
     return docs
 
 
-def _fixture_pages(epoch: Epoch) -> list[Document]:
+def fixture_wikipedia_documents(epoch: Epoch) -> list[Document]:
     docs: list[Document] = []
     for page in WIKI_PAGES:
         published = datetime.fromisoformat(page["published_at"])

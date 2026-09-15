@@ -25,7 +25,7 @@ The current application is a local, loopback-only FastAPI research workbench wit
 ## Capabilities and Constraints
 
 - The current geographic world is the United States: the nation, all 50 states, the District of Columbia, and available historical sub-state boundaries.
-- All state/D.C. `e2012` profiles and the national profile are validated and runnable. Congressional and other sub-state shapes are selectors only until a validated population manifest exists for that geography.
+- A clean checkout contains no generated state, D.C., or national population profiles. It can build one deterministic fictional fixture profile for practice. Any locally generated real-geography profile is runnable only when its own validation manifest is present.
 - Census and election comparison layers are evaluation/display inputs with `runtime_access: false`; they are never inserted into prompts or retrieval.
 - Paid model traffic is off unless deliberately enabled. Conservative request and run ceilings are enforced before network I/O.
 - The application may later support a globe and non-U.S. demographic worlds, but no international coverage or equivalence is currently claimed.
@@ -41,7 +41,8 @@ The product name remains Prediction Sandbox. The interface is an original tactic
 - Research boundaries and inappropriate-use constraints: `docs/USE_CASES_AND_BOUNDARIES.md`.
 - Population dashboard claims and warning language: `docs/DASHBOARD_SPEC.md`.
 - Historical state, congressional, legislative, county, and voting-district geometry is derived from U.S. Census Bureau TIGER/Line files, with source URLs and checksums recorded in `leaderboard/static/geography/e2012/manifest.json`.
-- There are no validated sub-state population profiles or 2026 general-election results in the current workspace; future work must not fabricate them.
+- Generated Census, corpus, population, run, and evaluation-vault artifacts are intentionally ignored. Claims must hold on a clean checkout or explicitly identify the local build prerequisite.
+- There are no checked-in validated real-geography population profiles or 2026 general-election results; future work must not fabricate them.
 
 ## Product Principles
 

@@ -30,6 +30,12 @@ def test_frozen_epoch_env_cutoff_and_tools():
     rows = env.search(1, "unemployment", k=3)
     assert rows
     for row in rows:
+        assert row["authenticity"] in {
+            "reconstructed_fixture",
+            "unverified",
+            "authenticated_capture",
+            "authenticated_artifact",
+        }
         published = date.fromisoformat(str(row["published_at"])[:10])
         assert published <= epoch.cutoff_date
     doc = env.fetch(1, rows[0]["document_id"])

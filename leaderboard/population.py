@@ -329,6 +329,17 @@ def population_dashboard_payload(
         for codes in ACS_SEQUENCES.values()
         for code in codes
     ]
+    validated_profiles = sum(profile["validated"] for profile in profiles)
+    runnable_profiles = sum(profile["runnable"] for profile in profiles)
+    profile_status = (
+        "full_state_and_national_profiles_ready"
+        if state_builds == len(AREAS) and national_population
+        else "practice_fixture_ready"
+        if fixture["validated"]
+        else "validated_profiles_available"
+        if runnable_profiles
+        else "no_validated_profiles"
+    )
     return {
         "track": "B",
         "epoch_id": epoch_id,
@@ -352,9 +363,23 @@ def population_dashboard_payload(
             "expected_state_populations": len(AREAS),
             "normalizations": normalizations,
             "expected_normalizations": len(AREAS) + 1,
-            "validated_profiles": sum(profile["validated"] for profile in profiles),
+            "validated_profiles": validated_profiles,
             "national_population": national_population,
             "fixture": fixture,
+        },
+        "profile_contract": {
+            "status": profile_status,
+            "runnable_profiles": runnable_profiles,
+            "practice_fixture_ready": bool(fixture["validated"]),
+            "can_weight_swarm": runnable_profiles > 0,
+            "build_command": f"psbx practice prepare --epoch {epoch_id}",
+            "full_census_profiles_ready": bool(
+                state_builds == len(AREAS) and national_population
+            ),
+            "claim_scope": (
+                "Only profiles listed as runnable have passed local validation. "
+                "A fixture profile is synthetic practice data, not U.S. coverage."
+            ),
         },
         "convergence": convergence,
         "behavior_validation": behavior,
@@ -405,5 +430,11 @@ def population_dashboard_payload(
             "Synthetic records are statistically constructed and are not actual residents.",
             "Population fidelity does not establish political-behavior fidelity.",
             "No live LLM population simulation is part of this foundation build.",
+            (
+                "No validated population profile is present in this workspace."
+                if not runnable_profiles
+                else f"{runnable_profiles} validated profile(s) are runnable; coverage is "
+                "limited to their declared geographies."
+            ),
         ],
     }

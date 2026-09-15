@@ -64,6 +64,7 @@ def test_live_ready_missing_all(monkeypatch):
 
 def test_skip_reason_openrouter(monkeypatch):
     model = _or_model()
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "0")
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
     assert skip_reason(model) == "OPENROUTER_API_KEY is not set"
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")

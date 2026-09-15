@@ -210,6 +210,7 @@ class FrozenEpochEnv(EnvBase):
                     "snippet": hit.snippet,
                     "prominence": hit.prominence,
                     "source_type": hit.source_type,
+                    "authenticity": hit.authenticity,
                 }
             )
         return rows

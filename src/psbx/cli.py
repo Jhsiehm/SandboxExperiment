@@ -30,6 +30,7 @@ society_app = typer.Typer(no_args_is_help=True)
 eval_app = typer.Typer(no_args_is_help=True)
 epoch_app = typer.Typer(no_args_is_help=True)
 experiment_app = typer.Typer(no_args_is_help=True)
+practice_app = typer.Typer(no_args_is_help=True)
 app.add_typer(questions_app, name="questions")
 app.add_typer(corpus_app, name="corpus")
 sandbox_app = typer.Typer(no_args_is_help=True)
@@ -37,6 +38,7 @@ app.add_typer(society_app, name="society")
 app.add_typer(eval_app, name="eval")
 app.add_typer(epoch_app, name="epoch")
 app.add_typer(experiment_app, name="experiment")
+app.add_typer(practice_app, name="practice")
 app.add_typer(sandbox_app, name="sandbox")
 app.add_typer(population_app, name="population")
 app.add_typer(elections_app, name="elections")
@@ -83,6 +85,29 @@ def _config_for_run_id(run_id: str):
             return cfg
     cfg = load_run()
     return cfg.model_copy(update={"run_id": run_id})
+
+
+@practice_app.command("status")
+def practice_status_cmd(
+    epoch: Annotated[str, typer.Option("--epoch")] = "e2012",
+) -> None:
+    """Show local practice prerequisites without changing the workspace."""
+    from psbx.practice import practice_status
+
+    typer.echo(json.dumps(practice_status(epoch), indent=2))
+
+
+@practice_app.command("prepare")
+def practice_prepare_cmd(
+    epoch: Annotated[str, typer.Option("--epoch")] = "e2012",
+) -> None:
+    """Build the provider-free corpus and fixture population for local practice."""
+    from psbx.practice import prepare_practice
+
+    result = prepare_practice(epoch)
+    typer.echo(json.dumps(result, indent=2))
+    if not result["prepared"]:
+        raise typer.Exit(code=2)
 
 
 @questions_app.command("build")

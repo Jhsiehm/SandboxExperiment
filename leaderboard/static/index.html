@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#080d0b">
   <title>Prediction Sandbox // World Model</title>
-  <link rel="stylesheet" href="/static/app.css?v=44">
+  <link rel="stylesheet" href="/static/app.css?v=45">
   <script type="importmap">
     {"imports":{"three":"/static/vendor/three/three.module.min.js"}}
   </script>
@@ -61,6 +61,9 @@
         <span id="run-help-live">Live mix scores six cheap models once on one question.</span>
         <span id="run-help-swarm">Swarm size and model counts are configured in Runs.</span>
       </p>
+      <p class="run-prerequisite" id="run-prerequisite" data-status="checking" aria-live="polite">
+        Checking generated corpus and sealed-sidecar prerequisites…
+      </p>
       <p class="run-state" id="run-state" data-status="idle" aria-live="polite" aria-atomic="true">
         <span class="run-dot" aria-hidden="true"></span>
         <span id="run-state-label">Idle</span>
@@ -110,12 +113,29 @@
       </dl>
       <div class="era-grid" id="era-grid" aria-live="polite"></div>
       <p class="era-note" id="era-note">Loading the epoch registry…</p>
-      <details class="more era-build">
-        <summary>How another era becomes selectable</summary>
-        <div class="more-body">
-          <p>Add it to <code>config/epochs.yaml</code>, build <code>data/corpus/&lt;epoch&gt;</code>, and add <code>data/questions/&lt;epoch&gt;.jsonl</code>. The selector discovers it automatically after refresh.</p>
-        </div>
-      </details>
+      <aside class="era-build" role="note" aria-labelledby="era-build-title">
+        <h3 id="era-build-title">What another era still needs</h3>
+        <p>Historical election files are comparison data, not sealed forecasting eras. Gather and prepare every item below before adding another year.</p>
+        <ol class="era-requirements">
+          <li>
+            <strong>Era registration</strong>
+            <span>Add an ID, freeze date, resolution-window end, and corpus path to <code>config/epochs.yaml</code>.</span>
+          </li>
+          <li>
+            <strong>Cutoff-safe source material</strong>
+            <span>Collect dated documents with provenance that were published on or before the freeze date.</span>
+          </li>
+          <li>
+            <strong>Frozen corpus and search index</strong>
+            <span>Run <code>psbx corpus build --epoch &lt;id&gt;</code> to create the era's documents, metadata, and embeddings under <code>data/corpus/&lt;id&gt;</code>.</span>
+          </li>
+          <li>
+            <strong>Resolved benchmark questions</strong>
+            <span>Add <code>data/questions/&lt;id&gt;.jsonl</code> with cutoff dates, resolution dates and criteria, source URLs, and ground truth.</span>
+          </li>
+        </ol>
+        <p class="era-build-ready">When the registered corpus and question file are both populated, this selector discovers the era automatically after refresh.</p>
+      </aside>
     </section>
 
     <section id="view-activity" class="view" role="tabpanel" aria-labelledby="tab-activity" hidden>
@@ -449,7 +469,7 @@
         <article>
           <h3>Trust boundaries</h3>
           <ol class="boundary-list">
-            <li><strong>Build-time web</strong><span>Only dated and verified material can become epoch evidence.</span></li>
+            <li><strong>Build-time web</strong><span>Every document carries an evidence class. Practice may use labeled reconstructions; research accepts only authenticated frozen captures or artifacts.</span></li>
             <li><strong>Frozen search cell</strong><span>Docker receives one read-only epoch/source index, a fake historical clock, and blocked outbound egress.</span></li>
             <li><strong>Host-side agents</strong><span>Agents may call model providers, but their evidence comes only through the sealed search API.</span></li>
             <li><strong>Append-only runs</strong><span>Each launch writes a unique manifest, roster, log, predictions, votes, scores and graph metadata.</span></li>
@@ -736,8 +756,8 @@
         <li class="rung">
           <p class="rung-num" aria-hidden="true">4</p>
           <div>
-            <h2>Who did better</h2>
-            <p class="rung-lead" id="prior-rung-lead">Green is the public prior available at the freeze date. Beat that on probability error before calling it skill. Ranking can look strong even when percentages are sloppy.</p>
+            <h2>Who did better on comparable questions</h2>
+            <p class="rung-lead" id="prior-rung-lead">Scores disclose their question coverage and comparison scope.</p>
             <div class="board-head">
               <span>Who</span>
               <span>Probability error <em>smaller better</em></span>
@@ -759,7 +779,7 @@
           <p class="rung-num" aria-hidden="true">6</p>
           <div>
             <details class="more">
-              <summary>More detail (by topic, honesty of percentages, already-knew-it check)</summary>
+              <summary>More detail (by topic, calibration, declared-cutoff diagnostic)</summary>
               <div class="more-body">
                 <dl class="facts" id="result-facts"></dl>
                 <header class="block-head">
@@ -783,11 +803,11 @@
                   </article>
                   <article>
                     <header class="block-head">
-                      <h3>Did they already know?</h3>
+                      <h3>Declared-cutoff gap diagnostic</h3>
                       <p id="contam-note" class="note"></p>
                     </header>
                     <div id="contam-chart" class="chart"></div>
-                    <p class="chart-explainer"><strong>In plain English:</strong> This checks whether performance suddenly improves on events the model may have encountered during training. A sharp jump around zero days is a leakage warning.</p>
+                    <p class="chart-explainer"><strong>In plain English:</strong> This groups performance by distance from a model-reported cutoff date. It is descriptive and cannot establish what entered training, whether leakage occurred, or what caused a score difference.</p>
                   </article>
                 </div>
               </div>
@@ -904,6 +924,7 @@
             <th scope="col">Title</th>
             <th scope="col">Outlet</th>
             <th scope="col">Published</th>
+            <th scope="col">Evidence class</th>
             <th scope="col">Prominence</th>
             <th scope="col">Snippet</th>
           </tr>
@@ -950,7 +971,8 @@
           </header>
           <ol class="plain numbered">
             <li id="era-build-command">Grow the selected frozen library with <code>psbx corpus build --epoch &lt;epoch&gt; --live --max-docs 400</code>.</li>
-            <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys. Cheap. Folder <code>phase1-e2012-smoke</code>.</li>
+            <li><strong>Prepare practice</strong> with <code>psbx practice prepare --epoch e2012</code>, then seal the sidecar. The HUD stays disabled until both are verified.</li>
+            <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys or provider calls. Folder <code>phase1-e2012-smoke</code>.</li>
             <li><strong>Run live mix</strong> scores each of the six OpenRouter species once on 1 question (<code>phase2-e2012-openrouter</code>). Needs <code>OPENROUTER_API_KEY</code>. It does not fire 12 bodies. Native Claude+GPT (<code>run-phase2.yaml</code>) still needs both Anthropic and OpenAI keys; the HUD only uses that path if OpenRouter is missing.</li>
             <li><strong>Run swarm</strong> is real: 12 sequential OpenRouter votes (2 × each species), shared retrieval, median probability (<code>phase2-e2012-swarm-probe-container</code>). Same key. Keep it at 1 question unless you mean to wait hours (12×50 at 2s/req).</li>
             <li>Results draws seaborn charts (vote swarm, Brier bars, signed error). Brier + C-index both score. This page never overwrites a different run folder.</li>
@@ -965,6 +987,6 @@
   </footer>
   </div>
   <script type="module" src="/static/geography-map.js?v=3"></script>
-  <script src="/static/app.js?v=43"></script>
+  <script src="/static/app.js?v=44"></script>
 </body>
 </html>

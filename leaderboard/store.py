@@ -1,4 +1,4 @@
-"""Load real repo data for the viewer. Build fixture questions/index if missing."""
+"""Load repo data for the viewer with an explicit, non-persistent practice fallback."""
 
 from __future__ import annotations
 
@@ -112,14 +112,20 @@ def era_catalog() -> list[dict[str, Any]]:
     for epoch in load_epochs().values():
         corpus_root = resolve(epoch.corpus_index_path)
         docs_path = corpus_root / "documents.jsonl"
+        embeddings_path = corpus_root / "embeddings.npy"
         questions_path = _questions_path(epoch.id)
         meta_path = corpus_root / "meta.json"
-        has_corpus = docs_path.is_file() and docs_path.stat().st_size > 0
+        has_corpus = all(
+            path.is_file() and path.stat().st_size > 0
+            for path in (docs_path, embeddings_path, meta_path)
+        )
         has_questions = questions_path.is_file() and questions_path.stat().st_size > 0
         n_documents = 0
         n_questions = _count_jsonl(questions_path) if has_questions else 0
         source_types: list[str] = []
         silos: dict[str, int] = {}
+        authenticity_counts: dict[str, int] = {}
+        research_eligible_documents = 0
         if meta_path.is_file():
             try:
                 meta = read_json(meta_path)
@@ -129,11 +135,20 @@ def era_catalog() -> list[dict[str, Any]]:
                     str(key): int(value)
                     for key, value in (meta.get("silos") or {}).items()
                 }
+                authenticity_counts = {
+                    str(key): int(value)
+                    for key, value in (meta.get("authenticity_counts") or {}).items()
+                }
+                research_eligible_documents = int(
+                    meta.get("research_eligible_documents") or 0
+                )
             except Exception:
                 pass
         if has_corpus and not n_documents:
             n_documents = _count_jsonl(docs_path)
-        ready = has_corpus and has_questions
+        practice_ready = has_questions
+        isolated_run_ready = has_corpus and has_questions
+        research_ready = isolated_run_ready and research_eligible_documents > 0
         rows.append(
             {
                 "id": epoch.id,
@@ -143,12 +158,28 @@ def era_catalog() -> list[dict[str, Any]]:
                 "corpus_index_path": epoch.corpus_index_path,
                 "has_corpus": has_corpus,
                 "has_questions": has_questions,
-                "ready": ready,
-                "status": "ready" if ready else "not built",
+                # `ready` remains the navigation contract: the viewer can inspect
+                # tracked practice fixtures in memory without mutating a checkout.
+                "ready": practice_ready,
+                "practice_ready": practice_ready,
+                "isolated_run_ready": isolated_run_ready,
+                "research_ready": research_ready,
+                "status": (
+                    "research corpus ready"
+                    if research_ready
+                    else "isolated practice ready"
+                    if isolated_run_ready
+                    else "rebuildable practice fixture"
+                    if practice_ready
+                    else "question set missing"
+                ),
                 "n_documents": n_documents,
                 "n_questions": n_questions,
                 "source_types": source_types,
                 "silos": silos,
+                "authenticity_counts": authenticity_counts,
+                "research_eligible_documents": research_eligible_documents,
+                "prepare_command": f"psbx practice prepare --epoch {epoch.id}",
             }
         )
     return rows
@@ -172,16 +203,16 @@ def _load_or_build_questions(
             except Exception as exc:
                 return [], f"disk:{candidate}", f"questions unreadable: {exc}"
     try:
-        from psbx.questions.build_set import build_questions, write_question_set
+        from psbx.questions.build_set import build_questions
 
         qs = build_questions(epoch, limit=run.n_questions)
     except Exception as exc:
         return [], "missing", f"question build failed: {exc}"
-    try:
-        write_question_set(epoch, qs)
-        return qs, f"generated:{path}", None
-    except Exception as exc:
-        return qs, "generated:in-memory", f"questions generated but not written: {exc}"
+    return (
+        qs,
+        "practice:in-memory-questions",
+        "question set is not materialized; run the documented practice preparation command",
+    )
 
 
 def _load_or_build_index(epoch: Epoch, run: RunConfig) -> tuple[HybridIndex, str, str | None]:
@@ -194,25 +225,35 @@ def _load_or_build_index(epoch: Epoch, run: RunConfig) -> tuple[HybridIndex, str
         except Exception as exc:
             err = f"index load failed ({exc}); rebuilding from seeds"
     try:
-        from psbx.corpus.build_index import build_index
-
-        index = build_index(epoch, live=False, backend=run.embedding_backend)
-        note = f"built:{dest}"
-        return index, note, err
-    except Exception as exc:
+        # The viewer fallback is intentionally tracked-fixture-only and never writes
+        # an index as a side effect of import/startup.
+        from psbx.corpus.aggregate_sources import ingest_aggregate_sources
         from psbx.corpus.embed import embed_texts
+        from psbx.corpus.fetch_wikipedia import fixture_wikipedia_documents
         from psbx.corpus.index import HybridIndex
         from psbx.corpus.prominence import apply_prominence
         from psbx.corpus.seed_documents import seed_documents
 
-        docs = apply_prominence(seed_documents())
+        docs = apply_prominence(
+            [
+                *seed_documents(),
+                *ingest_aggregate_sources(epoch),
+                *fixture_wikipedia_documents(epoch),
+            ]
+        )
         docs = [d for d in docs if d.published_at.date() <= epoch.cutoff_date]
         embeddings = embed_texts([f"{d.title}\n{d.text}" for d in docs], backend="hashing")
         return (
             HybridIndex(docs, embeddings, epoch.cutoff_date),
-            "in-process:seed_documents",
-            f"{err + '; ' if err else ''}index build fell back to seeds: {exc}",
+            "practice:in-memory-tracked-fixtures",
+            (
+                f"{err + '; ' if err else ''}generated corpus is missing; using "
+                f"tracked practice fixtures. Run `psbx practice prepare --epoch {epoch.id}` "
+                "before an isolated run."
+            ),
         )
+    except Exception as exc:
+        raise RuntimeError(f"practice fixture index could not be built in memory: {exc}") from exc
 
 
 def list_runs() -> list[dict[str, Any]]:
@@ -1038,6 +1079,10 @@ def public_document_row(doc) -> dict[str, Any]:
         "source_type": doc.source_type,
         "prominence": doc.prominence,
         "url": doc.url,
+        "authenticity": doc.authenticity,
+        "research_eligible": doc.research_eligible,
+        "content_sha256": doc.content_sha256,
+        "source_reference": doc.source_reference,
     }
 
 

@@ -171,8 +171,8 @@ def test_dashboard_html_a11y_landmarks():
     assert "they do not independently browse" in html
     assert "Run live mix" in html
     assert "Run live AI" not in html
-    assert "app.js?v=43" in html
-    assert "app.css?v=44" in html
+    assert "app.js?v=44" in html
+    assert "app.css?v=45" in html
     assert "geography-map.js?v=3" in html
     assert "enchant.css" not in html
     assert "fonts.googleapis.com" not in html

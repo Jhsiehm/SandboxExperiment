@@ -41,6 +41,7 @@ class EnvSearchClient:
                     snippet=row.get("snippet") or "",
                     prominence=float(row.get("prominence") or 0.0),
                     source_type=row.get("source_type"),
+                    authenticity=row.get("authenticity", "unverified"),
                 )
             )
         return hits

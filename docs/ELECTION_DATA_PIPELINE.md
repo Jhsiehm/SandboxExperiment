@@ -105,9 +105,9 @@ Use `--allow-uncertified` only for an explicitly labeled provisional dataset.
 
 ## Filling the district map correctly
 
-The state boxes are already backed by validated 2012 synthetic state populations. The current
-district boxes are selectors, not district populations. Filling them requires this sequence for
-each election vintage:
+The checked-in state and district boxes are boundary selectors, not population profiles. A local
+state profile may appear only after its ignored build artifacts and validation manifest exist.
+Filling real-geography profiles requires this sequence for each election vintage:
 
 1. download ACS estimates for the matching district plan;
 2. pin the matching TIGER/Line boundary vintage;

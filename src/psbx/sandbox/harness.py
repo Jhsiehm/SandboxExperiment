@@ -45,7 +45,9 @@ def search_client_for(run: RunConfig, index: HybridIndex):
         # sidecar. A leftover host Unix socket must never bypass that boundary.
         backend = HttpSearchClient(base_url="http://127.0.0.1:8766")
         backend.require_selection(run.epoch, run.source_type, index.cutoff)
-    return EvidencePolicySearchClient(backend, run.evidence_use)
+    if run.evidence_use == "research":
+        return EvidencePolicySearchClient(backend, run.evidence_use)
+    return backend
 
 
 def require_evidence_available(run: RunConfig, index: HybridIndex) -> None:

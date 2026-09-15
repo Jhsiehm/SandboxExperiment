@@ -112,7 +112,7 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
         if not eras[selected]["ready"]:
             raise HTTPException(
                 status_code=409,
-                detail=f"{selected} is configured but needs both a corpus index and question set",
+                detail=f"{selected} is configured but needs a benchmark question set",
             )
         cached = app.state.viewer_states.get(selected)
         if cached is None:
@@ -239,6 +239,11 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             d.id for d in s.index.docs if d.published_at.date() > s.index.cutoff
         ]
         docs = [public_document_row(d) for d in s.index.docs[:limit]]
+        authenticity_counts: dict[str, int] = {}
+        for document in s.index.docs:
+            authenticity_counts[document.authenticity] = (
+                authenticity_counts.get(document.authenticity, 0) + 1
+            )
         return {
             "cutoff_date": s.index.cutoff.isoformat(),
             "assertion": f"hard-filter published_at <= {s.index.cutoff.isoformat()}",
@@ -246,6 +251,10 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             "n_shown": len(docs),
             "n_leaked": len(leaked),
             "source": s.index_source,
+            "authenticity_counts": authenticity_counts,
+            "research_eligible_documents": sum(
+                1 for document in s.index.docs if document.research_eligible
+            ),
             "documents": docs,
         }
 
@@ -402,8 +411,88 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             ) from exc
 
     @app.get("/api/jobs/ready")
-    def job_ready() -> dict[str, Any]:
-        return ready()
+    def job_ready(
+        epoch: str | None = None,
+        source_type: str | None = None,
+    ) -> dict[str, Any]:
+        payload = ready()
+        selected = epoch or app.state.default_epoch_id
+        catalog = {row["id"]: row for row in era_catalog()}
+        row = catalog.get(selected)
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"unknown epoch: {selected}")
+        configured_epoch = state_for(selected).epoch
+        snapshot = sandbox_snapshot(selected, configured_epoch.cutoff_date.isoformat())
+        expected_scope = source_type or "all"
+        corpus_built = bool(row.get("has_corpus"))
+        questions_built = bool(row.get("has_questions"))
+        seal_verified = bool(
+            snapshot.get("verified") and snapshot.get("selection") == expected_scope
+        )
+        requirements = [
+            {
+                "id": "question_set",
+                "ready": questions_built,
+                "detail": "Benchmark question set is materialized.",
+            },
+            {
+                "id": "generated_corpus",
+                "ready": corpus_built,
+                "detail": (
+                    "Generated corpus index is present."
+                    if corpus_built
+                    else f"Run `psbx practice prepare --epoch {selected}`."
+                ),
+            },
+            {
+                "id": "sealed_sidecar",
+                "ready": seal_verified,
+                "detail": (
+                    f"Sidecar is sealed to {selected}/{expected_scope}."
+                    if seal_verified
+                    else f"Run `psbx sandbox up --epoch {selected}` and verify scope "
+                    f"{expected_scope}."
+                ),
+            },
+        ]
+        blocking = [item["detail"] for item in requirements if not item["ready"]]
+        practice_ready = questions_built and corpus_built and seal_verified
+        authenticated_ready = int(row.get("research_eligible_documents") or 0) > 0
+        provider_live_ready = bool(payload.get("live_ready"))
+        live_blocking = []
+        if not practice_ready:
+            live_blocking.append("Complete the practice corpus/sidecar prerequisites.")
+        if not authenticated_ready:
+            live_blocking.append(
+                "The selected corpus has no authenticated research-eligible evidence."
+            )
+        if not provider_live_ready:
+            live_blocking.append(
+                "Paid mode and the required provider credentials are not enabled."
+            )
+        payload.update(
+            {
+                "requested_epoch": selected,
+                "requested_source_type": expected_scope,
+                "practice_ready": practice_ready,
+                "practice_requirements": requirements,
+                "practice_blocking_reason": " ".join(blocking),
+                "provider_live_ready": provider_live_ready,
+                "authenticated_evidence_ready": authenticated_ready,
+                "research_run_ready": practice_ready and authenticated_ready,
+                "live_ready": (
+                    practice_ready and authenticated_ready and provider_live_ready
+                ),
+                "live_blocking_reason": " ".join(live_blocking),
+                "sidecar": {
+                    "verified": bool(snapshot.get("verified")),
+                    "selection": snapshot.get("selection") or "unknown",
+                    "epoch_match": bool(snapshot.get("epoch_match")),
+                    "cutoff_match": bool(snapshot.get("cutoff_match")),
+                },
+            }
+        )
+        return payload
 
     @app.get("/api/jobs/run")
     def job_status() -> dict[str, Any]:
@@ -416,6 +505,20 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
         try:
             selected = req.epoch_id or app.state.default_epoch_id
             s = state_for(selected)
+            selected_era = next(
+                row for row in era_catalog() if row["id"] == selected
+            )
+            if not selected_era["isolated_run_ready"]:
+                raise SandboxNotReady(
+                    f"prepare generated assets first with `psbx practice prepare "
+                    f"--epoch {selected}`"
+                )
+            requested_kind = (req.kind or ("mock" if req.mock else "live")).lower()
+            if requested_kind != "mock" and not selected_era["research_ready"]:
+                raise LiveNotReady(
+                    "live/swarm research requires authenticated evidence in the "
+                    "selected corpus"
+                )
             if req.isolated_retrieval:
                 snapshot = sandbox_snapshot(selected, s.epoch.cutoff_date.isoformat())
                 expected_scope = req.source_type or "all"
