@@ -22,3 +22,4 @@ category_balance:
 sandbox_mode: container
 embedding_backend: hashing
 allow_mock: false
+evidence_use: research

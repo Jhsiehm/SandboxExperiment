@@ -1,0 +1,15 @@
+experiment_id: evidence-ablation-e2012
+epoch: e2012
+models: [frontier-a]
+model_design: single
+question_set: data/questions/e2012.jsonl
+n_questions: 10
+replications: 1
+evidence_documents: 3
+max_tool_calls: 4
+max_tokens: 512
+temperature: 0.2
+random_seed: 12062012
+bootstrap_replicates: 2000
+conditions: [no_evidence, matched_authenticated, shuffled_eligible]
+allow_mock: true

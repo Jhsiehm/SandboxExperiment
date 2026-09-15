@@ -82,6 +82,13 @@ def test_baselines_and_contamination_sign():
     curve = contamination_curve(preds, qs, model)
     assert curve.pre_cutoff_mean_brier is not None
     assert curve.post_cutoff_mean_brier is not None
+    assert not curve.causal_interpretation_supported
+    assert curve.cutoff_is_declared_metadata
+    assert all(
+        bucket.mean_brier is None and bucket.mean_accuracy is None
+        for bucket in curve.buckets
+        if bucket.n == 0
+    )
 
 
 def _model(model_id: str) -> ModelConfig:

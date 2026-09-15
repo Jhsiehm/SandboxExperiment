@@ -150,6 +150,9 @@ def score_run(
         calibration=calib,
         contamination=contam,
         n_flagged=sum(1 for p in preds if p.flagged_for_contamination_review),
+        n_citation_verification_failed=sum(
+            1 for p in preds if p.citation_verification_failed
+        ),
         c_index_by_model=c_by_model,
         c_index_pairs_by_model=c_pairs,
         c_index_baselines=c_baselines,
@@ -257,7 +260,7 @@ def _contamination_plot(curves: list[ContaminationResult], path: Path) -> None:
     ax.axvline(0, color="#A3392C", linewidth=1)
     ax.set_xlabel("gap_days (resolution − pretraining cutoff)")
     ax.set_ylabel("mean Brier")
-    ax.set_title("contamination curve")
+    ax.set_title("declared-cutoff gap diagnostic (descriptive)")
     ax.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=120)

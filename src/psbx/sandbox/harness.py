@@ -16,7 +16,7 @@ from psbx.io import read_jsonl, write_jsonl
 from psbx.paths import run_dir
 from psbx.run_provenance import ensure_run_provenance
 from psbx.sandbox.citations import validate_citations
-from psbx.sandbox.client import HttpSearchClient, LocalSearchClient
+from psbx.sandbox.client import EvidencePolicySearchClient, HttpSearchClient, LocalSearchClient
 from psbx.schemas import Epoch, ModelConfig, Prediction, Question, RunConfig, SwarmVote
 from psbx.spending import begin_spend_run, preflight_paid_requests
 
@@ -37,13 +37,23 @@ def require_question_epoch(questions: list[Question], epoch: Epoch) -> None:
 
 
 def search_client_for(run: RunConfig, index: HybridIndex):
+    require_evidence_available(run, index)
     if run.sandbox_mode != "container":
-        return LocalSearchClient(index, min_prominence=run.min_prominence)
-    # Container mode always targets the verified loopback-published Docker
-    # sidecar. A leftover host Unix socket must never bypass that boundary.
-    client = HttpSearchClient(base_url="http://127.0.0.1:8766")
-    client.require_selection(run.epoch, run.source_type, index.cutoff)
-    return client
+        backend = LocalSearchClient(index, min_prominence=run.min_prominence)
+    else:
+        # Container mode always targets the verified loopback-published Docker
+        # sidecar. A leftover host Unix socket must never bypass that boundary.
+        backend = HttpSearchClient(base_url="http://127.0.0.1:8766")
+        backend.require_selection(run.epoch, run.source_type, index.cutoff)
+    return EvidencePolicySearchClient(backend, run.evidence_use)
+
+
+def require_evidence_available(run: RunConfig, index: HybridIndex) -> None:
+    if run.evidence_use == "research" and not any(doc.research_eligible for doc in index.docs):
+        raise RuntimeError(
+            "research evidence requested, but this corpus contains no authenticated "
+            "captures or artifacts; rebuild/select an eligible frozen corpus"
+        )
 
 
 def run_question(
@@ -56,10 +66,19 @@ def run_question(
     client: object | None = None,
     max_tool_calls: int = 12,
     min_prominence: float = 0.0,
+    evidence_use: str = "practice",
 ) -> Prediction:
     require_question_epoch([question], epoch)
     index = index or load_index(epoch)
     search_client = client or LocalSearchClient(index, min_prominence=min_prominence)
+    if evidence_use == "research":
+        if not any(doc.research_eligible for doc in index.docs):
+            raise RuntimeError(
+                "research evidence requested, but this corpus contains no authenticated "
+                "captures or artifacts"
+            )
+        if not isinstance(search_client, EvidencePolicySearchClient):
+            search_client = EvidencePolicySearchClient(search_client, "research")
     pred = run_single_agent(
         question,
         model,
@@ -68,7 +87,9 @@ def run_question(
         search_client,
         max_tool_calls=max_tool_calls,
     )
-    return validate_citations(pred, index)
+    if evidence_use == "practice":
+        return validate_citations(pred, index)
+    return validate_citations(pred, index, evidence_use=evidence_use)
 
 
 def run_set(
@@ -113,6 +134,7 @@ def run_set(
                 client=client,
                 max_tool_calls=run.max_tool_calls,
                 min_prominence=run.min_prominence,
+                evidence_use=run.evidence_use,
             )
             preds.append(pred)
             done.add(key)
@@ -208,7 +230,13 @@ def run_swarm_set(
             max_retrieval=run.max_tool_calls,
             perspectives_path=run.perspectives,
         )
-        pred = validate_citations(result.prediction, index)
+        pred = (
+            validate_citations(result.prediction, index)
+            if run.evidence_use == "practice"
+            else validate_citations(
+                result.prediction, index, evidence_use=run.evidence_use
+            )
+        )
         preds.append(pred)
         votes.extend(result.votes)
         done.add(key)

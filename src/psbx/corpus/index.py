@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
@@ -110,6 +110,7 @@ class HybridIndex:
                     snippet=snippet,
                     prominence=doc.prominence,
                     source_type=doc.source_type,
+                    authenticity=doc.authenticity,
                 )
             )
             if len(hits) >= k:
@@ -184,6 +185,10 @@ def save_index(
             "n_docs": len(docs),
             "embedding_dim": int(embeddings.shape[1]) if len(embeddings) else 0,
             "source_types": sorted({str(doc.source_type) for doc in docs}),
+            "authenticity_counts": dict(
+                sorted(Counter(doc.authenticity for doc in docs).items())
+            ),
+            "research_eligible_documents": sum(1 for doc in docs if doc.research_eligible),
             "silos": dict(sorted((silo_counts or {}).items())),
         },
     )

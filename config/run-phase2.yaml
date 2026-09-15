@@ -14,3 +14,4 @@ embedding_backend: hashing
 # Fail loud if ANTHROPIC_API_KEY / OPENAI_API_KEY are missing. Do not fall back
 # to the retrieval heuristic — that would poison the contamination curve.
 allow_mock: false
+evidence_use: research

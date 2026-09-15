@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -70,7 +71,7 @@ def build_run_provenance(
     if run.perspectives:
         referenced_files["perspectives"] = _sha256_file(resolve(run.perspectives))
     contract: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "run_id": run.run_id,
         "epoch_id": epoch.id,
         "cutoff": epoch.cutoff_date.isoformat(),
@@ -82,6 +83,16 @@ def build_run_provenance(
             [question.model_dump(mode="json") for question in questions]
         ),
         "corpus_sha256": _corpus_fingerprint(index),
+        "evidence_policy": {
+            "use": run.evidence_use,
+            "total_documents": len(index.docs),
+            "research_eligible_documents": sum(
+                1 for document in index.docs if document.research_eligible
+            ),
+            "authenticity_counts": dict(
+                sorted(Counter(document.authenticity for document in index.docs).items())
+            ),
+        },
     }
     return {**contract, "fingerprint": _json_digest(contract)}
 

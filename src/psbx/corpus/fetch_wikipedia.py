@@ -90,6 +90,9 @@ def ingest_wikipedia(epoch: Epoch, live: bool = False) -> list[Document]:
                     source_type="wiki",
                     prominence=0.0,
                     syndication_count=1,
+                    provenance=(
+                        "Local Wikipedia cache row; authenticity not independently verified."
+                    ),
                 )
             )
     return docs
@@ -115,6 +118,9 @@ def _fixture_pages(epoch: Epoch) -> list[Document]:
                 source_type="wiki",
                 prominence=0.0,
                 syndication_count=1,
+                provenance="Original reconstruction for offline practice.",
+                authenticity="reconstructed_fixture",
+                timestamp_basis="fixture_as_of",
             )
         )
     return docs

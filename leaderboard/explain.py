@@ -262,6 +262,9 @@ def explain_scores(
         "contamination_note": _contamination_note(report, models),
         "n_predictions": report.get("n_predictions") or 0,
         "n_flagged": report.get("n_flagged") or 0,
+        "n_citation_verification_failed": (
+            report.get("n_citation_verification_failed") or 0
+        ),
         "question_count": report.get("question_count") or 0,
         "coverage_by_model": coverage_by,
         "matched_question_count": len(matched_question_ids),
@@ -426,19 +429,19 @@ def _contamination_note(report: dict[str, Any], models: dict[str, ModelConfig] |
     curves = report.get("contamination") or []
     if not curves:
         return (
-            "We also check whether a model only gets better after its training cutoff. "
-            "On this 2012 set, today’s big models were trained years later, so that chart "
-            "cannot show a before/after spike. Ranking vs probability error is the useful split."
+            "No declared-cutoff gap buckets are available. On this 2012 set, a model’s "
+            "declared training cutoff is metadata—not an audited boundary—and cannot by "
+            "itself establish training exposure, leakage, or an evidence effect."
         )
     post = [c.get("post_cutoff_mean_brier") for c in curves]
     if any(v is None for v in post):
         return (
-            "Today’s Claude and GPT were trained long after these 2012–2013 answers. "
-            "They may remember what happened (high ranking) even if their percentages "
-            "are sloppy (high probability error). That split is the point of this epoch, "
-            "not a reason to skip it."
+            "The available questions do not populate both sides of the declared cutoff. "
+            "Any visible 2012 ranking/error pattern is descriptive only; it cannot identify "
+            "memorization, leakage, or whether retrieved evidence caused the result."
         )
     return (
-        "This chart is accuracy versus how far the answer date sits from the model’s "
-        "training cutoff. A sudden jump once that gap crosses zero is a leakage signal."
+        "This chart groups accuracy by distance from each model’s declared training-cutoff "
+        "metadata. Differences are observational diagnostics only. They do not prove "
+        "training membership, leakage, retrieval use, or a causal evidence effect."
     )

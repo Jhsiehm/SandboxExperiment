@@ -12,3 +12,4 @@ category_balance:
 sandbox_mode: host
 embedding_backend: hashing
 allow_mock: true
+evidence_use: practice

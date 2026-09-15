@@ -64,3 +64,5 @@ population-synthesis uncertainty, behavior-model error, model instability, and M
 - Using aggregate precinct results to claim individual-level demographic vote choices.
 - Exposing raw respondent microdata or evaluation targets to runtime agents.
 - Treating a larger number of calls to the same model as independent human evidence.
+- Treating declared model cutoff dates or observational cutoff-gap curves as proof of
+  training membership, contamination, leakage, retrieval use, or causal evidence effects.

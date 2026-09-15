@@ -406,6 +406,26 @@ def ingest_synced_survey_sources(
             f"fieldwork {artifact.fieldwork_year_start}-{artifact.fieldwork_year_end}; "
             f"release {released.date()}; {verification}"
         )
+        evidence_fields: dict[str, Any]
+        if artifact.retrieval == "wayback":
+            captured_at = datetime.strptime(
+                snapshot_timestamp[:14], "%Y%m%d%H%M%S"
+            ).replace(tzinfo=UTC)
+            evidence_fields = {
+                "authenticity": "authenticated_capture",
+                "timestamp_basis": "archive_capture",
+                "captured_at": captured_at,
+                "source_reference": str(row.get("snapshot_url") or artifact.url),
+                "capture_verified": True,
+            }
+        else:
+            evidence_fields = {
+                "authenticity": "authenticated_artifact",
+                "timestamp_basis": "publication_date",
+                "source_reference": artifact.url,
+                "publication_date_verified": True,
+                "release_verified": True,
+            }
         docs.append(
             Document(
                 id=document_id_for(text),
@@ -417,6 +437,7 @@ def ingest_synced_survey_sources(
                 source_type="survey",
                 prominence=0.0,
                 provenance=provenance,
+                **evidence_fields,
             )
         )
     return docs

@@ -552,6 +552,12 @@ def seed_documents() -> list[Document]:
                 syndication_count=int(raw["syndication_count"]),
                 gdelt_mention_count=int(raw["gdelt_mention_count"]),
                 front_page_minutes=float(raw["front_page_minutes"]),
+                provenance=(
+                    "Original reconstruction for offline practice; the URL is a subject "
+                    "reference and does not authenticate this text."
+                ),
+                authenticity="reconstructed_fixture",
+                timestamp_basis="fixture_as_of",
             )
         )
     return docs

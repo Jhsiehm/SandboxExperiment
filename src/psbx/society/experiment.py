@@ -14,8 +14,10 @@ from psbx.paths import repo_root
 from psbx.paths import run_dir as resolve_run_dir
 from psbx.run_provenance import ensure_run_provenance
 from psbx.sandbox.citations import validate_citations
+from psbx.sandbox.client import EvidencePolicySearchClient
 from psbx.sandbox.harness import (
     prepare_spend_guard,
+    require_evidence_available,
     require_question_epoch,
     run_question,
     search_client_for,
@@ -83,6 +85,7 @@ def run_society(
         prepare_spend_guard(all_questions, [], run)
         return run_society_swarm(run, limit=limit, config_path=config_path)
     env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence, source_type=run.source_type)
+    require_evidence_available(run, index)
     models = load_models()
     chosen = [models[mid] for mid in run.models]
     qs = all_questions[:n]
@@ -126,7 +129,9 @@ def run_society(
             client = (
                 search_client_for(run, index)
                 if run.sandbox_mode == "container"
-                else EnvSearchClient(env, agent_id=1)
+                else EvidencePolicySearchClient(
+                    EnvSearchClient(env, agent_id=1), run.evidence_use
+                )
             )
             pred = run_question(
                 question,
@@ -137,8 +142,8 @@ def run_society(
                 client=client,
                 max_tool_calls=run.max_tool_calls,
                 min_prominence=run.min_prominence,
+                evidence_use=run.evidence_use,
             )
-            pred = validate_citations(pred, index)
             preds.append(pred)
             done.add(key)
             write_jsonl(dest, preds)
@@ -161,6 +166,7 @@ def run_society_swarm(
 
     n = limit if limit is not None else run.n_questions
     env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence, source_type=run.source_type)
+    require_evidence_available(run, index)
     qs = read_jsonl(run.question_set, Question)[:n]
     require_question_epoch(qs, epoch)
     dest = resolve_run_dir(run.run_id) / "predictions.jsonl"
@@ -205,7 +211,7 @@ def run_society_swarm(
     client = (
         search_client_for(run, index)
         if run.sandbox_mode == "container"
-        else EnvSearchClient(env, agent_id=1)
+        else EvidencePolicySearchClient(EnvSearchClient(env, agent_id=1), run.evidence_use)
     )
     for question in qs:
         key = (SWARM_MEDIAN_ID, question.id)
@@ -222,7 +228,7 @@ def run_society_swarm(
             max_retrieval=run.max_tool_calls,
             perspectives_path=run.perspectives,
         )
-        pred = validate_citations(result.prediction, index)
+        pred = validate_citations(result.prediction, index, evidence_use=run.evidence_use)
         preds.append(pred)
         votes.extend(result.votes)
         done.add(key)

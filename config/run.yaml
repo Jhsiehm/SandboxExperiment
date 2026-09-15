@@ -12,3 +12,6 @@ category_balance:
 # Search sidecar: psbx sandbox up (libfaketime + --network none). Agent stays on host.
 sandbox_mode: host
 embedding_backend: hashing
+# Offline reconstructed fixtures are allowed. Use `research` only with an
+# authenticated frozen capture/artifact corpus; that mode fails closed otherwise.
+evidence_use: practice

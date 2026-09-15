@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Annotated
@@ -28,12 +29,14 @@ corpus_app = typer.Typer(no_args_is_help=True)
 society_app = typer.Typer(no_args_is_help=True)
 eval_app = typer.Typer(no_args_is_help=True)
 epoch_app = typer.Typer(no_args_is_help=True)
+experiment_app = typer.Typer(no_args_is_help=True)
 app.add_typer(questions_app, name="questions")
 app.add_typer(corpus_app, name="corpus")
 sandbox_app = typer.Typer(no_args_is_help=True)
 app.add_typer(society_app, name="society")
 app.add_typer(eval_app, name="eval")
 app.add_typer(epoch_app, name="epoch")
+app.add_typer(experiment_app, name="experiment")
 app.add_typer(sandbox_app, name="sandbox")
 app.add_typer(population_app, name="population")
 app.add_typer(elections_app, name="elections")
@@ -248,6 +251,43 @@ def agenda_cmd(epoch: Annotated[str, typer.Option("--epoch")] = "e2012") -> None
     result = correlate_gallup(index)
     write_json(f"data/runs/{epoch}-agenda.json", result)
     typer.echo(result)
+
+
+@experiment_app.command("evidence")
+def evidence_experiment_cmd(
+    config: Annotated[Path, typer.Option("--config")] = Path(
+        "config/evidence-experiment.yaml"
+    ),
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    """Run the paired no/matched/shuffled authenticated-evidence experiment."""
+    from psbx.config import load_yaml
+    from psbx.experiments.evidence_ablation import (
+        EvidenceExperimentSpec,
+        run_evidence_experiment,
+    )
+
+    spec = EvidenceExperimentSpec.model_validate(load_yaml(config))
+    if limit is not None:
+        spec = spec.model_copy(update={"n_questions": limit})
+    if spec.allow_mock:
+        _maybe_enable_mock()
+    elif os.environ.get("PSBX_MOCK_LLM") == "1":
+        raise typer.BadParameter(
+            f"{config} has allow_mock: false; unset PSBX_MOCK_LLM to run live models"
+        )
+    epoch = load_epochs()[spec.epoch]
+    model_catalog = load_models()
+    chosen_models = [model_catalog[model_id] for model_id in spec.models]
+    questions = read_jsonl(spec.question_set, Question)
+    report = run_evidence_experiment(
+        spec,
+        questions,
+        chosen_models,
+        epoch,
+        load_index(epoch),
+    )
+    typer.echo(json.dumps(report, indent=2))
 
 
 @app.command("leaderboard")

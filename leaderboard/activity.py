@@ -403,17 +403,26 @@ def build_activity_payload(
                     "outlet": doc.outlet if doc else "unknown",
                     "source_type": str(doc.source_type) if doc else "unknown",
                     "published_at": doc.published_at.isoformat() if doc else None,
+                    "authenticity": doc.authenticity if doc else "unknown",
+                    "research_eligible": bool(doc and doc.research_eligible),
+                    "content_sha256": doc.content_sha256 if doc else None,
                     "within_cutoff": bool(
                         doc and doc.published_at.date() <= state.epoch.cutoff_date
                     ),
                 }
             )
     sources = Counter(str(doc.source_type) for doc in state.index.docs)
+    authenticity = Counter(doc.authenticity for doc in state.index.docs)
     access = sandbox_snapshot(state.epoch.id, state.epoch.cutoff_date.isoformat())
     config_scope = str(config.source_type or "all")
     access["config_scope"] = config_scope
     access["scope_match"] = access.get("selection") == config_scope
     access["available_sources"] = {"all": len(state.index.docs), **dict(sorted(sources.items()))}
+    access["evidence_use"] = config.evidence_use
+    access["authenticity_counts"] = dict(sorted(authenticity.items()))
+    access["research_eligible_documents"] = sum(
+        1 for doc in state.index.docs if doc.research_eligible
+    )
     is_society = "society" in run_id or bool(config.perspectives)
     population_selection = _population_selection(run_id, job)
     question_labels = {question.id: question.text for question in state.questions}

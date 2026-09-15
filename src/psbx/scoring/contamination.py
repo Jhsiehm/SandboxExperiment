@@ -1,12 +1,13 @@
-"""Accuracy vs cutoff-gap. Headline output, not a footnote.
+"""Descriptive performance versus distance from declared cutoff metadata.
 
 gap_days = resolution_date - declared_pretraining_cutoff
 
-  gap > 0  event resolves after the model's cutoff — parametric recall cannot help
-  gap < 0  event is inside the training window — contamination is possible
+  gap > 0  event resolves after the model's declared cutoff date
+  gap < 0  event resolves before the model's declared cutoff date
 
-A sharp Brier improvement as gap crosses zero (from + to −) is the
-contamination signal. Flat means the contemporaneous corpus is doing the work.
+These observational buckets do not identify training membership, retrieval use,
+leakage, or causal effects. Declared cutoff dates are model metadata, not audited
+boundaries. The diagnostic may motivate a controlled follow-up experiment only.
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ def contamination_curve(
     post_b = _mean_brier(post, qs) if post else None
     delta = None
     if pre_b is not None and post_b is not None:
-        # Positive delta: better (lower Brier) when the event is inside training.
+        # Positive delta is a descriptive difference, not a contamination estimate.
         delta = post_b - pre_b
     return ContaminationResult(
         model_id=model.id,
@@ -65,7 +66,7 @@ def _summarize(
 ) -> ContaminationBucket:
     if not group:
         return ContaminationBucket(
-            gap_lo_days=lo, gap_hi_days=hi, n=0, mean_brier=0.0, mean_accuracy=0.0
+            gap_lo_days=lo, gap_hi_days=hi, n=0, mean_brier=None, mean_accuracy=None
         )
     b = _mean_brier(group, qs)
     acc = sum(

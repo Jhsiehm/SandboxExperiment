@@ -61,6 +61,8 @@ def _record_to_document(raw: dict[str, Any]) -> Document:
         gdelt_mention_count=int(raw.get("gdelt_mention_count") or 0),
         front_page_minutes=float(raw.get("front_page_minutes") or 0.0),
         provenance=str(raw.get("provenance") or "") or None,
+        authenticity="reconstructed_fixture",
+        timestamp_basis="fixture_as_of",
     )
 
 
@@ -107,6 +109,8 @@ def gallup_mip_documents(cutoff: date, path: str | Path = GALLUP_MIP) -> list[Do
                 gdelt_mention_count=10,
                 front_page_minutes=40,
                 provenance=str(payload.get("source") or "Gallup historical MIP series"),
+                authenticity="reconstructed_fixture",
+                timestamp_basis="fixture_as_of",
             )
         )
     return docs

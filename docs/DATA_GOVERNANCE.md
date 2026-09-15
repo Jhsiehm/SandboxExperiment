@@ -1,5 +1,27 @@
 # Track B data governance
 
+## Evidence authenticity and use
+
+Every searchable `Document` has an explicit authenticity class. Missing legacy
+metadata migrates to `unverified`; neither an old-looking timestamp nor an ordinary
+URL upgrades that default.
+
+- `reconstructed_fixture` is original or summarized text made for offline practice.
+- `unverified` has not established a frozen source artifact or capture chain.
+- `authenticated_capture` requires a verified archive-capture timestamp, the replay
+  reference, and a SHA-256 of the exact indexed text.
+- `authenticated_artifact` requires a checksum-pinned artifact, verified release and
+  publication metadata, its source reference, and a SHA-256 of the indexed text.
+
+`RunConfig.evidence_use` is part of run provenance. `practice` preserves the current
+offline workflow and may retrieve any cutoff-safe class. `research` fails before a
+provider call when no authenticated evidence exists, filters search results to
+authenticated material, and refuses direct fetches of ineligible documents.
+
+Citation validation is intentionally named document/quotation verification. It can
+show that a cited ID exists in the frozen index and that the quoted span is literal.
+It does not verify semantic entailment, truth, source authenticity, or causality.
+
 ## Provenance contract
 
 Every source artifact must record:

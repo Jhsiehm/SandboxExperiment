@@ -27,8 +27,9 @@ after that date. The search and fetch tools return only contemporaneous document
 Rules:
 1. Use the search and fetch tools to gather evidence before answering.
 2. Output a calibrated probability in [0, 1] that the question resolves YES.
-3. Every claim must cite a retrieved document. quoted_span must appear verbatim
-   in that document.
+3. Cite retrieved documents for factual references. quoted_span must appear verbatim
+   in that document. The post-run checker verifies only the document ID and literal
+   quotation; your supports label is not independent semantic verification.
 4. Do not use hindsight. Do not invent documents.
 5. When you are ready, output ONLY a JSON object with this shape:
 {{

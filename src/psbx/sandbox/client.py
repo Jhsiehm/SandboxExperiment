@@ -8,7 +8,7 @@ from typing import Any, Protocol
 import httpx
 
 from psbx.corpus.index import HybridIndex
-from psbx.schemas import SearchHit
+from psbx.schemas import EvidenceUse, SearchHit
 
 
 class SearchClient(Protocol):
@@ -28,6 +28,64 @@ class SearchClient(Protocol):
 
 class RetrievalBudgetExceeded(RuntimeError):
     """A forecast attempted retrieval after its independent allowance expired."""
+
+
+class EvidencePolicyViolation(RuntimeError):
+    """A research run attempted to read evidence without authenticated provenance."""
+
+
+class EvidencePolicySearchClient:
+    """Filter a transport according to an explicit practice/research evidence policy."""
+
+    def __init__(self, backend: SearchClient, evidence_use: EvidenceUse):
+        self.backend = backend
+        self.evidence_use = evidence_use
+
+    @property
+    def queries(self) -> list[str]:
+        return self.backend.queries
+
+    @property
+    def n_calls(self) -> int:
+        return self.backend.n_calls
+
+    @property
+    def env(self) -> object | None:
+        return getattr(self.backend, "env", None)
+
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        min_prominence: float = 0.0,
+        source_types: list[str] | None = None,
+    ) -> list[SearchHit]:
+        if self.evidence_use == "practice":
+            return self.backend.search(
+                query,
+                k=k,
+                min_prominence=min_prominence,
+                source_types=source_types,
+            )
+        # Search the transport's complete bounded window before filtering so an
+        # unverified high-ranking record cannot hide eligible material below it.
+        hits = self.backend.search(
+            query,
+            k=25,
+            min_prominence=min_prominence,
+            source_types=source_types,
+        )
+        return [hit for hit in hits if hit.authenticity.startswith("authenticated_")][:k]
+
+    def fetch(self, document_id: str) -> dict:
+        payload = self.backend.fetch(document_id)
+        if self.evidence_use == "research" and not str(
+            payload.get("authenticity", "unverified")
+        ).startswith("authenticated_"):
+            raise EvidencePolicyViolation(
+                f"document {document_id!r} is not eligible for research evidence"
+            )
+        return payload
 
 
 class ForecastSearchClient:

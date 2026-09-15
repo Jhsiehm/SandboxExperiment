@@ -237,6 +237,18 @@ def ingest_wayback(
                         text=text[:20000],
                         source_type=outlet["source_type"],
                         prominence=0.0,
+                        provenance=(
+                            "Fetched from an Internet Archive replay selected by a CDX "
+                            "capture record; this verifies the capture, not the page's "
+                            "original publication date or semantic claims."
+                        ),
+                        authenticity="authenticated_capture",
+                        timestamp_basis="archive_capture",
+                        captured_at=published,
+                        source_reference=(
+                            f"https://web.archive.org/web/{ts}id_/{original}"
+                        ),
+                        capture_verified=True,
                     )
                 )
                 taken += 1

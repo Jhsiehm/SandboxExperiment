@@ -48,6 +48,7 @@ def test_explain_miss_when_models_worse_than_prior():
     assert ex["verdict"].get("ranking") is not None
     assert "keyword" in ex["verdict"]["detail"].lower()
     assert "2012" in ex["contamination_note"]
+    assert "cannot identify" in ex["contamination_note"]
 
 
 def test_forecast_rows_join_question_and_error():

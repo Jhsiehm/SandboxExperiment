@@ -60,7 +60,7 @@ def build_site(run_id: str) -> Path:
   <tr><th>baseline</th><th>Brier</th></tr>
   {base_rows}
 </table>
-<p>Contamination curves and calibration plots live next to results.json.</p>
+<p>Descriptive declared-cutoff gap diagnostics and calibration plots live next to results.json.</p>
 </html>
 """,
         encoding="utf-8",

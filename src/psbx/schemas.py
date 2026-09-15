@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import date, datetime
 from typing import Literal
 
@@ -17,6 +18,21 @@ Urbanicity = Literal["urban", "suburban", "rural", "unspecified"]
 PartyId = Literal["democrat", "republican", "independent", "unspecified"]
 ResponseKind = Literal["binary_outcome", "poll_share"]
 StimulusKind = Literal["contemporaneous_media"]
+EvidenceAuthenticity = Literal[
+    "reconstructed_fixture",
+    "unverified",
+    "authenticated_capture",
+    "authenticated_artifact",
+]
+EvidenceUse = Literal["practice", "research"]
+TimestampBasis = Literal[
+    "unknown",
+    "fixture_as_of",
+    "archive_capture",
+    "publication_date",
+]
+
+AUTHENTICATED_EVIDENCE = frozenset({"authenticated_capture", "authenticated_artifact"})
 
 # Conditioners for the demographic swarm (Track B). Headlines remain the stimulus (Track A).
 CONDITIONER_SOURCE_TYPES = frozenset({"survey", "ad", "academic"})
@@ -90,6 +106,14 @@ class Document(BaseModel):
     gdelt_mention_count: int = 0
     front_page_minutes: float = 0.0
     provenance: str | None = None
+    authenticity: EvidenceAuthenticity = "unverified"
+    timestamp_basis: TimestampBasis = "unknown"
+    captured_at: datetime | None = None
+    source_reference: str | None = None
+    content_sha256: str | None = None
+    capture_verified: bool = False
+    publication_date_verified: bool = False
+    release_verified: bool = False
 
     @field_validator("prominence")
     @classmethod
@@ -97,6 +121,41 @@ class Document(BaseModel):
         if not 0.0 <= v <= 1.0:
             raise ValueError("prominence must be in [0, 1]")
         return v
+
+    @model_validator(mode="after")
+    def verify_evidence_provenance(self) -> Document:
+        calculated = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
+        if self.content_sha256 is not None and self.content_sha256.lower() != calculated:
+            raise ValueError("content_sha256 does not match document text")
+        self.content_sha256 = calculated
+        if self.authenticity == "authenticated_capture":
+            if not (
+                self.capture_verified
+                and self.captured_at is not None
+                and self.source_reference
+                and self.timestamp_basis == "archive_capture"
+            ):
+                raise ValueError(
+                    "authenticated_capture requires a verified capture timestamp, "
+                    "archive timestamp basis, and source reference"
+                )
+        if self.authenticity == "authenticated_artifact":
+            if not (
+                self.release_verified
+                and self.publication_date_verified
+                and self.source_reference
+                and self.timestamp_basis == "publication_date"
+            ):
+                raise ValueError(
+                    "authenticated_artifact requires verified release/publication metadata "
+                    "and a source reference"
+                )
+        return self
+
+    @property
+    def research_eligible(self) -> bool:
+        """Whether provenance is strong enough for a research evidence condition."""
+        return self.authenticity in AUTHENTICATED_EVIDENCE
 
 
 class Citation(BaseModel):
@@ -126,6 +185,8 @@ class Prediction(BaseModel):
     parse_attempts: int = 1
     flagged_for_contamination_review: bool = False
     flag_reasons: list[str] = Field(default_factory=list)
+    citation_verification_failed: bool = False
+    citation_verification_reasons: list[str] = Field(default_factory=list)
 
     @field_validator("probability")
     @classmethod
@@ -244,6 +305,7 @@ class RunConfig(BaseModel):
     swarm_roster: str | None = None
     use_swarm: bool = False
     perspectives: str | None = None
+    evidence_use: EvidenceUse = "practice"
 
     @field_validator("run_id")
     @classmethod
@@ -261,6 +323,7 @@ class SearchHit(BaseModel):
     snippet: str
     prominence: float
     source_type: SourceType | None = None
+    authenticity: EvidenceAuthenticity = "unverified"
 
 
 class SearchRequest(BaseModel):
@@ -294,12 +357,12 @@ class ContaminationBucket(BaseModel):
     gap_lo_days: int
     gap_hi_days: int
     n: int
-    mean_brier: float
-    mean_accuracy: float
+    mean_brier: float | None
+    mean_accuracy: float | None
 
 
 class ContaminationResult(BaseModel):
-    """Accuracy vs cutoff-gap. Sharp improvement as gap crosses 0 is contamination."""
+    """Descriptive performance grouped by distance from declared cutoff metadata."""
 
     model_id: str
     declared_pretraining_cutoff: date
@@ -307,6 +370,9 @@ class ContaminationResult(BaseModel):
     pre_cutoff_mean_brier: float | None = None
     post_cutoff_mean_brier: float | None = None
     contamination_delta: float | None = None
+    diagnostic_label: str = "declared-cutoff gap diagnostic"
+    causal_interpretation_supported: bool = False
+    cutoff_is_declared_metadata: bool = True
 
 
 class ScoreCoverage(BaseModel):
@@ -341,6 +407,7 @@ class ScoreReport(BaseModel):
     calibration: dict[str, CalibrationResult]
     contamination: list[ContaminationResult]
     n_flagged: int
+    n_citation_verification_failed: int = 0
     c_index_by_model: dict[str, float | None] = Field(default_factory=dict)
     c_index_pairs_by_model: dict[str, int] = Field(default_factory=dict)
     c_index_baselines: dict[str, float | None] = Field(default_factory=dict)
