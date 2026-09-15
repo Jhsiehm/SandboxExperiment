@@ -2,7 +2,7 @@
 # Personas: config/perspectives.yaml. Eval: psbx eval baseline --run <id>
 # Exports AgentSociety 2 InitConfig / workspaces under data/runs/<id>/society/.
 # n_questions: 1 so a careless click cannot fire 12×50.
-run_id: phase2-e2012-society-swarm
+run_id: phase2-e2012-society-swarm-container
 epoch: e2012
 models: [swarm-median]
 use_swarm: true
@@ -14,6 +14,7 @@ min_prominence: 0.0
 n_questions: 1
 category_balance:
   economic: 1
-sandbox_mode: host
+# All retrieval goes through the frozen, egress-blocked Docker sidecar.
+sandbox_mode: container
 embedding_backend: hashing
 allow_mock: false

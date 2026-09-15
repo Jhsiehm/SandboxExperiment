@@ -10,9 +10,10 @@ from pathlib import Path
 from psbx.config import load_epochs, load_models, load_run
 from psbx.corpus.index import load_index
 from psbx.io import read_jsonl, write_json, write_jsonl
-from psbx.paths import repo_root, resolve
+from psbx.paths import repo_root, run_dir as resolve_run_dir
+from psbx.run_provenance import ensure_run_provenance
 from psbx.sandbox.citations import validate_citations
-from psbx.sandbox.harness import run_question
+from psbx.sandbox.harness import require_question_epoch, run_question, search_client_for
 from psbx.schemas import Prediction, Question, RunConfig, SwarmVote
 from psbx.society.adapters import EnvSearchClient
 from psbx.society.as2_config import export_society_bundle, swarm_agent_specs
@@ -46,12 +47,16 @@ def agent_specs_for_models(model_ids: list[str]) -> list[dict]:
     return specs
 
 
-def bind_frozen_env(epoch_id: str, min_prominence: float = 0.0):
+def bind_frozen_env(
+    epoch_id: str,
+    min_prominence: float = 0.0,
+    source_type: str | None = None,
+):
     _ensure_workspace_on_path()
     from custom.envs.frozen_epoch_env import FrozenEpochEnv
 
     epoch = load_epochs()[epoch_id]
-    index = load_index(epoch)
+    index = load_index(epoch, source_type=source_type)
     env = FrozenEpochEnv()
     env.bind_index(index, epoch.cutoff_date, epoch.id, min_prominence=min_prominence)
     return env, epoch, index
@@ -67,17 +72,19 @@ def run_society(
     if run.use_swarm:
         return run_society_swarm(run, limit=limit, config_path=config_path)
     n = limit if limit is not None else run.n_questions
-    env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence)
+    env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence, source_type=run.source_type)
     models = load_models()
     chosen = [models[mid] for mid in run.models]
     qs = read_jsonl(run.question_set, Question)[:n]
-    dest = resolve(f"data/runs/{run.run_id}/predictions.jsonl")
+    require_question_epoch(qs, epoch)
+    dest = resolve_run_dir(run.run_id) / "predictions.jsonl"
+    ensure_run_provenance(run, epoch, index, qs, [dest])
     existing: list[Prediction] = []
     if dest.exists() and dest.stat().st_size > 0:
         existing = read_jsonl(dest, Prediction)
     done = {(p.model_id, p.question_id) for p in existing}
     preds = list(existing)
-    run_dir = resolve(f"data/runs/{run.run_id}/society")
+    run_dir = resolve_run_dir(run.run_id) / "society"
     run_dir.mkdir(parents=True, exist_ok=True)
     backend = try_as2_router(env)
     write_steps_clock(run.run_id, epoch.cutoff_date.isoformat())
@@ -105,7 +112,11 @@ def run_society(
                 continue
             env.queries = []
             env.n_calls = 0
-            client = EnvSearchClient(env, agent_id=1)
+            client = (
+                search_client_for(run, index)
+                if run.sandbox_mode == "container"
+                else EnvSearchClient(env, agent_id=1)
+            )
             pred = run_question(
                 question,
                 model,
@@ -138,11 +149,13 @@ def run_society_swarm(
     from psbx.agents.swarm import SWARM_MEDIAN_ID, load_roster, run_swarm
 
     n = limit if limit is not None else run.n_questions
-    env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence)
+    env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence, source_type=run.source_type)
     qs = read_jsonl(run.question_set, Question)[:n]
-    dest = resolve(f"data/runs/{run.run_id}/predictions.jsonl")
-    votes_dest = resolve(f"data/runs/{run.run_id}/swarm_votes.jsonl")
-    run_dir = resolve(f"data/runs/{run.run_id}/society")
+    require_question_epoch(qs, epoch)
+    dest = resolve_run_dir(run.run_id) / "predictions.jsonl"
+    votes_dest = resolve_run_dir(run.run_id) / "swarm_votes.jsonl"
+    ensure_run_provenance(run, epoch, index, qs, [dest, votes_dest])
+    run_dir = resolve_run_dir(run.run_id) / "society"
     roster = load_roster(run.swarm_roster or "config/swarm.yaml")
     specs = swarm_agent_specs(roster)
     from psbx.society.perspectives import assign_personas, load_perspectives
@@ -177,7 +190,11 @@ def run_society_swarm(
     done = {(p.model_id, p.question_id) for p in existing}
     preds = list(existing)
     n_fetch = max(1, run.max_tool_calls - 1) if run.max_tool_calls else 3
-    client = EnvSearchClient(env, agent_id=1)
+    client = (
+        search_client_for(run, index)
+        if run.sandbox_mode == "container"
+        else EnvSearchClient(env, agent_id=1)
+    )
     for question in qs:
         key = (SWARM_MEDIAN_ID, question.id)
         if key in done:
@@ -214,7 +231,7 @@ def try_as2_router(env: object) -> str:
 
 
 def write_steps_clock(run_id: str, cutoff: str) -> Path:
-    dest = resolve(f"data/runs/{run_id}/society/clock.json")
+    dest = resolve_run_dir(run_id) / "society" / "clock.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(
         json.dumps(

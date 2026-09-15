@@ -19,7 +19,14 @@ e2012 web is Wayback (`to=20120630`), not the CC-MAIN-2012 dump and not
 CC-MAIN-2013-20. Seed documents are code in `src/psbx/corpus/seed_documents.py`
 so the index rebuilds without a multi-day crawl.
 
+`config/survey_sources.yaml` inventories CSES, WVS, Pew, and ISSP artifacts by
+fieldwork range **and exact release version**. `psbx corpus sync-surveys`
+downloads only cutoff-safe public artifacts into the gitignored cache. Account
+or registration-gated datasets remain `manual_required`; post-cutoff versions
+remain `blocked_future_release`. Approved downloaded report text is converted
+to aggregate `survey` documents during index build. Raw respondent microdata is
+never mounted into the agent container.
+
 Do not scrape the live 2026 web into this training corpus. Collecting more than
 attributed metadata/toplines (interview microdata, ad creative, full papers)
 would violate the minimize-data stance — flag it rather than adding it.
-

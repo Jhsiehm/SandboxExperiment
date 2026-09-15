@@ -82,6 +82,7 @@ class SearchPack:
     queries: list[str]
     hits_text: str
     docs: list[dict[str, Any]]
+    n_hits: int
     n_tool_calls: int
     citations: list[Citation]
 
@@ -316,6 +317,7 @@ def build_search_pack(
         queries=list(client.queries),
         hits_text="\n\n".join(sections),
         docs=docs,
+        n_hits=len(merged),
         n_tool_calls=n_calls,
         citations=citations,
     )
@@ -411,6 +413,21 @@ def run_swarm(
     except FileNotFoundError:
         personas = []
     pack = build_search_pack(question, client, n_fetch=max_retrieval)
+    print(
+        "activity "
+        + json.dumps(
+            {
+                "kind": "shared_retrieval",
+                "epoch_id": epoch.id,
+                "question_id": question.id,
+                "n_hits": pack.n_hits,
+                "n_documents": len(pack.docs),
+                "document_ids": [str(doc.get("id") or "") for doc in pack.docs],
+                "queries": pack.queries,
+            }
+        ),
+        flush=True,
+    )
     env = getattr(client, "env", None)
     bind = getattr(env, "bind_evidence", None)
     if callable(bind):

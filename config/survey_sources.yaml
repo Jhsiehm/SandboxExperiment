@@ -1,0 +1,171 @@
+# Survey-source registry. `released_at` is the version's public availability
+# date, not its fieldwork year. The sync command refuses future or unverified
+# releases for an earlier frozen epoch and never automates account-gated data.
+artifacts:
+  - id: pew-march-2012-energy-report
+    provider: pew
+    outlet: Pew Research Center
+    title: As Gas Prices Pinch, Support for Oil and Gas Production Grows
+    url: https://www.pewresearch.org/wp-content/uploads/sites/4/legacy-pdf/3-19-12-Energy-release.pdf
+    fieldwork_year_start: 2012
+    fieldwork_year_end: 2012
+    released_at: 2012-03-19T12:00:00Z
+    access: public
+    retrieval: direct
+    format: pdf
+    expected_marker: MONDAY, MARCH 19, 2012
+    expected_sha256: 72e09199c3b2552b67313e5377c5357e1f48baa1903273af3d6ad4a61c251255
+    index: true
+    note: Immutable public report PDF; raw dataset remains account-gated.
+
+  - id: pew-april-2012-election-report
+    provider: pew
+    outlet: Pew Research Center
+    title: With Voters Focused on Economy, Obama Lead Narrows
+    url: https://www.pewresearch.org/wp-content/uploads/sites/4/legacy-pdf/4-17-12-Political-Release-.pdf
+    fieldwork_year_start: 2012
+    fieldwork_year_end: 2012
+    released_at: 2012-04-17T12:00:00Z
+    access: public
+    retrieval: direct
+    format: pdf
+    expected_marker: TUESDAY, APRIL 17, 2012
+    expected_sha256: b41ea46484e2bb8984f48e1a056a15de4f1fd7a9363691b33dfa54dced197128
+    index: true
+    note: Immutable public report PDF; raw dataset remains account-gated.
+
+  - id: pew-april-2012-government-report
+    provider: pew
+    outlet: Pew Research Center
+    title: Growing Gap in Favorable Views of Federal, State Governments
+    url: https://assets.pewresearch.org/wp-content/uploads/sites/5/legacy-pdf/4-26-12%20Govt%20Favorability.pdf
+    fieldwork_year_start: 2012
+    fieldwork_year_end: 2012
+    released_at: 2012-04-26T12:00:00Z
+    access: public
+    retrieval: direct
+    format: pdf
+    expected_marker: THURSDAY, APRIL 26, 2012
+    expected_sha256: aa2eb1f3a1ab1e6c877d10bfadd411b59891535c65f4db01f5b0760297124079
+    index: true
+    note: Immutable public report PDF; raw dataset remains account-gated.
+
+  - id: pew-june-2012-values-report
+    provider: pew
+    outlet: Pew Research Center
+    title: Partisan Polarization Surges in Bush, Obama Years
+    url: https://assets.pewresearch.org/wp-content/uploads/sites/5/legacy-pdf/06-04-12%20Values%20Release.pdf
+    fieldwork_year_start: 2012
+    fieldwork_year_end: 2012
+    released_at: 2012-06-04T12:00:00Z
+    access: public
+    retrieval: direct
+    format: pdf
+    expected_marker: JUNE 4, 2012
+    expected_sha256: 288a4fe3c2498d9b2cb24d36ba98938c831c92febb4f0bdd8a10df2805f6b385
+    index: true
+    note: Immutable public report PDF; raw dataset remains account-gated.
+
+  - id: pew-2012-microdata
+    provider: pew
+    outlet: Pew Research Center
+    title: Pew 2012 survey microdata
+    url: https://www.pewresearch.org/datasets/
+    fieldwork_year_start: 2012
+    fieldwork_year_end: 2012
+    released_at: 2012-04-26T12:00:00Z
+    access: account
+    retrieval: manual
+    index: false
+    note: User must sign in and accept Pew's dataset terms; never auto-download.
+
+  - id: cses-module-3-current-release
+    provider: cses
+    outlet: Comparative Study of Electoral Systems
+    title: CSES Module 3 (2006–2011), current full release
+    url: https://cses.org/data-download/cses-module-3-2006-2011/
+    fieldwork_year_start: 2006
+    fieldwork_year_end: 2011
+    released_at: 2015-12-15T12:00:00Z
+    access: registration
+    retrieval: manual
+    index: false
+    note: Current corrected release postdates e2012; an archived pre-cutoff version is required.
+
+  - id: cses-module-4-current-release
+    provider: cses
+    outlet: Comparative Study of Electoral Systems
+    title: CSES Module 4 (2011–2016), full release
+    url: https://cses.org/data-download/module-4-2011-2016/
+    fieldwork_year_start: 2011
+    fieldwork_year_end: 2016
+    released_at: 2018-05-29T12:00:00Z
+    access: registration
+    retrieval: manual
+    index: false
+    note: Fieldwork overlaps 2012, but this release was not available at the e2012 cutoff.
+
+  - id: wvs-wave-5-current-file
+    provider: wvs
+    outlet: World Values Survey Association
+    title: World Values Survey Wave 5 (2005–2009)
+    url: https://www.worldvaluessurvey.org/WVSDocumentationWV5.jsp
+    fieldwork_year_start: 2005
+    fieldwork_year_end: 2009
+    released_at: null
+    access: registration
+    retrieval: manual
+    index: false
+    note: Exact downloadable version date must be verified; WVS files may not be redistributed.
+
+  - id: wvs-wave-6-current-file
+    provider: wvs
+    outlet: World Values Survey Association
+    title: World Values Survey Wave 6 (2010–2014)
+    url: https://www.worldvaluessurvey.org/WVSDocumentationWV6.jsp
+    fieldwork_year_start: 2010
+    fieldwork_year_end: 2014
+    released_at: null
+    access: registration
+    retrieval: manual
+    index: false
+    note: Exact downloadable version date must be verified; WVS files may not be redistributed.
+
+  - id: issp-2010-current-release
+    provider: issp
+    outlet: ISSP / GESIS
+    title: ISSP 2010 Environment III, current release
+    url: https://www.gesis.org/en/issp/data-and-documentation/environment/2010
+    fieldwork_year_start: 2009
+    fieldwork_year_end: 2013
+    released_at: 2019-06-13T12:00:00Z
+    access: registration
+    retrieval: manual
+    index: false
+    note: GESIS registration is required; current v3.0.0 postdates e2012.
+
+  - id: issp-2011-current-release
+    provider: issp
+    outlet: ISSP / GESIS
+    title: ISSP 2011 Health and Health Care, current release
+    url: https://www.gesis.org/en/issp/data-and-documentation/health-and-health-care/2011
+    fieldwork_year_start: 2011
+    fieldwork_year_end: 2013
+    released_at: 2015-06-10T12:00:00Z
+    access: registration
+    retrieval: manual
+    index: false
+    note: GESIS registration is required; current v3.0.0 postdates e2012.
+
+  - id: issp-2012-current-release
+    provider: issp
+    outlet: ISSP / GESIS
+    title: ISSP 2012 Family and Changing Gender Roles IV, current release
+    url: https://www.gesis.org/en/issp/data-and-documentation/family-and-changing-gender-roles/2012
+    fieldwork_year_start: 2011
+    fieldwork_year_end: 2015
+    released_at: 2016-11-23T12:00:00Z
+    access: registration
+    retrieval: manual
+    index: false
+    note: GESIS registration is required; current v4.0.0 postdates e2012.

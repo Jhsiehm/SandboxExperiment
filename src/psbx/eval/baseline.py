@@ -10,7 +10,7 @@ from typing import Any
 from psbx.config import load_epochs, load_yaml
 from psbx.eval.stimulus import items_from_questions
 from psbx.io import read_jsonl, write_json
-from psbx.paths import resolve
+from psbx.paths import run_dir
 from psbx.schemas import (
     HumanBaselineReport,
     Prediction,
@@ -67,12 +67,12 @@ def evaluate_human_baseline(
     qpath = str(cfg.get("question_set") or "data/questions/e2012.jsonl")
     qs = questions if questions is not None else read_jsonl(qpath, Question)
     items = items_from_questions(qs, epoch_id=epoch_id)
-    pred_path = resolve(f"data/runs/{run_id}/predictions.jsonl")
+    pred_path = run_dir(run_id) / "predictions.jsonl"
     preds = predictions
     if preds is None and pred_path.exists() and pred_path.stat().st_size > 0:
         preds = read_jsonl(pred_path, Prediction)
     preds = preds or []
-    vote_path = resolve(f"data/runs/{run_id}/swarm_votes.jsonl")
+    vote_path = run_dir(run_id) / "swarm_votes.jsonl"
     loaded_votes = votes
     if loaded_votes is None and vote_path.exists() and vote_path.stat().st_size > 0:
         loaded_votes = read_jsonl(vote_path, SwarmVote)
@@ -138,7 +138,7 @@ def write_human_baseline(
     report: HumanBaselineReport,
     run_id: str | None = None,
 ) -> Path:
-    dest = resolve(f"data/runs/{run_id or report.run_id}/human_baseline.json")
+    dest = run_dir(run_id or report.run_id) / "human_baseline.json"
     write_json(dest, report)
     return dest
 

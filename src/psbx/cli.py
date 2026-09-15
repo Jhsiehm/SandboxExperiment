@@ -7,12 +7,12 @@ from typing import Annotated
 import typer
 
 from psbx.config import load_epochs, load_models, load_run
-from psbx.env import load_dotenv
 from psbx.corpus.build_index import build_index
 from psbx.corpus.fetch_wayback import DEFAULT_MAX_DOCS
-from psbx.corpus.index import load_index
-from psbx.io import read_jsonl, write_json, write_jsonl
-from psbx.paths import resolve
+from psbx.corpus.index import SOURCE_TYPES, load_index
+from psbx.env import load_dotenv
+from psbx.io import read_json, read_jsonl, write_json, write_jsonl
+from psbx.paths import resolve, run_dir, validate_run_id
 from psbx.questions.build_set import build_questions, write_question_set
 from psbx.sandbox.harness import run_set
 from psbx.schemas import Prediction, Question
@@ -57,6 +57,10 @@ def _maybe_enable_mock() -> None:
 
 
 def _config_for_run_id(run_id: str):
+    run_id = validate_run_id(run_id)
+    saved = run_dir(run_id) / "run.yaml"
+    if saved.is_file():
+        return load_run(saved)
     for path in (
         "config/run.yaml",
         "config/run-phase2.yaml",
@@ -95,7 +99,83 @@ def corpus_build(
     """Build the cutoff-locked hybrid index. `--live` pulls Wayback (to=cutoff)."""
     ep = load_epochs()[epoch]
     index = build_index(ep, live=live, max_docs=max_docs)
-    typer.echo(f"indexed {len(index.docs)} documents <= {ep.cutoff_date} at {ep.corpus_index_path}")
+    meta = read_json(resolve(ep.corpus_index_path) / "meta.json")
+    typer.echo(
+        f"indexed {len(index.docs)} documents <= {ep.cutoff_date} at "
+        f"{ep.corpus_index_path}; silos={meta.get('silos', {})}"
+    )
+
+
+@corpus_app.command("silos")
+def corpus_silos(epoch: Annotated[str, typer.Option("--epoch")] = "e2012") -> None:
+    """List selectable source-type silos for one frozen epoch."""
+    ep = load_epochs()[epoch]
+    meta = read_json(resolve(ep.corpus_index_path) / "meta.json")
+    typer.echo(
+        {
+            "epoch": ep.id,
+            "cutoff": ep.cutoff_date.isoformat(),
+            "combined_documents": meta.get("n_docs", 0),
+            "silos": meta.get("silos", {}),
+        }
+    )
+
+
+@corpus_app.command("sync-surveys")
+def corpus_sync_surveys(
+    epoch: Annotated[str, typer.Option("--epoch")] = "e2012",
+    all_epochs: Annotated[bool, typer.Option("--all-epochs")] = False,
+    provider: Annotated[str, typer.Option("--provider")] = "all",
+    plan: Annotated[bool, typer.Option("--plan")] = False,
+    rebuild: Annotated[bool, typer.Option("--rebuild")] = False,
+) -> None:
+    """Sync cutoff-safe public survey pages; inventory gated/future datasets."""
+    from psbx.corpus.sync_survey_sources import sync_survey_sources
+
+    if rebuild and plan:
+        raise typer.BadParameter("--rebuild cannot be combined with --plan")
+    configured = load_epochs()
+    targets = list(configured.values()) if all_epochs else [configured[epoch]]
+    for ep in targets:
+        try:
+            payload = sync_survey_sources(ep, provider=provider, plan=plan)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(
+            {
+                "epoch": ep.id,
+                "cutoff": ep.cutoff_date.isoformat(),
+                "provider": provider,
+                "counts": payload["counts"],
+            }
+        )
+        for row in payload["artifacts"]:
+            if row["status"] in {
+                "manual_required",
+                "blocked_future_release",
+                "blocked_unverified_release",
+                "error",
+            }:
+                typer.echo(
+                    f"{row['provider']}/{row['id']}: {row['status']} · {row.get('reason', '')}"
+                )
+        if rebuild:
+            index = build_index(ep)
+            typer.echo(f"rebuilt {ep.id}: {len(index.docs)} documents")
+
+
+@epoch_app.command("list")
+def epoch_list() -> None:
+    """List selectable frozen years and their corpus paths."""
+    for epoch in load_epochs().values():
+        typer.echo(
+            {
+                "epoch": epoch.id,
+                "cutoff": epoch.cutoff_date.isoformat(),
+                "resolution_end": epoch.resolution_window_end.isoformat(),
+                "corpus": epoch.corpus_index_path,
+            }
+        )
 
 
 @app.command("run")
@@ -118,7 +198,7 @@ def run_cmd(
     chosen = [models[mid] for mid in run.models]
     qs = read_jsonl(run.question_set, Question)
     preds = run_set(qs, chosen, epoch, run)
-    dest = resolve(f"data/runs/{run.run_id}/predictions.jsonl")
+    dest = run_dir(run.run_id) / "predictions.jsonl"
     write_jsonl(dest, preds)
     upsert_predictions(preds)
     typer.echo(f"wrote {len(preds)} predictions to {dest}")
@@ -126,13 +206,14 @@ def run_cmd(
 
 @app.command("score")
 def score_cmd(run: Annotated[str, typer.Option("--run")]) -> None:
+    run = validate_run_id(run)
     cfg = _config_for_run_id(run)
     epoch = load_epochs()[cfg.epoch]
     qs = read_jsonl(cfg.question_set, Question)
-    preds = read_jsonl(f"data/runs/{run}/predictions.jsonl", Prediction)
+    preds = read_jsonl(run_dir(run) / "predictions.jsonl", Prediction)
     models = [m for m in load_models().values() if m.id in {p.model_id for p in preds}]
     report = score_run(preds, qs, models, run)
-    dest = resolve(f"data/runs/{run}")
+    dest = run_dir(run)
     write_json(dest / "results.json", report)
     write_plots(report, dest)
     from psbx.scoring.plots import write_performance_plots
@@ -192,7 +273,7 @@ def society_cmd(
             f"{config} has allow_mock: false; unset PSBX_MOCK_LLM to run live models"
         )
     preds = run_society(run, limit=limit, config_path=config)
-    dest = resolve(f"data/runs/{run.run_id}/predictions.jsonl")
+    dest = run_dir(run.run_id) / "predictions.jsonl"
     upsert_predictions(preds)
     typer.echo(f"society wrote {len(preds)} predictions to {dest}")
 
@@ -210,7 +291,7 @@ def society_export(
     if limit is not None:
         run = run.model_copy(update={"n_questions": limit})
     qs = read_jsonl(run.question_set, Question)[: run.n_questions]
-    out = dest or Path(f"data/runs/{run.run_id}/society")
+    out = dest or (run_dir(run.run_id) / "society")
     paths = export_society_bundle(run, qs, out)
     typer.echo(f"exported {len(qs)} question(s) → {paths['init_config']}")
     typer.echo(f"steps {paths['steps']}")
@@ -256,28 +337,46 @@ def epoch_propose(
 def search_cmd(
     epoch: Annotated[str, typer.Option("--epoch")] = "e2012",
     port: Annotated[int, typer.Option("--port")] = 8766,
+    source_type: Annotated[str | None, typer.Option("--source-type")] = None,
 ) -> None:
     from psbx.sandbox.search_service import serve
 
-    serve(load_index(load_epochs()[epoch]), port=port)
+    serve(
+        load_index(load_epochs()[epoch], source_type=source_type),
+        port=port,
+        epoch_id=epoch,
+    )
 
 
 @sandbox_app.command("up")
-def sandbox_up(epoch: Annotated[str, typer.Option("--epoch")] = "e2012") -> None:
+def sandbox_up(
+    epoch: Annotated[str, typer.Option("--epoch")] = "e2012",
+    source_type: Annotated[str | None, typer.Option("--source-type")] = None,
+) -> None:
     """Start libfaketime search: Docker if present, else host DYLD/LD_PRELOAD."""
     import shutil
 
+    if source_type and source_type not in SOURCE_TYPES:
+        raise typer.BadParameter(
+            f"unknown source type {source_type!r}; choose one of: {', '.join(SOURCE_TYPES)}"
+        )
     if shutil.which("docker"):
         from psbx.sandbox.docker_sidecar import build_image, up
 
         build_image()
-        url = up(epoch)
-        typer.echo(f"search sidecar up (docker, iptables egress lock) · {url} · epoch {epoch}")
+        url = up(epoch, source_type=source_type)
+        typer.echo(
+            "search sidecar up (docker, iptables egress lock) · "
+            f"{url} · epoch {epoch} · source {source_type or 'all'}"
+        )
         return
     from psbx.sandbox.host_sidecar import up as host_up
 
-    url = host_up(epoch)
-    typer.echo(f"search sidecar up (host libfaketime) · {url} · epoch {epoch}")
+    url = host_up(epoch, source_type=source_type)
+    typer.echo(
+        f"search sidecar up (host libfaketime) · {url} · epoch {epoch} · "
+        f"source {source_type or 'all'}"
+    )
 
 
 @sandbox_app.command("down")
@@ -344,6 +443,7 @@ def viewer_cmd(
     if root not in sys.path:
         sys.path.insert(0, root)
     import uvicorn
+
     from leaderboard.app import app as viewer_app
 
     typer.echo(f"Prediction Sandbox viewer → http://{host}:{port}")

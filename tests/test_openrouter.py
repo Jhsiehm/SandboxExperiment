@@ -106,7 +106,7 @@ def test_jobs_pick_openrouter_config(monkeypatch):
     assert "2 × each" in snap["swarm_roster"]
     assert "Llama 3.1 8B" in snap["swarm_roster"]
     assert "Qwen 2.5 7B" in snap["swarm_roster"]
-    assert snap["swarm_run_id"] == "phase2-e2012-swarm-probe"
+    assert snap["swarm_run_id"] == "phase2-e2012-swarm-probe-container"
     assert "Three HUD buttons" in snap["swarm_note"]
     assert "sk-test" not in str(snap)
 

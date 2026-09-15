@@ -5,7 +5,8 @@ import pytest
 
 from psbx.config import load_epochs
 from psbx.corpus.build_index import build_index, collect_documents
-from psbx.corpus.index import HybridIndex
+from psbx.corpus.index import HybridIndex, load_index, source_silo_path
+from psbx.io import read_json
 from psbx.schemas import Document
 
 
@@ -41,3 +42,15 @@ def test_build_index_roundtrip(tmp_path, monkeypatch):
     assert hits
     for hit in hits:
         assert hit.published_at.date() <= epoch.cutoff_date
+
+    meta = read_json(tmp_path / "idx" / "meta.json")
+    assert sum(meta["silos"].values()) == len(index.docs)
+    assert set(meta["source_types"]) == set(meta["silos"])
+    for source_type, expected_count in meta["silos"].items():
+        silo = load_index(epoch, source_type=source_type)
+        assert len(silo.docs) == expected_count
+        assert {doc.source_type for doc in silo.docs} == {source_type}
+        assert source_silo_path(epoch, source_type).is_dir()
+
+    with pytest.raises(ValueError, match="unknown source type"):
+        load_index(epoch, source_type="social-media")

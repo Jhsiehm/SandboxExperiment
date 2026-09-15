@@ -154,7 +154,12 @@ def test_society_swarm_mock_writes_workspaces(monkeypatch) -> None:
 
     run = load_run("config/run-society-swarm.yaml")
     run = run.model_copy(
-        update={"allow_mock": True, "run_id": "test-society-swarm", "n_questions": 1}
+        update={
+            "allow_mock": True,
+            "run_id": "test-society-swarm",
+            "n_questions": 1,
+            "sandbox_mode": "host",
+        }
     )
     preds = run_society(run, limit=1)
     assert preds

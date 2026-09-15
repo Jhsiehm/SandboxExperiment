@@ -63,7 +63,7 @@ Working today (aligned 1 September 2026):
   buttons: **Run practice** (`config/run.yaml`, `phase1-e2012-smoke`),
   **Run live mix** (`config/run-openrouter.yaml`, six species × 1 question,
   `phase2-e2012-openrouter`), **Run swarm** (`config/run-swarm.yaml`, 12 votes
-  median, `phase2-e2012-swarm-probe`).
+  median, `phase2-e2012-swarm-probe-container`).
 - `OPENROUTER_API_KEY` is enough for live mix **and** swarm. Anthropic + OpenAI
   are only for optional native Claude+GPT (`config/run-phase2.yaml`). If
   OpenRouter is set, HUD live stays on the cheap probe even when native keys
@@ -140,7 +140,7 @@ unlocks HUD **Run live mix** and **Run swarm**. Do not commit `.env`.
 |---|---|---|---|---|
 | HUD | **Run practice** | **Run live mix** | **Run swarm** | CLI (HUD live uses this only if OpenRouter is unset) |
 | Config | `config/run.yaml` | `config/run-openrouter.yaml` | `config/run-swarm.yaml` | `config/run-phase2.yaml` |
-| Run id | `phase1-e2012-smoke` | `phase2-e2012-openrouter` | `phase2-e2012-swarm-probe` | `phase2-e2012-real` |
+| Run id | `phase1-e2012-smoke` | `phase2-e2012-openrouter` | `phase2-e2012-swarm-probe-container` | `phase2-e2012-real` |
 | Needs | Nothing | `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` | Anthropic **and** OpenAI keys |
 | What it measures | Keyword heuristic | Six species × 1 question | 12 votes, median `p` | Claude + GPT forecasts |
 
@@ -171,7 +171,7 @@ psbx run --config config/run-swarm.yaml --limit 1
 
 Needs `OPENROUTER_API_KEY`. `local-*` Llama/Qwen are not in this mix and are
 never auto-routed onto that key. Scorer reads `swarm-median`; per-agent votes
-are `data/runs/phase2-e2012-swarm-probe/swarm_votes.jsonl`.
+are `data/runs/phase2-e2012-swarm-probe-container/swarm_votes.jsonl`.
 
 ## Training-area society swarm (Phase 1)
 
@@ -182,7 +182,7 @@ in the same cutoff-locked pack.
 ```bash
 psbx corpus build --epoch e2012
 PSBX_MOCK_LLM=1 psbx society run --config config/run-society-swarm-mock.yaml --limit 1
-psbx eval baseline --run phase1-e2012-society-swarm-mock
+psbx eval baseline --run phase1-e2012-society-swarm-mock-container
 psbx epoch propose --from e2012 --years 1
 ```
 
@@ -190,7 +190,7 @@ Live (serialized OpenRouter, `allow_mock: false`):
 
 ```bash
 psbx society run --config config/run-society-swarm.yaml --limit 1
-psbx eval baseline --run phase2-e2012-society-swarm
+psbx eval baseline --run phase2-e2012-society-swarm-container
 ```
 
 Personas: `config/perspectives.yaml` (add a persona to expand the catalog;
@@ -214,7 +214,7 @@ psbx society export --config config/run-society-swarm.yaml --limit 1
 ```
 
 That writes 12 `agent_0001`…`agent_0012` workspaces, `init_config.json`, and a
-questionnaire `steps.yaml` under `data/runs/phase2-e2012-society-swarm/society/`.
+questionnaire `steps.yaml` under `data/runs/phase2-e2012-society-swarm-container/society/`.
 Search still goes through `FrozenEpochEnv`. Votes still use serialized OpenRouter
 (`config/swarm.yaml`: 2× mini, 4o-mini, Haiku, Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B).
 We do not vendor their city simulator.
@@ -237,7 +237,7 @@ export AGENTSOCIETY_LLM_MODEL=openai/gpt-4.1-mini
 # python -m agentsociety2.society.cli \
 #   --config examples/e2012_forecast/init_config.json \
 #   --steps examples/e2012_forecast/steps.yaml \
-#   --run-dir data/runs/phase2-e2012-society-swarm/society
+#   --run-dir data/runs/phase2-e2012-society-swarm-container/society
 ```
 
 Search does not use those keys. Keys are only for the model APIs. Vendor calls
@@ -248,9 +248,13 @@ stay on the host; they are never put inside the isolated search container.
 [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) is
 required for the isolated sidecar. Search publishes `http://127.0.0.1:8766`.
 libfaketime ([wolfcw/libfaketime](https://github.com/wolfcw/libfaketime.git),
-distro package inside the image) freezes the clock. iptables drops outbound
-packets. Docker Desktop on Mac cannot bind-mount a Unix socket or publish
-ports on `--network none`, so this is the working equivalent.
+distro package inside the image) freezes the clock at the epoch cutoff.
+iptables drops outbound packets. The runtime root filesystem is read-only;
+the corpus and config mounts are read-only; and the search service runs as an
+unprivileged user with no effective capabilities and `no-new-privileges`.
+Docker Desktop on Mac cannot bind-mount a Unix socket or publish ports on
+`--network none`, so the sidecar exposes only the loopback port and installs
+the egress firewall before dropping privileges.
 
 ```bash
 psbx sandbox up --epoch e2012
@@ -258,6 +262,31 @@ psbx sandbox clock          # today should be 2012-06-30
 PSBX_MOCK_LLM=1 psbx run --config config/run-sandbox.yaml
 psbx sandbox down
 ```
+
+Every build also writes one index per source type under
+`data/corpus/<epoch>/silos/<source-type>`. Select a cell explicitly when an
+experiment should see only one kind of evidence:
+
+```bash
+psbx corpus silos --epoch e2012
+psbx sandbox up --epoch e2012 --source-type survey
+curl http://127.0.0.1:8766/health
+```
+
+The Docker container bind-mounts only that exact cell at the configured epoch
+path; sibling source types and other epoch indexes are not mounted. Add the
+same selection to the run YAML so the harness can fail closed if the sidecar
+does not match:
+
+```yaml
+epoch: e2012
+source_type: survey
+sandbox_mode: container
+```
+
+Omit `source_type` (and `--source-type`) for the combined index. A run pointed
+at `e2012/survey` will refuse to start against `e2012/news`, `e2012/all`, or a
+different epoch.
 
 Viewer / HUD stays on **8765**. Search sidecar is **8766**. Without Docker,
 search stays in-process (`sandbox_mode: host`). The prompt still injects the
@@ -291,6 +320,41 @@ into e2012.
 
 The fixture seed (news/gov plus survey/ad/academic snapshots) is enough to
 exercise the 50-question smoke and the training-area conditioner tools.
+
+The directory structure is a two-dimensional isolation grid:
+
+```text
+data/corpus/
+  e2012/
+    documents.jsonl             # combined index
+    silos/
+      news/                     # e2012 + news only
+      survey/                   # e2012 + survey only
+      academic/                 # e2012 + academic only
+      ...
+  e2013/                        # created after e2013 is configured and built
+```
+
+Each entry in `config/epochs.yaml` supplies the epoch cutoff and its own corpus
+path. Only `e2012` is populated today; adding a later epoch requires its dated
+source material and question set before `psbx corpus build --epoch <id>`.
+
+List the configured years, preview the survey download plan, or sync every
+configured year:
+
+```bash
+psbx epoch list
+psbx corpus sync-surveys --epoch e2012 --provider all --plan
+psbx corpus sync-surveys --all-epochs --provider all --rebuild
+```
+
+The survey registry is `config/survey_sources.yaml`. It records fieldwork range,
+exact release/version date, access mode, retrieval method, and an internal
+content marker. Public, dated artifacts are checksum-pinned in
+`data/corpus-cache/survey-sources/<epoch>/`; raw Pew, CSES, WVS, and ISSP data
+that require an account or agreement are listed but never downloaded
+automatically. This prevents a survey fielded in 2012 but released or corrected
+in 2015–2019 from leaking into the e2012 environment.
 
 ## Design constraints
 

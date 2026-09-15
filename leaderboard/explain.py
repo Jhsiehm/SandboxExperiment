@@ -11,6 +11,7 @@ RUN_LABELS = {
     "phase2-e2012-real": "Live native Claude + GPT",
     "phase2-e2012-openrouter": "Live mix (6 species × 1 question)",
     "phase2-e2012-swarm-probe": "Live swarm (2× six species, median)",
+    "phase2-e2012-swarm-probe-container": "Live swarm (sealed Docker retrieval)",
     "phase1-e2012-society": "Society scaffold",
     "phase1-e2012-docker": "Practice run through Docker search",
 }

@@ -206,7 +206,7 @@ class SwarmSpecies(BaseModel):
 
 
 class SwarmRoster(BaseModel):
-    """Source of truth for the default 12-agent cheap mix."""
+    """Source of truth for a bounded, explicitly composed agent swarm."""
 
     name: str = "default-12"
     n_agents: int = 12
@@ -223,12 +223,15 @@ class SwarmRoster(BaseModel):
         total = sum(b.count for b in self.bodies)
         if total != self.n_agents:
             raise ValueError(f"bodies counts sum to {total}, expected n_agents={self.n_agents}")
+        if not 1 <= self.n_agents <= 100:
+            raise ValueError("n_agents must be between 1 and 100")
         return self
 
 
 class RunConfig(BaseModel):
     run_id: str
     epoch: str
+    source_type: SourceType | None = None
     models: list[str]
     question_set: str
     max_tool_calls: int = 12
@@ -241,6 +244,13 @@ class RunConfig(BaseModel):
     swarm_roster: Optional[str] = None
     use_swarm: bool = False
     perspectives: str | None = None
+
+    @field_validator("run_id")
+    @classmethod
+    def filesystem_safe_run_id(cls, value: str) -> str:
+        from psbx.paths import validate_run_id
+
+        return validate_run_id(value)
 
 
 class SearchHit(BaseModel):
@@ -414,4 +424,3 @@ class HumanBaselineReport(BaseModel):
     tracks: dict[str, TrackScore] = Field(default_factory=dict)
     brier_by_model: dict[str, float] = Field(default_factory=dict)
     note: str = ""
-

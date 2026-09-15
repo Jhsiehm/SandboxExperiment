@@ -29,8 +29,13 @@ CONTAINER = "psbx-search"
 
 
 def faketime_stamp(cutoff: date) -> str:
-    """Frozen wall clock at end of cutoff day. Leading @ means 'do not advance'."""
-    return f"@{cutoff.isoformat()} 12:00:00"
+    """Frozen wall clock at noon on the cutoff day.
+
+    libfaketime treats ``@YYYY-MM-DD ...`` as a start-at clock that keeps
+    advancing.  An absolute timestamp without ``@`` is the stopped-clock
+    form required by the sealed archive.
+    """
+    return f"{cutoff.isoformat()} 12:00:00"
 
 
 def _existing_lib() -> str | None:

@@ -8,8 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends libfaketime ipt
 WORKDIR /app
 ENV PSBX_ROOT=/app
 ENV PYTHONPATH=/app/src
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PSBX_SEARCH_HOST=0.0.0.0
 ENV PSBX_SEARCH_PORT=8766
+
+RUN groupadd --system psbx \
+    && useradd --system --gid psbx --home-dir /nonexistent --shell /usr/sbin/nologin psbx
+RUN mkdir -p /app/data/corpus
 
 COPY pyproject.toml README.md /app/
 COPY src /app/src

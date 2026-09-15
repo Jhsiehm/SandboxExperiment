@@ -45,6 +45,21 @@ def test_perspective_roster_expands_without_inference():
         assert "not inferred" in block.lower() or "Simulation persona" in block
 
 
+def test_perspective_panel_cycles_for_100_agent_roster():
+    roster = load_swarm().model_copy(
+        update={
+            "name": "test-100",
+            "n_agents": 100,
+            "bodies": [
+                load_swarm().bodies[0].model_copy(update={"count": 100})
+            ],
+        }
+    )
+    assigned = assign_personas(roster, load_perspectives())
+    assert len(assigned) == 100
+    assert assigned[0].id == assigned[12].id
+
+
 def test_swarm_specs_carry_explicit_personas():
     specs = swarm_agent_specs()
     assert len(specs) == 12

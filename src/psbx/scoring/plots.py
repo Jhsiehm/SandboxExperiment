@@ -19,10 +19,8 @@ import pandas as pd
 import seaborn as sns
 
 from psbx.io import read_jsonl
-from psbx.paths import resolve
+from psbx.paths import resolve, run_dir
 from psbx.schemas import Prediction, Question, SwarmVote
-
-RUNS_DIR = "data/runs"
 
 _LOCK = threading.Lock()
 INK = "#f3eee4"
@@ -199,9 +197,9 @@ def _plot_vote_swarm(votes: pd.DataFrame, dest: Path) -> dict[str, str] | None:
         squeeze=False,
         sharex=True,
     )
-    order = [s for s in SPECIES_ORDER if s in set(votes["species"])]
-    if not order:
-        order = sorted(votes["species"].unique())
+    species = set(votes["species"])
+    order = [s for s in SPECIES_ORDER if s in species]
+    order.extend(sorted(species - set(order)))
     palette = {k: PALETTE.get(k, PURPLE) for k in order}
     for ax, qid in zip(axes[:, 0], qids):
         chunk = votes[votes["question_id"] == qid]
@@ -232,9 +230,30 @@ def _plot_vote_swarm(votes: pd.DataFrame, dest: Path) -> dict[str, str] | None:
             f"{qid}  ·  later: {happened}  ·  "
             f"median {median_p:.2f}  ·  prior {prior:.2f}"
         )
-        ax.annotate("truth", xy=(truth, -0.62), color=ACCENT, fontsize=8, ha="center", annotation_clip=False)
-        ax.annotate("median", xy=(median_p, -0.62), color=INK, fontsize=8, ha="center", annotation_clip=False)
-        ax.annotate("2012 prior", xy=(prior, len(order) - 0.32), color=BRASS, fontsize=8, ha="center", annotation_clip=False)
+        ax.annotate(
+            "truth",
+            xy=(truth, -0.62),
+            color=ACCENT,
+            fontsize=8,
+            ha="center",
+            annotation_clip=False,
+        )
+        ax.annotate(
+            "median",
+            xy=(median_p, -0.62),
+            color=INK,
+            fontsize=8,
+            ha="center",
+            annotation_clip=False,
+        )
+        ax.annotate(
+            "2012 prior",
+            xy=(prior, len(order) - 0.32),
+            color=BRASS,
+            fontsize=8,
+            ha="center",
+            annotation_clip=False,
+        )
     caption = (
         "Each dot is one agent vote. Dashed green is what later happened. "
         "Solid white is the swarm median. Dotted brass is the 2012 public prior. "
@@ -245,7 +264,12 @@ def _plot_vote_swarm(votes: pd.DataFrame, dest: Path) -> dict[str, str] | None:
     return {
         "id": "vote_swarm",
         "title": "Where each agent landed",
+        "question": "Did the agents agree, and did their middle answer land near reality?",
         "caption": caption,
+        "good_result": (
+            "Dots cluster near the dashed truth line, or the white median improves on "
+            "the brass historical prior."
+        ),
         "file": dest.name,
     }
 
@@ -268,7 +292,7 @@ def _plot_brier_bars(
     )
     colors: list[str] = []
     for row in frame.itertuples():
-        if row.species == "Median of 12":
+        if str(row.species).startswith("Median of "):
             colors.append(ACCENT)
         elif row.species == "2012 prior":
             colors.append(BRASS)
@@ -305,11 +329,13 @@ def _plot_brier_bars(
     return {
         "id": "brier_bars",
         "title": "Probability error by agent",
+        "question": "Whose percentages were closest to what actually happened?",
         "caption": (
             "Brier is (forecast − outcome)². 0 is perfect. About 0.25 is a coin flip. "
             "Beat the 2012 prior on the same questions before calling it skill. "
             "Green is the swarm median; brass is the prior."
         ),
+        "good_result": "Shorter bars are better; zero would mean perfect probabilities.",
         "file": dest.name,
     }
 
@@ -346,11 +372,13 @@ def _plot_signed_error(agents: pd.DataFrame, dest: Path) -> dict[str, str] | Non
     return {
         "id": "signed_error",
         "title": "Overconfidence vs underconfidence",
+        "question": "Does each agent systematically predict events too strongly or too weakly?",
         "caption": (
             "Zero is a perfect percentage. Left of zero: too skeptical the event would "
             "happen. Right of zero: too sure it would. Brier hides the direction; this "
             "is how you see whether a species is loud or shy."
         ),
+        "good_result": "Marks close to the center line show less directional bias.",
         "file": dest.name,
     }
 
@@ -380,11 +408,13 @@ def _plot_item_violin(preds: pd.DataFrame, dest: Path) -> dict[str, str] | None:
     return {
         "id": "item_brier_violin",
         "title": "Error spread across questions",
+        "question": "Was a run consistently useful, or did a few large mistakes dominate it?",
         "caption": (
             "Each blob is the distribution of per-question probability error. "
             "A tight violin near zero is reliable. A long right tail is a few "
             "badly miscalibrated answers."
         ),
+        "good_result": "A narrow shape concentrated near zero means consistent accuracy.",
         "file": dest.name,
     }
 
@@ -417,6 +447,11 @@ def render_performance_plots(
         {"species": "Coin flip", "brier": 0.25},
     ]
     median_df = pred_df[pred_df["model_id"] == "swarm-median"]
+    if not vote_df.empty and not median_df.empty:
+        per_question = vote_df.groupby("question_id")["agent_id"].nunique()
+        agent_count = int(per_question.max()) if not per_question.empty else len(votes)
+        median_df = median_df.copy()
+        median_df["species"] = f"Median of {agent_count}"
     specs: list[dict[str, str]] = []
     with _LOCK:
         _apply_theme()
@@ -438,7 +473,10 @@ def render_performance_plots(
         spec = _plot_signed_error(err_src, dest_dir / "signed_error.png")
         if spec:
             specs.append(spec)
-        spec = _plot_item_violin(pred_df if not pred_df.empty else agents, dest_dir / "item_brier_violin.png")
+        spec = _plot_item_violin(
+            pred_df if not pred_df.empty else agents,
+            dest_dir / "item_brier_violin.png",
+        )
         if spec:
             specs.append(spec)
     for spec in specs:
@@ -462,7 +500,7 @@ def write_performance_plots(
     *,
     force: bool = False,
 ) -> list[dict[str, str]]:
-    folder = resolve(f"{RUNS_DIR}/{run_id}")
+    folder = run_dir(run_id)
     if not folder.is_dir():
         return []
     dest = folder / "plots"
@@ -489,7 +527,16 @@ def write_performance_plots(
     ):
         try:
             cached = json.loads(meta_path.read_text(encoding="utf-8"))
-            if isinstance(cached, list) and cached:
+            if (
+                isinstance(cached, list)
+                and cached
+                and all(
+                    isinstance(spec, dict)
+                    and spec.get("question")
+                    and spec.get("good_result")
+                    for spec in cached
+                )
+            ):
                 return cached
         except (OSError, json.JSONDecodeError):
             pass

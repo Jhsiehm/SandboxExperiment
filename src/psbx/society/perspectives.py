@@ -22,9 +22,16 @@ def assign_personas(
     roster: SwarmRoster,
     catalog: PerspectiveCatalog | None = None,
 ) -> list[PerspectivePersona]:
-    """Zip slotted personas onto expanded swarm bodies (index order)."""
+    """Zip explicit personas onto bodies, cycling the validated panel at scale."""
     catalog = catalog or load_perspectives()
-    return catalog.assigned(roster.n_agents)
+    slotted = sorted(
+        [persona for persona in catalog.personas if persona.slot is not None],
+        key=lambda persona: int(persona.slot or 0),
+    )
+    if not slotted:
+        return []
+    base = catalog.assigned(len(slotted))
+    return [base[index % len(base)] for index in range(roster.n_agents)]
 
 
 def persona_for_index(

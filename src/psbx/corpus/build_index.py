@@ -10,9 +10,10 @@ from psbx.corpus.fetch_commoncrawl import ingest_commoncrawl
 from psbx.corpus.fetch_gdelt import ingest_gdelt
 from psbx.corpus.fetch_wayback import DEFAULT_MAX_DOCS, ingest_wayback
 from psbx.corpus.fetch_wikipedia import ingest_wikipedia
-from psbx.corpus.index import HybridIndex, save_index
+from psbx.corpus.index import HybridIndex, save_index, save_source_silos
 from psbx.corpus.prominence import apply_prominence
 from psbx.corpus.seed_documents import seed_documents
+from psbx.corpus.sync_survey_sources import ingest_synced_survey_sources
 from psbx.schemas import Document, Epoch
 
 
@@ -22,6 +23,7 @@ def collect_documents(
     docs = [
         *seed_documents(),
         *ingest_aggregate_sources(epoch),
+        *ingest_synced_survey_sources(epoch),
         *ingest_wikipedia(epoch, live=live),
         *ingest_commoncrawl(epoch, live=live),
         *ingest_wayback(epoch, live=live, max_docs=max_docs),
@@ -56,5 +58,6 @@ def build_index(
     embeddings = embed_texts(texts, backend=backend)
     for doc in docs:
         assert doc.published_at.date() <= epoch.cutoff_date, doc.id
-    save_index(docs, embeddings, epoch)
+    silo_counts = save_source_silos(docs, embeddings, epoch)
+    save_index(docs, embeddings, epoch, silo_counts=silo_counts)
     return HybridIndex(docs, embeddings, epoch.cutoff_date)

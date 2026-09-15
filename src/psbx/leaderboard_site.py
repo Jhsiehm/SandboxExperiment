@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from psbx.io import read_json
-from psbx.paths import resolve
+from psbx.paths import resolve, run_dir
 
 
 def build_site(run_id: str) -> Path:
-    report = read_json(f"data/runs/{run_id}/results.json")
+    report = read_json(run_dir(run_id) / "results.json")
     dest = resolve("leaderboard/site/index.html")
     dest.parent.mkdir(parents=True, exist_ok=True)
     rows = []

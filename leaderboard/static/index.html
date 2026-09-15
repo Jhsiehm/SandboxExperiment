@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/app.css?v=17">
+  <link rel="stylesheet" href="/static/app.css?v=23">
   <link rel="stylesheet" href="/static/enchant.css?v=8">
 </head>
 <body>
@@ -77,20 +77,20 @@
     <div class="brand">
       <p class="kicker">Start here</p>
       <h1>Prediction Sandbox</h1>
-      <p class="lede">We freeze mid-2012, let a model search only 2012 documents, then grade it on what really happened next.</p>
+      <p class="lede" id="mast-lede">Choose a sealed era, let a model search only what was available by its freeze date, then grade it on what happened next.</p>
     </div>
     <dl class="chips" id="mast-meta">
       <div>
         <dt>Pretend today is</dt>
-        <dd id="mast-cutoff">—</dd>
+        <dd id="mast-cutoff">…</dd>
       </div>
       <div>
         <dt>Answers land by</dt>
-        <dd id="mast-resolve">—</dd>
+        <dd id="mast-resolve">…</dd>
       </div>
       <div>
         <dt>This experiment</dt>
-        <dd id="mast-epoch">—</dd>
+        <dd id="mast-epoch">…</dd>
       </div>
     </dl>
     <div class="run-box" id="run-box" role="region" aria-labelledby="run-heading">
@@ -102,12 +102,12 @@
       <div class="run-acts" role="group" aria-label="Start a run">
         <button type="button" class="act ghost" id="run-btn" aria-describedby="run-help-practice">Run practice</button>
         <button type="button" class="act" id="run-live-btn" aria-describedby="run-help-live">Run live mix</button>
-        <button type="button" class="act" id="run-swarm-btn" aria-describedby="run-help-swarm">Run swarm</button>
+        <button type="button" class="act" id="run-swarm-btn" aria-describedby="run-help-swarm">Run configured swarm</button>
       </div>
       <p class="run-help" id="run-help">
         <span id="run-help-practice">Practice is a keyword lookup with no API keys.</span>
         <span id="run-help-live">Live mix scores six cheap models once on one question.</span>
-        <span id="run-help-swarm">Swarm is twelve sequential votes and a median probability.</span>
+        <span id="run-help-swarm">Swarm size and model counts are configured in Runs.</span>
       </p>
       <p class="run-state" id="run-state" data-status="idle" aria-live="polite" aria-atomic="true">
         <span class="run-dot" aria-hidden="true"></span>
@@ -122,15 +122,296 @@
   </section>
 
   <nav class="tabs" role="tablist" aria-label="Read the experiment in order">
+    <button type="button" role="tab" id="tab-eras" data-view="eras" aria-controls="view-eras" aria-selected="false" tabindex="-1">Eras</button>
+    <button type="button" role="tab" id="tab-activity" data-view="activity" aria-controls="view-activity" aria-selected="false" tabindex="-1">Agents live</button>
+    <button type="button" role="tab" id="tab-runs" data-view="runs" aria-controls="view-runs" aria-selected="false" tabindex="-1">Runs</button>
+    <button type="button" role="tab" id="tab-architecture" data-view="architecture" aria-controls="view-architecture" aria-selected="false" tabindex="-1">Architecture</button>
     <button type="button" role="tab" id="tab-results" data-view="results" aria-controls="view-results" aria-selected="true" tabindex="0">1. Results</button>
     <button type="button" role="tab" id="tab-forecasts" data-view="forecasts" aria-controls="view-forecasts" aria-selected="false" tabindex="-1">2. Each answer</button>
     <button type="button" role="tab" id="tab-questions" data-view="questions" aria-controls="view-questions" aria-selected="false" tabindex="-1">3. The questions</button>
-    <button type="button" role="tab" id="tab-corpus" data-view="corpus" aria-controls="view-corpus" aria-selected="false" tabindex="-1">4. The 2012 library</button>
+    <button type="button" role="tab" id="tab-corpus" data-view="corpus" aria-controls="view-corpus" aria-selected="false" tabindex="-1">4. The frozen library</button>
     <button type="button" role="tab" id="tab-lab" data-view="lab" aria-controls="view-lab" aria-selected="false" tabindex="-1">5. Setup</button>
   </nav>
 
   <main id="main">
     <p class="sr-only" id="view-announce" aria-live="polite"></p>
+    <section id="view-eras" class="view" role="tabpanel" aria-labelledby="tab-eras" hidden>
+      <header class="view-head era-head">
+        <h2>Choose a sealed era</h2>
+        <p>Every era is its own time capsule: a dated question set, cutoff-locked corpus, and isolated runs. Switching here changes the data used everywhere else in the dashboard.</p>
+      </header>
+      <dl class="era-current" aria-label="Selected era">
+        <div>
+          <dt>Selected era</dt>
+          <dd id="era-current-id">…</dd>
+        </div>
+        <div>
+          <dt>Freeze date</dt>
+          <dd id="era-current-cutoff">…</dd>
+        </div>
+        <div>
+          <dt>Available evidence</dt>
+          <dd id="era-current-evidence">…</dd>
+        </div>
+      </dl>
+      <div class="era-grid" id="era-grid" aria-live="polite"></div>
+      <p class="era-note" id="era-note">Loading the epoch registry…</p>
+      <details class="more era-build">
+        <summary>How another era becomes selectable</summary>
+        <div class="more-body">
+          <p>Add it to <code>config/epochs.yaml</code>, build <code>data/corpus/&lt;epoch&gt;</code>, and add <code>data/questions/&lt;epoch&gt;.jsonl</code>. The selector discovers it automatically after refresh.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="view-activity" class="view" role="tabpanel" aria-labelledby="tab-activity" hidden>
+      <header class="view-head activity-head">
+        <h2>Agents at work</h2>
+        <p id="activity-objective">Loading the experiment contract and current agent states…</p>
+      </header>
+
+      <div class="experiment-truth" role="note" aria-label="What this experiment measures">
+        <div>
+          <h3>What is scored now</h3>
+          <p id="activity-score-target">Agent forecasts versus later observed history.</p>
+        </div>
+        <div>
+          <h3>What human emulation still needs</h3>
+          <p id="activity-human-gap">Validation against held-out survey responses by demographic group.</p>
+        </div>
+      </div>
+
+      <section class="activity-section" aria-labelledby="access-heading">
+        <header class="activity-section-head">
+          <div>
+            <h3 id="access-heading">Frozen access gate</h3>
+            <p>The model APIs remain on the host. Every document they receive must first pass through this cutoff-locked search container.</p>
+          </div>
+          <p class="seal-badge" id="seal-badge" data-status="checking" aria-live="polite">Checking seal…</p>
+        </header>
+        <ol class="access-flow" aria-label="Frozen retrieval path">
+          <li><strong>Epoch</strong><span id="flow-epoch">…</span></li>
+          <li><strong>Docker search</strong><span id="flow-container">…</span></li>
+          <li><strong>Shared evidence</strong><span id="flow-pack">…</span></li>
+          <li><strong>Agent bodies</strong><span id="flow-agents">…</span></li>
+        </ol>
+        <dl class="isolation-facts" id="isolation-facts"></dl>
+        <form class="scope-form" id="scope-form">
+          <label class="field" for="scope-select">
+            <span>Frozen source scope</span>
+            <select id="scope-select" name="source_type"></select>
+          </label>
+          <button type="submit" class="act" id="scope-apply">Seal container to this scope</button>
+          <p class="note" id="scope-help">Changing scope restarts only the search sidecar and is disabled while a run is active.</p>
+        </form>
+      </section>
+
+      <section class="activity-section" aria-labelledby="agents-heading">
+        <header class="activity-section-head agent-progress-head">
+          <div>
+            <h3 id="agents-heading">Sequential agent board</h3>
+            <p id="shared-retrieval-note">One container search builds a shared evidence pack. Agents read that pack sequentially; they do not independently browse.</p>
+          </div>
+          <output id="agent-progress-label" for="agent-progress">0 / 0 complete</output>
+        </header>
+        <progress id="agent-progress" value="0" max="1">0%</progress>
+        <div class="agent-grid" id="agent-grid" aria-live="polite" aria-busy="false"></div>
+      </section>
+
+      <section class="activity-section evidence-section" aria-labelledby="evidence-heading">
+        <header class="activity-section-head">
+          <div>
+            <h3 id="evidence-heading">Evidence trail</h3>
+            <p>Queries and cited documents are taken from the selected run’s saved audit records. No hidden chain-of-thought is displayed.</p>
+          </div>
+          <p class="evidence-count" id="evidence-count">No activity yet</p>
+        </header>
+        <div class="activity-split">
+          <div>
+            <h4>Shared searches</h4>
+            <ol class="query-list" id="activity-queries"></ol>
+          </div>
+          <div>
+            <h4>Run events</h4>
+            <ol class="timeline" id="activity-timeline"></ol>
+          </div>
+        </div>
+        <div class="sheet-wrap">
+          <table class="sheet" id="activity-docs">
+            <caption class="sr-only">Documents accessed by the selected agent run</caption>
+            <thead>
+              <tr><th scope="col">Document</th><th scope="col">Source</th><th scope="col">Published</th><th scope="col">Cutoff check</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="view-runs" class="view" role="tabpanel" aria-labelledby="tab-runs" hidden>
+      <section class="goal-progress" aria-labelledby="goal-progress-heading">
+        <header class="goal-head">
+          <div>
+            <h2 id="goal-progress-heading">How close are we?</h2>
+            <p id="goal-description">Measuring forecast quality and full-benchmark coverage against the frozen public prior.</p>
+          </div>
+          <span class="goal-state" id="goal-state">Loading progress…</span>
+        </header>
+        <div class="goal-layout">
+          <div class="goal-readout">
+            <strong id="goal-percent">—</strong>
+            <span>best verified progress</span>
+            <progress id="goal-meter" max="100" value="0">0%</progress>
+            <p id="goal-gap">A scored run is needed before progress can be measured.</p>
+          </div>
+          <figure class="goal-figure">
+            <div id="goal-chart" class="goal-chart" aria-live="polite"></div>
+            <figcaption>White shows each run. Green keeps the best verified result so far. The target requires both accurate probabilities and all 50 benchmark questions.</figcaption>
+          </figure>
+        </div>
+        <dl class="goal-facts">
+          <div><dt>Quality</dt><dd id="goal-quality">—</dd></div>
+          <div><dt>Coverage</dt><dd id="goal-coverage">—</dd></div>
+          <div><dt>Latest run</dt><dd id="goal-latest">—</dd></div>
+          <div><dt>Target</dt><dd id="goal-target">—</dd></div>
+        </dl>
+        <div class="human-goal" id="human-goal">
+          <strong>Human-decision emulation: not measured</strong>
+          <span>Held-out respondent-level survey outcomes are still required before this can receive an honest percentage.</span>
+        </div>
+      </section>
+
+      <header class="view-head">
+        <h2>Build and compare swarms</h2>
+        <p>Choose exactly how many bodies use each model. Every launch receives a unique folder with its configuration, roster, event log, votes, scores, and graphs.</p>
+      </header>
+
+      <form id="swarm-builder" class="swarm-builder">
+        <div class="builder-controls">
+          <label class="field" for="swarm-preset">
+            <span>Starting preset</span>
+            <select id="swarm-preset"></select>
+          </label>
+          <label class="field grow" for="swarm-label">
+            <span>Run label</span>
+            <input id="swarm-label" name="label" maxlength="80" value="Balanced 12-agent comparison" autocomplete="off">
+          </label>
+          <label class="field" for="swarm-questions">
+            <span>Questions</span>
+            <input id="swarm-questions" name="n_questions" type="number" min="1" max="50" value="1">
+          </label>
+        </div>
+
+        <div class="builder-summary" aria-live="polite">
+          <p><strong id="swarm-total">12 agents</strong><span id="swarm-calls">12 model calls</span></p>
+          <p id="swarm-estimate">About 24 seconds minimum, plus provider latency.</p>
+        </div>
+
+        <div class="sheet-wrap">
+          <table class="sheet composition-table">
+            <caption class="sr-only">Number of agents to allocate to each model species</caption>
+            <thead><tr><th scope="col">Agent type</th><th scope="col">Provider model</th><th scope="col">Bodies</th></tr></thead>
+            <tbody id="swarm-composition"></tbody>
+          </table>
+        </div>
+        <p class="builder-error" id="swarm-builder-error" role="alert"></p>
+        <div class="builder-submit">
+          <button type="submit" class="act" id="swarm-launch">Run this swarm</button>
+          <p>Maximum 100 agents. Calls remain sequential and share one cutoff-locked evidence pack per question.</p>
+        </div>
+      </form>
+
+      <section class="run-archive" aria-labelledby="run-archive-heading">
+        <header class="activity-section-head">
+          <div>
+            <h3 id="run-archive-heading">Saved run archive</h3>
+            <p>Compare swarm size, composition, probability error, and ranking. Smaller Brier error is better; larger C-index is better.</p>
+          </div>
+          <p class="evidence-count" id="run-archive-count">Loading runs…</p>
+        </header>
+        <div class="sheet-wrap">
+          <table class="sheet run-history-table">
+            <caption class="sr-only">Saved runs for the selected epoch</caption>
+            <thead><tr><th scope="col">Run</th><th scope="col">Swarm</th><th scope="col">Questions</th><th scope="col">Brier</th><th scope="col">C-index</th><th scope="col">Status</th><th scope="col">Open</th></tr></thead>
+            <tbody id="run-history"></tbody>
+          </table>
+        </div>
+        <section class="saved-log" id="saved-log" hidden aria-labelledby="saved-log-heading">
+          <header>
+            <div><h4 id="saved-log-heading">Saved log</h4><p id="saved-log-meta"></p></div>
+            <button type="button" class="act ghost" id="saved-log-close">Close log</button>
+          </header>
+          <pre id="saved-log-output" tabindex="0"></pre>
+        </section>
+      </section>
+    </section>
+
+    <section id="view-architecture" class="view" role="tabpanel" aria-labelledby="tab-architecture" hidden>
+      <header class="view-head architecture-head">
+        <h2>The repository architecture</h2>
+        <p>This is the full path from outside source material to a scored result on this screen. Select any block to see the folders and contracts behind it.</p>
+      </header>
+
+      <section class="architecture-map" aria-labelledby="architecture-flow-heading">
+        <h3 id="architecture-flow-heading">How information moves</h3>
+        <div class="arch-boundaries" aria-hidden="true">
+          <span>Build time</span><span>Sealed container</span><span>Host runtime</span>
+        </div>
+        <div class="arch-flow" id="arch-flow" role="group" aria-label="Repository system flow"></div>
+        <div class="arch-secondary-flow" aria-label="External connections">
+          <div><strong>Historical providers</strong><span>Wayback, dated survey reports, FRED/GDELT fixtures enter only during corpus construction.</span></div>
+          <div><strong>OpenRouter and model APIs</strong><span>Model calls leave from the host. API keys and live network access never enter the frozen search container.</span></div>
+        </div>
+      </section>
+
+      <section class="arch-inspector" id="arch-inspector" aria-live="polite" aria-labelledby="arch-detail-title">
+        <header>
+          <div><h3 id="arch-detail-title">Select a system block</h3><p id="arch-detail-summary">The file-level explanation will appear here.</p></div>
+          <code id="arch-detail-runtime">runtime</code>
+        </header>
+        <dl class="arch-contracts">
+          <div><dt>Receives</dt><dd id="arch-detail-input">—</dd></div>
+          <div><dt>Produces</dt><dd id="arch-detail-output">—</dd></div>
+        </dl>
+        <div class="arch-files"><h4>Key paths</h4><ul id="arch-detail-files"></ul></div>
+      </section>
+
+      <section class="arch-lower-grid">
+        <article>
+          <h3>Repository tree</h3>
+          <pre class="repo-tree" aria-label="Top-level repository directory tree"><code>SandboxExperiment/
+├── config/          experiment, epoch, model, source and swarm definitions
+├── custom/          AgentSociety-compatible forecaster and frozen environment
+├── data/
+│   ├── questions/   versioned benchmark questions
+│   ├── sources/     rebuildable dated source manifests
+│   ├── corpus/      generated epoch indexes and source silos
+│   └── runs/        run config, logs, votes, predictions, scores and plots
+├── leaderboard/     FastAPI viewer, job control, activity and browser UI
+├── src/psbx/
+│   ├── agents/      single-model and configurable swarm execution
+│   ├── corpus/      ingestion, normalization, indexing and retrieval
+│   ├── questions/   Congress, economic and geopolitical question builders
+│   ├── sandbox/     Docker seal, frozen clock and search service
+│   ├── scoring/     Brier, C-index, calibration and visual reports
+│   └── society/     personas and AgentSociety experiment adapters
+├── tests/           cutoff, isolation, swarm, scoring and dashboard tests
+├── README.md        operating and research documentation
+└── pyproject.toml   Python package, commands and dependencies</code></pre>
+        </article>
+        <article>
+          <h3>Trust boundaries</h3>
+          <ol class="boundary-list">
+            <li><strong>Build-time web</strong><span>Only dated and verified material can become epoch evidence.</span></li>
+            <li><strong>Frozen search cell</strong><span>Docker receives one read-only epoch/source index, a fake historical clock, and blocked outbound egress.</span></li>
+            <li><strong>Host-side agents</strong><span>Agents may call model providers, but their evidence comes only through the sealed search API.</span></li>
+            <li><strong>Append-only runs</strong><span>Each launch writes a unique manifest, roster, log, predictions, votes, scores and graph metadata.</span></li>
+            <li><strong>Evaluation boundary</strong><span>Later outcomes grade forecasts; future information is never returned to the forecasting agent.</span></li>
+          </ol>
+        </article>
+      </section>
+    </section>
+
     <section id="view-results" class="view" role="tabpanel" aria-labelledby="tab-results">
       <ol class="ladder">
         <li class="rung">
@@ -162,7 +443,7 @@
           <p class="rung-num" aria-hidden="true">4</p>
           <div>
             <h2>Who did better</h2>
-            <p class="rung-lead">Green is the 2012 public prior — beat that on probability error before calling it skill. Ranking can look strong even when percentages are sloppy.</p>
+            <p class="rung-lead" id="prior-rung-lead">Green is the public prior available at the freeze date. Beat that on probability error before calling it skill. Ranking can look strong even when percentages are sloppy.</p>
             <div class="board-head">
               <span>Who</span>
               <span>Probability error <em>smaller better</em></span>
@@ -204,6 +485,7 @@
                     </header>
                     <div id="cal-chart" class="chart"></div>
                     <p class="note" id="cal-note"></p>
+                    <p class="chart-explainer"><strong>In plain English:</strong> This asks whether a stated 70% chance really happened about seven times out of ten. Points close to the diagonal mean the percentages can be trusted.</p>
                   </article>
                   <article>
                     <header class="block-head">
@@ -211,6 +493,7 @@
                       <p id="contam-note" class="note"></p>
                     </header>
                     <div id="contam-chart" class="chart"></div>
+                    <p class="chart-explainer"><strong>In plain English:</strong> This checks whether performance suddenly improves on events the model may have encountered during training. A sharp jump around zero days is a leakage warning.</p>
                   </article>
                 </div>
               </div>
@@ -238,7 +521,7 @@
         <p class="count" id="f-count"></p>
       </div>
       <div id="forecasts-empty" class="empty" hidden>
-        <p>No answers on disk for this run. Use <strong>Run practice</strong> for a keyword lookup, <strong>Run live mix</strong> for six species once, or <strong>Run swarm</strong> for the 12-vote median.</p>
+        <p>No answers on disk for this run. Use <strong>Run practice</strong> for a keyword lookup, <strong>Run live mix</strong> for six species once, or configure a 1–100-agent median swarm in <strong>Runs</strong>.</p>
       </div>
       <div class="sheet-wrap">
       <table class="sheet" id="pred-table">
@@ -248,7 +531,7 @@
             <th scope="col">Who</th>
             <th scope="col">Question</th>
             <th scope="col">Their guess</th>
-            <th scope="col">2012 prior</th>
+            <th scope="col" class="era-prior-label">Freeze-date prior</th>
             <th scope="col" class="truth-col">Happened?</th>
             <th scope="col" class="truth-col">Error</th>
             <th scope="col">What they searched</th>
@@ -263,7 +546,7 @@
       <header class="view-head">
         <p class="rung-kicker">Step 3 of 5</p>
         <h2>The questions</h2>
-        <p>Each one is a yes-or-no about something that would or would not happen by a date in 2012–2013. The true answer stays hidden unless you reveal it — that is the agent’s view at the freeze date.</p>
+        <p id="questions-intro">Each one is a yes-or-no about something that would or would not happen after the selected freeze date. The true answer stays hidden unless you reveal it. That is the agent’s view at the time.</p>
       </header>
       <div class="toolbar">
         <label class="toggle">
@@ -280,13 +563,13 @@
       </div>
       <div class="sheet-wrap">
       <table class="sheet" id="q-table">
-        <caption class="sr-only">The frozen 2012 question set</caption>
+        <caption class="sr-only" id="questions-caption">The frozen question set for the selected era</caption>
         <thead>
           <tr>
             <th scope="col">ID</th>
             <th scope="col">Topic</th>
             <th scope="col">Question</th>
-            <th scope="col">2012 prior</th>
+            <th scope="col" class="era-prior-label">Freeze-date prior</th>
             <th scope="col">Where it came from</th>
             <th scope="col" class="truth-col">Happened?</th>
           </tr>
@@ -299,8 +582,8 @@
     <section id="view-corpus" class="view" role="tabpanel" aria-labelledby="tab-corpus" hidden>
       <header class="view-head">
         <p class="rung-kicker">Step 4 of 5</p>
-        <h2>The 2012 library</h2>
-        <p id="corpus-assertion" class="stamp-line">Only documents published on or before the freeze date. The 2012 library is Wayback (cutoff-locked), not the CC-MAIN-2012 dump and not CC-MAIN-2013-20.</p>
+        <h2 id="corpus-heading">The frozen library</h2>
+        <p id="corpus-assertion" class="stamp-line">Only documents published on or before the selected freeze date can appear.</p>
       </header>
       <form id="search-form" class="search-bar" role="search">
         <label class="field grow" for="search-q">
@@ -320,7 +603,7 @@
       <p class="note" id="search-status" aria-live="polite"></p>
       <div class="sheet-wrap">
       <table class="sheet" id="search-table">
-        <caption class="sr-only">Documents in the cutoff-locked 2012 index</caption>
+        <caption class="sr-only" id="corpus-caption">Documents in the cutoff-locked index for the selected era</caption>
         <thead>
           <tr>
             <th scope="col">Document</th>
@@ -360,7 +643,7 @@
             <tbody></tbody>
           </table>
           </div>
-          <p class="note" id="overview-swarm">Three HUD buttons: Run practice (keyword lookup, no keys), Run live mix (each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B once — 1 question), Run swarm (2 of each species, 12 sequential votes, shared retrieval, median p; not a stub). Results draws seaborn charts of votes vs later truth. That is the planned cheap mix, not the full OpenRouter catalog. A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only. Native Claude+GPT still needs both Anthropic and OpenAI keys.</p>
+          <p class="note" id="overview-swarm">Three HUD buttons: Run practice (keyword lookup, no keys), Run live mix (each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B once on 1 question), Run swarm (2 of each species, 12 sequential votes, shared retrieval, median p; not a stub). Results draws seaborn charts of votes vs later truth. That is the planned cheap mix, not the full OpenRouter catalog. A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only. Native Claude+GPT still needs both Anthropic and OpenAI keys.</p>
         </article>
         <aside>
           <header class="block-head">
@@ -372,10 +655,10 @@
             <h3>How to run</h3>
           </header>
           <ol class="plain numbered">
-            <li>The 2012 library is Wayback with <code>to=20120630</code>. Grow it with <code>psbx corpus build --epoch e2012 --live --max-docs 400</code>. That is not the CC-MAIN-2012 HTML dump (legacy ARC, “check back later”) and not CC-MAIN-2013-20 (May–June 2013).</li>
+            <li id="era-build-command">Grow the selected frozen library with <code>psbx corpus build --epoch &lt;epoch&gt; --live --max-docs 400</code>.</li>
             <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys. Cheap. Folder <code>phase1-e2012-smoke</code>.</li>
             <li><strong>Run live mix</strong> scores each of the six OpenRouter species once on 1 question (<code>phase2-e2012-openrouter</code>). Needs <code>OPENROUTER_API_KEY</code>. It does not fire 12 bodies. Native Claude+GPT (<code>run-phase2.yaml</code>) still needs both Anthropic and OpenAI keys; the HUD only uses that path if OpenRouter is missing.</li>
-            <li><strong>Run swarm</strong> is real: 12 sequential OpenRouter votes (2 × each species), shared retrieval, median probability (<code>phase2-e2012-swarm-probe</code>). Same key. Keep it at 1 question unless you mean to wait hours (12×50 at 2s/req).</li>
+            <li><strong>Run swarm</strong> is real: 12 sequential OpenRouter votes (2 × each species), shared retrieval, median probability (<code>phase2-e2012-swarm-probe-container</code>). Same key. Keep it at 1 question unless you mean to wait hours (12×50 at 2s/req).</li>
             <li>Results draws seaborn charts (vote swarm, Brier bars, signed error). Brier + C-index both score. This page never overwrites a different run folder.</li>
           </ol>
         </aside>
@@ -388,6 +671,6 @@
   </footer>
   </div>
   <script src="/static/enchant.js?v=7"></script>
-  <script src="/static/app.js?v=22"></script>
+  <script src="/static/app.js?v=27"></script>
 </body>
 </html>

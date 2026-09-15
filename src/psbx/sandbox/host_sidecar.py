@@ -44,7 +44,7 @@ def pid_path() -> Path:
     return dest
 
 
-def up(epoch_id: str = "e2012") -> str:
+def up(epoch_id: str = "e2012", source_type: str | None = None) -> str:
     down()
     epoch = load_epochs()[epoch_id]
     lib = dylib_path()
@@ -53,6 +53,12 @@ def up(epoch_id: str = "e2012") -> str:
     env["FAKETIME_NO_CACHE"] = "1"
     env["FAKETIME_DONT_FAKE_MONOTONIC"] = "1"
     env["PSBX_EPOCH"] = epoch_id
+    if source_type:
+        env["PSBX_SOURCE_TYPE"] = source_type
+        env["PSBX_ACTIVE_SOURCE_TYPE"] = source_type
+    else:
+        env.pop("PSBX_SOURCE_TYPE", None)
+        env["PSBX_ACTIVE_SOURCE_TYPE"] = "all"
     env["PSBX_FAKETIME"] = f"{epoch.cutoff_date.isoformat()} 12:00:00"
     env["PSBX_SEARCH_HOST"] = "127.0.0.1"
     env["PSBX_SEARCH_PORT"] = str(HOST_PORT)

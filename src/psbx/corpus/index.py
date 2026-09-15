@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import shutil
+from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 import numpy as np
 from rank_bm25 import BM25Okapi
-
-from urllib.parse import urlparse, urlunparse
 
 from psbx.corpus.embed import embed_texts, tokenize
 from psbx.io import read_jsonl, write_json, write_jsonl
@@ -17,6 +18,8 @@ from psbx.paths import resolve
 from psbx.schemas import Document, Epoch, SearchHit
 
 RRF_K = 60
+SOURCE_TYPES = ("news", "wire", "wiki", "gov", "trade", "survey", "ad", "academic")
+SILO_DIRNAME = "silos"
 
 
 def _canon_url(url: str) -> str:
@@ -64,7 +67,8 @@ class HybridIndex:
     def _enforce(self, doc: Document) -> Document:
         if _as_date(doc.published_at) > self.cutoff:
             raise AssertionError(
-                f"query-time leakage: {doc.id} published_at={doc.published_at.date()} > {self.cutoff}"
+                "query-time leakage: "
+                f"{doc.id} published_at={doc.published_at.date()} > {self.cutoff}"
             )
         return doc
 
@@ -151,8 +155,23 @@ def _snippet(text: str, query: str, width: int = 240) -> str:
     return text[start:end].strip()
 
 
-def save_index(docs: list[Document], embeddings: np.ndarray, epoch: Epoch) -> Path:
-    dest = resolve(epoch.corpus_index_path)
+def source_silo_path(epoch: Epoch, source_type: str) -> Path:
+    """Generated index path for one epoch/source-type isolation cell."""
+    if source_type not in SOURCE_TYPES:
+        choices = ", ".join(SOURCE_TYPES)
+        raise ValueError(f"unknown source type {source_type!r}; choose one of: {choices}")
+    return resolve(epoch.corpus_index_path) / SILO_DIRNAME / source_type
+
+
+def save_index(
+    docs: list[Document],
+    embeddings: np.ndarray,
+    epoch: Epoch,
+    *,
+    destination: str | Path | None = None,
+    silo_counts: dict[str, int] | None = None,
+) -> Path:
+    dest = resolve(destination or epoch.corpus_index_path)
     dest.mkdir(parents=True, exist_ok=True)
     slim = [d.model_copy(update={"embedding": None}) for d in docs]
     write_jsonl(dest / "documents.jsonl", slim)
@@ -164,20 +183,50 @@ def save_index(docs: list[Document], embeddings: np.ndarray, epoch: Epoch) -> Pa
             "cutoff_date": epoch.cutoff_date.isoformat(),
             "n_docs": len(docs),
             "embedding_dim": int(embeddings.shape[1]) if len(embeddings) else 0,
+            "source_types": sorted({str(doc.source_type) for doc in docs}),
+            "silos": dict(sorted((silo_counts or {}).items())),
         },
     )
     return dest
 
 
-def load_index(epoch: Epoch) -> HybridIndex:
-    dest = resolve(epoch.corpus_index_path)
+def save_source_silos(docs: list[Document], embeddings: np.ndarray, epoch: Epoch) -> dict[str, int]:
+    """Write one immutable-at-runtime index per source type for an epoch."""
+    silo_root = resolve(epoch.corpus_index_path) / SILO_DIRNAME
+    if silo_root.exists():
+        shutil.rmtree(silo_root)
+    positions: dict[str, list[int]] = defaultdict(list)
+    for index, doc in enumerate(docs):
+        positions[str(doc.source_type)].append(index)
+    counts: dict[str, int] = {}
+    for source_type, indices in sorted(positions.items()):
+        selected = [docs[index] for index in indices]
+        selected_embeddings = embeddings[np.asarray(indices, dtype=np.int64)]
+        save_index(
+            selected,
+            selected_embeddings,
+            epoch,
+            destination=source_silo_path(epoch, source_type),
+        )
+        counts[source_type] = len(selected)
+    return counts
+
+
+def load_index(epoch: Epoch, source_type: str | None = None) -> HybridIndex:
+    dest = source_silo_path(epoch, source_type) if source_type else resolve(epoch.corpus_index_path)
     docs = read_jsonl(dest / "documents.jsonl", Document)
     embeddings = np.load(dest / "embeddings.npy")
     meta = json.loads((dest / "meta.json").read_text(encoding="utf-8"))
+    if meta.get("epoch_id") != epoch.id:
+        raise ValueError(f"index epoch {meta.get('epoch_id')} != requested epoch {epoch.id}")
     cutoff = date.fromisoformat(meta["cutoff_date"])
     if cutoff != epoch.cutoff_date:
         raise ValueError(f"index cutoff {cutoff} != epoch {epoch.cutoff_date}")
     for doc in docs:
         if doc.published_at.date() > cutoff:
             raise AssertionError(f"stored leakage: {doc.id}")
+        if source_type and doc.source_type != source_type:
+            raise AssertionError(
+                f"source silo leakage: {doc.id} type={doc.source_type} != {source_type}"
+            )
     return HybridIndex(docs, embeddings, cutoff)
