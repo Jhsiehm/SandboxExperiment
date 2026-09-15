@@ -14,9 +14,19 @@ def build_site(run_id: str) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     rows = []
     for mid, score in report["brier_by_model"].items():
-        idx = report["brier_index_by_model"].get(mid, 0.0)
+        idx = report["brier_index_by_model"].get(mid)
         beat = "yes" if mid in report["models_beating_base_rate"] else "no"
-        rows.append(f"<tr><td>{mid}</td><td>{score:.4f}</td><td>{idx:.1f}</td><td>{beat}</td></tr>")
+        coverage = (report.get("coverage_by_model") or {}).get(mid) or {}
+        prior = (report.get("baselines_by_model") or {}).get(mid, {}).get("prior_signal")
+        matched = (report.get("matched_brier_by_model") or {}).get(mid)
+        rows.append(
+            "<tr>"
+            f"<td>{mid}</td><td>{_number(score, 4)}</td><td>{_number(idx, 1)}</td>"
+            f"<td>{coverage.get('answered_questions', 0)}/"
+            f"{coverage.get('expected_questions', 0)}</td>"
+            f"<td>{_number(prior, 4)}</td><td>{_number(matched, 4)}</td><td>{beat}</td>"
+            "</tr>"
+        )
     base_rows = "".join(
         f"<tr><td>{k}</td><td>{v:.4f}</td></tr>" for k, v in report["baselines"].items()
     )
@@ -40,10 +50,12 @@ def build_site(run_id: str) -> Path:
 <p>run {run_id} · n={report["n_predictions"]} · flagged={report["n_flagged"]}</p>
 <h2>Models</h2>
 <table>
-  <tr><th>model</th><th>Brier</th><th>Brier index</th><th>beats base rate</th></tr>
+  <tr><th>model</th><th>own-set Brier</th><th>Brier index</th>
+  <th>coverage</th><th>own-set prior</th><th>matched Brier</th>
+  <th>beats own-set base rate</th></tr>
   {''.join(rows)}
 </table>
-<h2>Baselines</h2>
+<h2>Full-question-set reference baselines</h2>
 <table>
   <tr><th>baseline</th><th>Brier</th></tr>
   {base_rows}
@@ -54,3 +66,7 @@ def build_site(run_id: str) -> Path:
         encoding="utf-8",
     )
     return dest
+
+
+def _number(value: object, digits: int) -> str:
+    return "—" if value is None else f"{float(value):.{digits}f}"

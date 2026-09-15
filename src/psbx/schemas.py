@@ -309,21 +309,44 @@ class ContaminationResult(BaseModel):
     contamination_delta: float | None = None
 
 
+class ScoreCoverage(BaseModel):
+    expected_questions: int
+    answered_questions: int
+    coverage_fraction: float | None = None
+    answered_question_ids: list[str] = Field(default_factory=list)
+    missing_question_ids: list[str] = Field(default_factory=list)
+    # Prediction files do not contain attempt history. Keep this undefined rather
+    # than inventing failures from questions that merely lack a scored prediction.
+    failed_question_ids: list[str] | None = None
+    failure_history_available: bool = False
+
+
 class ScoreReport(BaseModel):
     run_id: str
     n_predictions: int
-    brier_by_model: dict[str, float]
-    brier_index_by_model: dict[str, float]
+    question_count: int = 0
+    brier_by_model: dict[str, float | None]
+    brier_index_by_model: dict[str, float | None]
     brier_by_category: dict[str, dict[str, float]]
     baselines: dict[str, float]
+    baseline_scope: str = "full_question_set_reference"
+    baselines_by_model: dict[str, dict[str, float]] = Field(default_factory=dict)
     models_beating_base_rate: list[str]
     models_beating_prior_signal: list[str] = Field(default_factory=list)
+    coverage_by_model: dict[str, ScoreCoverage] = Field(default_factory=dict)
+    matched_question_ids: list[str] = Field(default_factory=list)
+    matched_brier_by_model: dict[str, float | None] = Field(default_factory=dict)
+    matched_c_index_by_model: dict[str, float | None] = Field(default_factory=dict)
+    matched_c_index_pairs_by_model: dict[str, int] = Field(default_factory=dict)
     calibration: dict[str, CalibrationResult]
     contamination: list[ContaminationResult]
     n_flagged: int
     c_index_by_model: dict[str, float | None] = Field(default_factory=dict)
     c_index_pairs_by_model: dict[str, int] = Field(default_factory=dict)
     c_index_baselines: dict[str, float | None] = Field(default_factory=dict)
+    c_index_baselines_by_model: dict[str, dict[str, float | None]] = Field(
+        default_factory=dict
+    )
 
 
 class PerspectivePersona(BaseModel):

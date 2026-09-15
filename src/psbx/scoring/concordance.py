@@ -26,10 +26,17 @@ from psbx.schemas import Prediction, Question
 def concordance_index(preds: list[Prediction], qs: dict[str, Question]) -> tuple[float | None, int]:
     """Return (C-index, n_comparable_pairs). Ties count as 0.5."""
     scored: list[tuple[float, bool]] = []
+    seen: set[tuple[str, str]] = set()
     for p in preds:
         q = qs.get(p.question_id)
         if q is None:
-            continue
+            raise ValueError(f"prediction references unknown question ID: {p.question_id}")
+        key = (p.model_id, p.question_id)
+        if key in seen:
+            raise ValueError(
+                f"duplicate model/question prediction: {p.model_id}/{p.question_id}"
+            )
+        seen.add(key)
         scored.append((p.probability, bool(q.ground_truth)))
     yes = [s for s, y in scored if y]
     no = [s for s, y in scored if not y]

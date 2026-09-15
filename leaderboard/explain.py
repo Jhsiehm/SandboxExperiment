@@ -137,6 +137,11 @@ def explain_scores(
     by_model = dict(report.get("brier_by_model") or {})
     index_by = dict(report.get("brier_index_by_model") or {})
     c_by = dict(report.get("c_index_by_model") or {})
+    coverage_by = dict(report.get("coverage_by_model") or {})
+    bases_by_model = dict(report.get("baselines_by_model") or {})
+    matched_brier_by = dict(report.get("matched_brier_by_model") or {})
+    matched_c_by = dict(report.get("matched_c_index_by_model") or {})
+    matched_question_ids = list(report.get("matched_question_ids") or [])
     c_bases = dict(report.get("c_index_baselines") or {})
     if prior_view.get("c_index") is not None and "prior_signal" not in c_bases:
         c_bases["prior_signal"] = prior_view["c_index"]
@@ -147,6 +152,7 @@ def explain_scores(
     seen: set[str] = set()
 
     for mid, score in by_model.items():
+        model_bases = bases_by_model.get(mid) or bases
         rows.append(
             _row(
                 mid,
@@ -155,9 +161,12 @@ def explain_scores(
                 score,
                 index_by.get(mid),
                 c_by.get(mid),
-                prior,
-                base_rate,
+                model_bases.get("prior_signal"),
+                model_bases.get("always_base_rate"),
                 note=_model_note(mid, models),
+                coverage=coverage_by.get(mid),
+                matched_brier=matched_brier_by.get(mid),
+                matched_c_index=matched_c_by.get(mid),
             )
         )
         seen.add(mid)
@@ -179,30 +188,68 @@ def explain_scores(
             )
         )
 
-    rows.sort(key=lambda r: (r["brier"] is None, r["brier"] if r["brier"] is not None else 9))
-    finite = [r["brier"] for r in rows if r["brier"] is not None]
+    model_rows = [row for row in rows if row["kind"] == "model"]
+    compare_on_matched = len(model_rows) > 1 and bool(matched_question_ids)
+    for row in rows:
+        row["display_brier"] = (
+            row["matched_brier"]
+            if row["kind"] == "model" and compare_on_matched
+            else row["brier"]
+        )
+        row["display_c_index"] = (
+            row["matched_c_index"]
+            if row["kind"] == "model" and compare_on_matched
+            else row["c_index"]
+        )
+        row["display_scope"] = (
+            f"{len(matched_question_ids)} matched questions"
+            if row["kind"] == "model" and compare_on_matched
+            else (
+                "answered questions"
+                if row["kind"] == "model"
+                else "full-set reference"
+            )
+        )
+    rows.sort(
+        key=lambda row: (
+            row["display_brier"] is None,
+            row["display_brier"] if row["display_brier"] is not None else 9,
+        )
+    )
+    finite = [row["display_brier"] for row in rows if row["display_brier"] is not None]
     ceiling = max(finite) if finite else 1.0
     if ceiling <= 0:
         ceiling = 1.0
     for row in rows:
-        row["bar"] = None if row["brier"] is None else round(row["brier"] / ceiling, 4)
+        row["bar"] = (
+            None
+            if row["display_brier"] is None
+            else round(row["display_brier"] / ceiling, 4)
+        )
         row["c_bar"] = (
             None
-            if row["c_index"] is None
-            else round(max(0.0, min(1.0, row["c_index"])), 4)
+            if row["display_c_index"] is None
+            else round(max(0.0, min(1.0, row["display_c_index"])), 4)
         )
 
     beating_prior = list(report.get("models_beating_prior_signal") or [])
-    if not beating_prior and prior is not None:
+    if not beating_prior:
         beating_prior = [
             r["id"]
             for r in rows
             if r["kind"] == "model"
             and r["brier"] is not None
-            and r["brier"] < prior
+            and r["prior_brier"] is not None
+            and r["brier"] < r["prior_brier"]
         ]
 
-    verdict = _verdict(rows, prior, beating_prior, payload.get("run_id"))
+    verdict = _verdict(
+        rows,
+        beating_prior,
+        payload.get("run_id"),
+        len(matched_question_ids),
+        bool(coverage_by),
+    )
     return {
         "run_id": payload.get("run_id"),
         "run_label": run_label(payload.get("run_id")),
@@ -215,6 +262,14 @@ def explain_scores(
         "contamination_note": _contamination_note(report, models),
         "n_predictions": report.get("n_predictions") or 0,
         "n_flagged": report.get("n_flagged") or 0,
+        "question_count": report.get("question_count") or 0,
+        "coverage_by_model": coverage_by,
+        "matched_question_count": len(matched_question_ids),
+        "comparison_scope": (
+            f"Cross-model ranks use {len(matched_question_ids)} shared questions."
+            if compare_on_matched
+            else "Scores are descriptive; no matched cross-model comparison is available."
+        ),
         "brier_by_category": report.get("brier_by_category") or {},
     }
 
@@ -229,6 +284,9 @@ def _row(
     prior: float | None,
     base_rate: float | None,
     note: str,
+    coverage: dict[str, Any] | None = None,
+    matched_brier: float | None = None,
+    matched_c_index: float | None = None,
 ) -> dict[str, Any]:
     vs_prior = None if brier is None or prior is None else round(brier - prior, 4)
     return {
@@ -238,6 +296,11 @@ def _row(
         "brier": brier,
         "brier_index": index,
         "c_index": c_index,
+        "matched_brier": matched_brier,
+        "matched_c_index": matched_c_index,
+        "prior_brier": prior,
+        "base_rate_brier": base_rate,
+        "coverage": coverage,
         "beats_prior": bool(brier is not None and prior is not None and brier < prior),
         "beats_base": bool(brier is not None and base_rate is not None and brier < base_rate),
         "delta_vs_prior": vs_prior,
@@ -261,17 +324,24 @@ def _model_note(mid: str, models: dict[str, ModelConfig] | None) -> str:
 
 def _verdict(
     rows: list[dict[str, Any]],
-    prior: float | None,
     beating_prior: list[str],
     run_id: str | None,
+    matched_question_count: int,
+    coverage_known: bool,
 ) -> dict[str, str]:
     models = [r for r in rows if r["kind"] == "model"]
-    ranked = [r for r in models if r.get("c_index") is not None]
-    best_c = max(ranked, key=lambda r: r["c_index"]) if ranked else None
+    use_matched = len(models) > 1 and matched_question_count > 0
+    ranked = [
+        row
+        for row in models
+        if row.get("matched_c_index" if use_matched else "c_index") is not None
+    ]
+    c_field = "matched_c_index" if use_matched else "c_index"
+    best_c = max(ranked, key=lambda row: row[c_field]) if ranked else None
     ranking = ""
     if best_c:
         ranking = (
-            f"{best_c['label']} ranked events at {best_c['c_index']:.2f} "
+            f"{best_c['label']} ranked events at {best_c[c_field]:.2f} "
             "(0.50 is guessing which ones happened; 1.00 is perfect order)."
         )
     if not models:
@@ -285,20 +355,49 @@ def _verdict(
             "ranking": "Ranking (C-index) will appear after a scored run.",
         }
     labels = {r["id"]: r["label"] for r in rows}
-    best = min(models, key=lambda r: r["brier"] if r["brier"] is not None else 9)
+    if len(models) > 1 and coverage_known and not matched_question_count:
+        return {
+            "tone": "partial",
+            "headline": "Coverage differs; no cross-model winner is defined.",
+            "detail": (
+                "The models have no scored question in common. Individual scores remain "
+                "descriptive, but comparing them would mix different question sets."
+            ),
+            "ranking": "Ranking is undefined until models share comparable questions.",
+        }
+    score_field = "matched_brier" if use_matched else "brier"
+    comparable = [row for row in models if row.get(score_field) is not None]
+    if not comparable:
+        return {
+            "tone": "partial",
+            "headline": "No model has a defined score yet.",
+            "detail": (
+                "Missing predictions remain missing; unavailable attempt history is "
+                "not inferred."
+            ),
+            "ranking": "Ranking is undefined.",
+        }
+    best = min(comparable, key=lambda row: row[score_field])
+    comparison = (
+        f"On the {matched_question_count} matched questions, {best['label']} has "
+        f"the lowest error at {best[score_field]:.3f}. "
+        if use_matched
+        else ""
+    )
     if beating_prior:
         names = ", ".join(labels.get(i, i) for i in beating_prior)
         verdict = {
             "tone": "win",
-            "headline": f"{names} beat the 2012 public prior on probability error.",
+            "headline": f"{names} beat the corresponding public prior on probability error.",
             "detail": (
-                f"Best probability error is {best['brier']:.3f} ({best['label']}). "
-                f"The 2012 prior is {prior:.3f}. Smaller is better. "
+                comparison
+                + "Each baseline comparison uses exactly the questions that model answered. "
                 f"This is {run_label(run_id)}."
             ),
             "ranking": ranking,
         }
     else:
+        prior = best.get("prior_brier")
         prior_txt = f"{prior:.3f}" if prior is not None else "—"
         extra = ""
         if best["delta_vs_prior"] is not None and best["delta_vs_prior"] > 0:
@@ -307,8 +406,9 @@ def _verdict(
             "tone": "miss",
             "headline": "No model beat the 2012 public prior on probability error.",
             "detail": (
-                f"Best model error is {best['brier']:.3f} ({best['label']}). "
-                f"The 2012 public prior is {prior_txt}.{extra} "
+                comparison
+                + f"{best['label']} has error {best['brier']:.3f} on its answered set. "
+                + f"Its corresponding public prior is {prior_txt}.{extra} "
                 "The agent is not yet more accurate than facts already sitting on the question."
             ),
             "ranking": ranking,

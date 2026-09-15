@@ -263,10 +263,15 @@ def list_runs() -> list[dict[str, Any]]:
             ]
         report = load_score_report(child.name) if scores else None
         primary_model = None
-        if report and "swarm-median" in report.brier_by_model:
+        scored_report = {
+            model_id: score
+            for model_id, score in (report.brier_by_model.items() if report else [])
+            if score is not None
+        }
+        if "swarm-median" in scored_report:
             primary_model = "swarm-median"
-        elif report and report.brier_by_model:
-            primary_model = min(report.brier_by_model, key=report.brier_by_model.get)
+        elif scored_report:
+            primary_model = min(scored_report, key=scored_report.get)
         scored_questions = len({prediction.question_id for prediction in predictions})
         modified = datetime.fromtimestamp(child.stat().st_mtime, tz=timezone.utc).isoformat()
         from leaderboard.explain import run_label
@@ -316,7 +321,13 @@ def list_runs() -> list[dict[str, Any]]:
                     else None
                 ),
                 "goal_target_brier": (
-                    report.baselines.get("prior_signal") if report is not None else None
+                    (
+                        report.baselines_by_model.get(primary_model, report.baselines).get(
+                            "prior_signal"
+                        )
+                    )
+                    if report is not None and primary_model is not None
+                    else None
                 ),
             }
         )
@@ -451,21 +462,55 @@ def _agent_callsign(model_id: str, corporation: str, agent_index: int) -> str:
     return f"{family}-{agent_index + 1:02d}"
 
 
-def _arena_row(bucket: dict[str, Any]) -> dict[str, Any]:
+def _common_questions(buckets: list[dict[str, Any]]) -> set[str]:
+    covered = [set(bucket.get("errors_by_question") or {}) for bucket in buckets]
+    covered = [question_ids for question_ids in covered if question_ids]
+    return set.intersection(*covered) if covered else set()
+
+
+def _arena_row(
+    bucket: dict[str, Any], matched_question_ids: set[str], expected_questions: int
+) -> dict[str, Any]:
     forecasts = int(bucket.get("n_forecasts") or 0)
-    brier = (
+    record_brier = (
         float(bucket.get("error_sum") or 0.0) / forecasts
         if forecasts
         else None
     )
-    accuracy = (
+    record_accuracy = (
         float(bucket.get("correct_sum") or 0.0) / forecasts
         if forecasts
         else None
     )
+    errors = bucket.pop("errors_by_question", {})
+    correct = bucket.pop("correct_by_question", {})
+    matched_errors = [
+        sum(errors[question_id]) / len(errors[question_id])
+        for question_id in sorted(matched_question_ids)
+        if errors.get(question_id)
+    ]
+    matched_correct = [
+        sum(correct[question_id]) / len(correct[question_id])
+        for question_id in sorted(matched_question_ids)
+        if correct.get(question_id)
+    ]
+    brier = sum(matched_errors) / len(matched_errors) if matched_errors else None
+    accuracy = sum(matched_correct) / len(matched_correct) if matched_correct else None
+    answered_questions = len(errors)
     return {
         **{key: value for key, value in bucket.items() if not key.endswith("_sum")},
         "n_forecasts": forecasts,
+        "n_questions": answered_questions,
+        "expected_questions": expected_questions,
+        "coverage_fraction": (
+            answered_questions / expected_questions if expected_questions else None
+        ),
+        "matched_questions": len(matched_errors),
+        "comparison_status": "matched" if matched_errors else "undefined_no_overlap",
+        "record_brier": None if record_brier is None else round(record_brier, 6),
+        "record_accuracy": (
+            None if record_accuracy is None else round(record_accuracy, 6)
+        ),
         "n_runs": len(bucket.get("run_ids") or []),
         "brier": None if brier is None else round(brier, 6),
         "accuracy": None if accuracy is None else round(accuracy, 6),
@@ -498,6 +543,11 @@ def build_leaderboard(
     per_run_agents: dict[str, dict[str, dict[str, float]]] = defaultdict(dict)
     per_run_champions: dict[str, str] = {}
     scored_ballots = 0
+    duplicate_records = 0
+    unknown_question_records = 0
+    seen_votes: set[tuple[str, str, str]] = set()
+    seen_predictions: set[tuple[str, str, str]] = set()
+    swarm_errors_by_run: dict[str, dict[str, float]] = defaultdict(dict)
 
     def model_bucket(model_id: str, model_slug: str = "") -> dict[str, Any]:
         bucket = model_buckets.get(model_id)
@@ -518,6 +568,8 @@ def build_leaderboard(
                 "n_forecasts": 0,
                 "run_ids": set(),
                 "agent_ids": set(),
+                "errors_by_question": defaultdict(list),
+                "correct_by_question": defaultdict(list),
             }
             model_buckets[model_id] = bucket
         return bucket
@@ -536,6 +588,8 @@ def build_leaderboard(
                 "run_ids": set(),
                 "model_ids": set(),
                 "agent_ids": set(),
+                "errors_by_question": defaultdict(list),
+                "correct_by_question": defaultdict(list),
             }
             corporation_buckets[corporation] = bucket
         return bucket
@@ -551,7 +605,13 @@ def build_leaderboard(
                 votes = []
         for vote in votes:
             if vote.question_id not in truth:
+                unknown_question_records += 1
                 continue
+            vote_key = (run_id, vote.agent_id, vote.question_id)
+            if vote_key in seen_votes:
+                duplicate_records += 1
+                continue
+            seen_votes.add(vote_key)
             outcome = truth[vote.question_id]
             error = (float(vote.probability) - outcome) ** 2
             correct = int((vote.probability >= 0.5) == bool(outcome))
@@ -577,12 +637,16 @@ def build_leaderboard(
                     "n_forecasts": 0,
                     "run_ids": set(),
                     "wins": 0,
+                    "errors_by_question": defaultdict(list),
+                    "correct_by_question": defaultdict(list),
                 }
                 agents[vote.agent_id] = agent
             agent["error_sum"] += error
             agent["correct_sum"] += correct
             agent["n_forecasts"] += 1
             agent["run_ids"].add(run_id)
+            agent["errors_by_question"][vote.question_id].append(error)
+            agent["correct_by_question"][vote.question_id].append(correct)
 
             run_agent = per_run_agents[run_id].setdefault(
                 vote.agent_id, {"error_sum": 0.0, "n": 0}
@@ -596,6 +660,8 @@ def build_leaderboard(
             mb["n_forecasts"] += 1
             mb["run_ids"].add(run_id)
             mb["agent_ids"].add(vote.agent_id)
+            mb["errors_by_question"][vote.question_id].append(error)
+            mb["correct_by_question"][vote.question_id].append(correct)
             cb = corporation_bucket(corporation)
             cb["error_sum"] += error
             cb["correct_sum"] += correct
@@ -603,19 +669,32 @@ def build_leaderboard(
             cb["run_ids"].add(run_id)
             cb["model_ids"].add(vote.model_id)
             cb["agent_ids"].add(vote.agent_id)
+            cb["errors_by_question"][vote.question_id].append(error)
+            cb["correct_by_question"][vote.question_id].append(correct)
             scored_ballots += 1
 
         for prediction in load_predictions(run_id):
-            if prediction.question_id not in truth or prediction.model_id == "swarm-median":
+            if prediction.question_id not in truth:
+                unknown_question_records += 1
                 continue
+            prediction_key = (run_id, prediction.model_id, prediction.question_id)
+            if prediction_key in seen_predictions:
+                duplicate_records += 1
+                continue
+            seen_predictions.add(prediction_key)
             outcome = truth[prediction.question_id]
             error = (float(prediction.probability) - outcome) ** 2
             correct = int((prediction.probability >= 0.5) == bool(outcome))
+            if prediction.model_id == "swarm-median":
+                swarm_errors_by_run[run_id][prediction.question_id] = error
+                continue
             mb = model_bucket(prediction.model_id)
             mb["error_sum"] += error
             mb["correct_sum"] += correct
             mb["n_forecasts"] += 1
             mb["run_ids"].add(run_id)
+            mb["errors_by_question"][prediction.question_id].append(error)
+            mb["correct_by_question"][prediction.question_id].append(correct)
             corporation = str(mb["corporation_id"])
             cb = corporation_bucket(corporation)
             cb["error_sum"] += error
@@ -623,6 +702,8 @@ def build_leaderboard(
             cb["n_forecasts"] += 1
             cb["run_ids"].add(run_id)
             cb["model_ids"].add(prediction.model_id)
+            cb["errors_by_question"][prediction.question_id].append(error)
+            cb["correct_by_question"][prediction.question_id].append(correct)
             scored_ballots += 1
 
     for run_id, run_agents in per_run_agents.items():
@@ -642,7 +723,9 @@ def build_leaderboard(
             if abs(brier - winning_brier) <= 1e-12 and agent_id in agents:
                 agents[agent_id]["wins"] += 1
 
-    agent_rows = [_arena_row(row) for row in agents.values()]
+    agent_buckets = list(agents.values())
+    agent_matched = _common_questions(agent_buckets)
+    agent_rows = [_arena_row(row, agent_matched, len(truth)) for row in agent_buckets]
     agent_rows.sort(
         key=lambda row: (row["brier"] is None, row["brier"], -row["n_forecasts"], row["label"])
     )
@@ -650,9 +733,11 @@ def build_leaderboard(
         row["rank"] = rank
 
     model_rows = []
-    for bucket in model_buckets.values():
+    model_bucket_rows = list(model_buckets.values())
+    model_matched = _common_questions(model_bucket_rows)
+    for bucket in model_bucket_rows:
         bucket["n_agents"] = len(bucket.pop("agent_ids"))
-        model_rows.append(_arena_row(bucket))
+        model_rows.append(_arena_row(bucket, model_matched, len(truth)))
     model_rows.sort(
         key=lambda row: (row["brier"] is None, row["brier"], -row["n_forecasts"], row["label"])
     )
@@ -660,10 +745,12 @@ def build_leaderboard(
         row["rank"] = rank
 
     corporation_rows = []
-    for bucket in corporation_buckets.values():
+    corporation_bucket_rows = list(corporation_buckets.values())
+    corporation_matched = _common_questions(corporation_bucket_rows)
+    for bucket in corporation_bucket_rows:
         bucket["n_models"] = len(bucket.pop("model_ids"))
         bucket["n_agents"] = len(bucket.pop("agent_ids"))
-        corporation_rows.append(_arena_row(bucket))
+        corporation_rows.append(_arena_row(bucket, corporation_matched, len(truth)))
     corporation_rows.sort(
         key=lambda row: (row["brier"] is None, row["brier"], -row["n_forecasts"], row["label"])
     )
@@ -672,11 +759,34 @@ def build_leaderboard(
 
     run_lookup = {str(run["run_id"]): run for run in runs}
     swarm_rows: list[dict[str, Any]] = []
+    eligible_swarm_errors = [
+        errors
+        for run in runs
+        if int(run.get("n_votes") or 0)
+        for errors in [swarm_errors_by_run.get(str(run["run_id"]), {})]
+        if errors
+    ]
+    swarm_matched = (
+        set.intersection(*(set(errors) for errors in eligible_swarm_errors))
+        if eligible_swarm_errors
+        else set()
+    )
     for run in runs:
-        if not int(run.get("n_votes") or 0) or run.get("primary_brier") is None:
+        if not int(run.get("n_votes") or 0):
             continue
         run_id = str(run["run_id"])
-        brier = float(run["primary_brier"])
+        errors = swarm_errors_by_run.get(run_id, {})
+        record_brier = (
+            sum(errors.values()) / len(errors)
+            if errors
+            else run.get("primary_brier")
+        )
+        matched_values = [
+            errors[question_id]
+            for question_id in swarm_matched
+            if question_id in errors
+        ]
+        brier = sum(matched_values) / len(matched_values) if matched_values else None
         champion_id = per_run_champions.get(run_id)
         swarm_rows.append(
             {
@@ -684,11 +794,20 @@ def build_leaderboard(
                 "label": run.get("label") or run_id,
                 "status": run.get("status") or "recorded",
                 "asset": "swarm",
-                "brier": round(brier, 6),
-                "arena_score": round((1.0 - brier) * 100.0, 1),
+                "brier": None if brier is None else round(brier, 6),
+                "record_brier": (
+                    None if record_brier is None else round(float(record_brier), 6)
+                ),
+                "arena_score": (
+                    None if brier is None else round((1.0 - brier) * 100.0, 1)
+                ),
                 "c_index": run.get("primary_c_index"),
                 "n_agents": int(run.get("n_agents") or 0),
-                "n_questions": int(run.get("n_scored_questions") or run.get("n_questions") or 0),
+                "n_questions": len(errors),
+                "expected_questions": len(truth),
+                "coverage_fraction": len(errors) / len(truth) if truth else None,
+                "matched_questions": len(matched_values),
+                "comparison_status": "matched" if matched_values else "undefined_no_overlap",
                 "n_votes": int(run.get("n_votes") or 0),
                 "created_at": run.get("created_at"),
                 "source_type": run.get("source_type") or "all",
@@ -696,13 +815,21 @@ def build_leaderboard(
                 "has_predictions": bool(run.get("has_predictions")),
                 "beats_prior": bool(
                     run.get("goal_target_brier") is not None
-                    and brier < float(run["goal_target_brier"])
+                    and record_brier is not None
+                    and float(record_brier) < float(run["goal_target_brier"])
                 ),
                 "champion_agent": agents[champion_id]["label"] if champion_id else None,
                 "composition": run.get("composition") or [],
             }
         )
-    swarm_rows.sort(key=lambda row: (row["brier"], -row["n_questions"], row["label"]))
+    swarm_rows.sort(
+        key=lambda row: (
+            row["brier"] is None,
+            row["brier"] if row["brier"] is not None else 9,
+            -row["n_questions"],
+            row["label"],
+        )
+    )
     for rank, row in enumerate(swarm_rows, 1):
         row["rank"] = rank
 
@@ -715,6 +842,10 @@ def build_leaderboard(
             "arena_score": "100 × (1 − mean Brier); higher is better",
             "accuracy": "Share of forecasts on the correct side of 50%",
             "scope": "Saved forecasts with known later ground truth in this epoch",
+            "comparison": (
+                "Ranks use mean per-question error on the intersection of answered questions; "
+                "record_brier remains descriptive for each row's full answered set."
+            ),
         },
         "summary": {
             "n_agents": len(agent_rows),
@@ -722,6 +853,8 @@ def build_leaderboard(
             "n_models": len(model_rows),
             "n_corporations": len(corporation_rows),
             "n_scored_ballots": scored_ballots,
+            "duplicate_records_ignored": duplicate_records,
+            "unknown_question_records_ignored": unknown_question_records,
         },
         "agents": agent_rows,
         "swarms": swarm_rows,

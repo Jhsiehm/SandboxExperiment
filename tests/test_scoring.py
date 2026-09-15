@@ -1,10 +1,13 @@
 from datetime import date
 
+import pytest
+
 from psbx.schemas import Citation, ModelConfig, Prediction, PriorSignal, Question
 from psbx.scoring.baselines import baseline_scores
 from psbx.scoring.brier import brier, brier_index
 from psbx.scoring.concordance import concordance_index
 from psbx.scoring.contamination import contamination_curve
+from psbx.scoring.report import score_run
 
 
 def _q(qid: str, truth: bool, resolution: date) -> Question:
@@ -79,3 +82,66 @@ def test_baselines_and_contamination_sign():
     curve = contamination_curve(preds, qs, model)
     assert curve.pre_cutoff_mean_brier is not None
     assert curve.post_cutoff_mean_brier is not None
+
+
+def _model(model_id: str) -> ModelConfig:
+    return ModelConfig(
+        id=model_id,
+        provider="openai",
+        model_name=model_id,
+        declared_pretraining_cutoff=date(2011, 1, 1),
+        is_instruction_tuned=True,
+    )
+
+
+def test_partial_models_use_their_own_baselines_and_matched_comparison():
+    questions = [
+        _q("easy-yes", True, date(2012, 8, 1)),
+        _q("easy-no", False, date(2012, 9, 1)),
+        _q("extra-yes", True, date(2012, 10, 1)),
+    ]
+    models = [_model("wide"), _model("partial")]
+    predictions = [
+        _p("easy-yes", "wide", 0.9),
+        _p("easy-no", "wide", 0.1),
+        _p("extra-yes", "wide", 0.1),
+        _p("easy-yes", "partial", 0.9),
+        _p("easy-no", "partial", 0.1),
+    ]
+    report = score_run(predictions, questions, models, "partial")
+
+    assert report.coverage_by_model["wide"].answered_questions == 3
+    assert report.coverage_by_model["partial"].answered_questions == 2
+    assert report.coverage_by_model["partial"].missing_question_ids == ["extra-yes"]
+    assert report.coverage_by_model["partial"].failed_question_ids is None
+    assert report.baselines_by_model["partial"] == baseline_scores(questions[:2])
+    assert report.matched_question_ids == ["easy-yes", "easy-no"]
+    assert report.matched_brier_by_model["wide"] == report.matched_brier_by_model["partial"]
+    assert report.brier_by_model["wide"] > report.brier_by_model["partial"]
+
+
+def test_empty_model_metrics_stay_undefined_and_coverage_is_explicit():
+    questions = [_q("only", True, date(2012, 8, 1))]
+    report = score_run([], questions, [_model("missing")], "empty")
+    assert report.brier_by_model["missing"] is None
+    assert report.brier_index_by_model["missing"] is None
+    assert report.c_index_by_model["missing"] is None
+    assert report.matched_brier_by_model["missing"] is None
+    assert report.coverage_by_model["missing"].coverage_fraction == 0.0
+    assert report.coverage_by_model["missing"].missing_question_ids == ["only"]
+
+
+def test_scoring_rejects_unknown_questions_and_duplicate_predictions():
+    questions = [_q("known", True, date(2012, 8, 1))]
+    model = _model("m")
+    with pytest.raises(ValueError, match="unknown question IDs"):
+        score_run([_p("unknown", "m", 0.5)], questions, [model], "unknown")
+    duplicate = _p("known", "m", 0.5)
+    with pytest.raises(ValueError, match="duplicate model/question"):
+        score_run([duplicate, duplicate], questions, [model], "duplicate")
+
+
+def test_scoring_rejects_duplicate_question_ids():
+    duplicate = _q("same", True, date(2012, 8, 1))
+    with pytest.raises(ValueError, match="duplicate question IDs"):
+        score_run([], [duplicate, duplicate], [_model("m")], "duplicate-questions")

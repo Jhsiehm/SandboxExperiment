@@ -60,9 +60,19 @@ def _render(payload: dict, source: str, runs: list[dict]) -> str:
     if isinstance(payload, dict):
         baselines = (report or {}).get("baselines") or payload.get("baselines") or {}
     brier = (report or {}).get("brier_by_model") or {}
+    coverage = (report or {}).get("coverage_by_model") or {}
+    model_baselines = (report or {}).get("baselines_by_model") or {}
+    matched = (report or {}).get("matched_brier_by_model") or {}
     rows = "".join(
-        f"<tr><th>{_esc(k)}</th><td>{v:.4f}</td></tr>" for k, v in sorted(brier.items())
-    ) or "<tr><td colspan='2'>No model scores on disk.</td></tr>"
+        (
+            f"<tr><th>{_esc(model_id)}</th>"
+            f"<td>{'—' if score is None else f'{float(score):.4f}'}</td>"
+            f"<td>{_coverage_text(coverage.get(model_id))}</td>"
+            f"<td>{_number((model_baselines.get(model_id) or {}).get('prior_signal'))}</td>"
+            f"<td>{_number(matched.get(model_id))}</td></tr>"
+        )
+        for model_id, score in sorted(brier.items())
+    ) or "<tr><td colspan='5'>No model scores on disk.</td></tr>"
     base_rows = "".join(
         f"<tr><th>{_esc(k)}</th><td>{float(v):.4f}</td></tr>" for k, v in baselines.items()
     ) or "<tr><td colspan='2'>No baselines.</td></tr>"
@@ -89,9 +99,13 @@ def _render(payload: dict, source: str, runs: list[dict]) -> str:
 <body>
 <h1>Prediction Sandbox · static results</h1>
 <p class="src">source { _esc(source) }</p>
-<h2>Brier by model</h2>
-<table>{rows}</table>
-<h2>Baselines</h2>
+<h2>Model scores and coverage</h2>
+<table>
+<tr><th>model</th><th>own-set Brier</th><th>coverage</th>
+<th>own-set prior</th><th>matched Brier</th></tr>
+{rows}
+</table>
+<h2>Full-question-set reference baselines</h2>
 <table>{base_rows}</table>
 <h2>Runs</h2>
 <table><tr><th>run</th><th>n predictions</th><th>scores</th></tr>{run_rows}</table>
@@ -108,6 +122,17 @@ def _esc(value: object) -> str:
         .replace(">", "&gt;")
         .replace('"', "&quot;")
     )
+
+
+def _number(value: object) -> str:
+    return "—" if value is None else f"{float(value):.4f}"
+
+
+def _coverage_text(value: object) -> str:
+    row = value if isinstance(value, dict) else {}
+    answered = int(row.get("answered_questions") or 0)
+    expected = int(row.get("expected_questions") or 0)
+    return f"{answered}/{expected}"
 
 
 if __name__ == "__main__":

@@ -10,6 +10,8 @@ def calibration_curve(
 ) -> CalibrationResult:
     bins: list[list[Prediction]] = [[] for _ in range(n_bins)]
     for p in preds:
+        if p.question_id not in qs:
+            raise ValueError(f"prediction references unknown question ID: {p.question_id}")
         idx = min(n_bins - 1, int(p.probability * n_bins))
         bins[idx].append(p)
     out: list[CalibrationBin] = []

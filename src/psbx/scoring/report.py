@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import matplotlib
@@ -15,12 +16,13 @@ from psbx.schemas import (
     ModelConfig,
     Prediction,
     Question,
+    ScoreCoverage,
     ScoreReport,
 )
 from psbx.scoring.baselines import as_predictions, baseline_scores
-from psbx.scoring.brier import brier, brier_by_category, brier_by_model, brier_index
+from psbx.scoring.brier import brier, brier_by_category, brier_index
 from psbx.scoring.calibration import calibration_curve
-from psbx.scoring.concordance import concordance_by_model, concordance_index
+from psbx.scoring.concordance import concordance_index
 from psbx.scoring.contamination import contamination_curve
 
 PHASE1_HEURISTIC_RUN = "phase1-e2012-smoke"
@@ -32,47 +34,157 @@ def score_run(
     models: list[ModelConfig],
     run_id: str,
 ) -> ScoreReport:
+    _validate_scoring_inputs(preds, questions, models)
     qs = {q.id: q for q in questions}
-    by_model = brier_by_model(preds, qs)
-    calib = {}
-    contam = []
-    for model in models:
-        subset = [p for p in preds if p.model_id == model.id]
-        if not subset:
-            continue
-        calib[model.id] = calibration_curve(subset, qs)
-        contam.append(contamination_curve(subset, qs, model))
+    configured = {model.id: model for model in models}
+    model_ids = list(configured)
+    model_ids.extend(sorted({p.model_id for p in preds} - set(model_ids)))
+    subsets = {mid: [p for p in preds if p.model_id == mid] for mid in model_ids}
+    answered_ids = {
+        mid: {prediction.question_id for prediction in subset}
+        for mid, subset in subsets.items()
+    }
+    by_model = {
+        mid: (brier(subset, qs) if subset else None)
+        for mid, subset in subsets.items()
+    }
+    calib = {
+        mid: calibration_curve(subset, qs)
+        for mid, subset in subsets.items()
+        if subset
+    }
+    contam = [
+        contamination_curve(subsets[model.id], qs, model)
+        for model in models
+        if subsets[model.id]
+    ]
     cat: dict[str, dict[str, float]] = {}
-    for model in models:
-        subset = [p for p in preds if p.model_id == model.id]
+    for mid, subset in subsets.items():
         if subset:
-            cat[model.id] = brier_by_category(subset, qs)
+            cat[mid] = brier_by_category(subset, qs)
+
+    baselines_by_model: dict[str, dict[str, float]] = {}
+    c_baselines_by_model: dict[str, dict[str, float | None]] = {}
+    coverage: dict[str, ScoreCoverage] = {}
+    ordered_ids = [question.id for question in questions]
+    for mid in model_ids:
+        answered_questions = [q for q in questions if q.id in answered_ids[mid]]
+        model_baselines = baseline_scores(answered_questions)
+        heuristic = _phase1_heuristic_brier(answered_questions)
+        if heuristic is not None:
+            model_baselines["phase1_heuristic"] = heuristic
+        baselines_by_model[mid] = model_baselines
+        c_baselines_by_model[mid] = _baseline_c_index(answered_questions)
+        answered = [
+            question_id for question_id in ordered_ids if question_id in answered_ids[mid]
+        ]
+        missing = [
+            question_id for question_id in ordered_ids if question_id not in answered_ids[mid]
+        ]
+        coverage[mid] = ScoreCoverage(
+            expected_questions=len(questions),
+            answered_questions=len(answered),
+            coverage_fraction=(len(answered) / len(questions) if questions else None),
+            answered_question_ids=answered,
+            missing_question_ids=missing,
+            failed_question_ids=None,
+            failure_history_available=False,
+        )
+
     bases = baseline_scores(questions)
     heuristic = _phase1_heuristic_brier(questions)
     if heuristic is not None:
         bases["phase1_heuristic"] = heuristic
-    base = bases.get("always_base_rate", 0.25)
-    prior = bases.get("prior_signal", 0.25)
-    beating = [mid for mid, score in by_model.items() if score < base]
-    beating_prior = [mid for mid, score in by_model.items() if score < prior]
-    c_by_model, c_pairs = concordance_by_model(preds, qs)
+    beating = [
+        mid
+        for mid, score in by_model.items()
+        if score is not None
+        and score < baselines_by_model[mid].get("always_base_rate", float("-inf"))
+    ]
+    beating_prior = [
+        mid
+        for mid, score in by_model.items()
+        if score is not None
+        and score < baselines_by_model[mid].get("prior_signal", float("-inf"))
+    ]
+    c_by_model: dict[str, float | None] = {}
+    c_pairs: dict[str, int] = {}
+    for mid, subset in subsets.items():
+        c_value, pair_count = concordance_index(subset, qs)
+        c_by_model[mid] = None if c_value is None else round(c_value, 6)
+        c_pairs[mid] = pair_count
     c_baselines = _baseline_c_index(questions)
+
+    active_sets = [ids for ids in answered_ids.values() if ids]
+    matched_ids = set.intersection(*active_sets) if active_sets else set()
+    ordered_matched_ids = [question_id for question_id in ordered_ids if question_id in matched_ids]
+    matched_brier: dict[str, float | None] = {}
+    matched_c: dict[str, float | None] = {}
+    matched_pairs: dict[str, int] = {}
+    for mid, subset in subsets.items():
+        matched_subset = [p for p in subset if p.question_id in matched_ids]
+        matched_brier[mid] = brier(matched_subset, qs) if matched_subset else None
+        c_value, pair_count = concordance_index(matched_subset, qs)
+        matched_c[mid] = None if c_value is None else round(c_value, 6)
+        matched_pairs[mid] = pair_count
+
     return ScoreReport(
         run_id=run_id,
         n_predictions=len(preds),
+        question_count=len(questions),
         brier_by_model=by_model,
-        brier_index_by_model={k: brier_index(v) for k, v in by_model.items()},
+        brier_index_by_model={
+            key: (None if value is None else brier_index(value))
+            for key, value in by_model.items()
+        },
         brier_by_category=cat,
         baselines=bases,
+        baselines_by_model=baselines_by_model,
         models_beating_base_rate=beating,
         models_beating_prior_signal=beating_prior,
+        coverage_by_model=coverage,
+        matched_question_ids=ordered_matched_ids,
+        matched_brier_by_model=matched_brier,
+        matched_c_index_by_model=matched_c,
+        matched_c_index_pairs_by_model=matched_pairs,
         calibration=calib,
         contamination=contam,
         n_flagged=sum(1 for p in preds if p.flagged_for_contamination_review),
         c_index_by_model=c_by_model,
         c_index_pairs_by_model=c_pairs,
         c_index_baselines=c_baselines,
+        c_index_baselines_by_model=c_baselines_by_model,
     )
+
+
+def _validate_scoring_inputs(
+    preds: list[Prediction],
+    questions: list[Question],
+    models: list[ModelConfig],
+) -> None:
+    question_ids = [question.id for question in questions]
+    duplicate_questions = sorted(
+        question_id for question_id, count in Counter(question_ids).items() if count > 1
+    )
+    if duplicate_questions:
+        raise ValueError("duplicate question IDs: " + ", ".join(duplicate_questions))
+    model_ids = [model.id for model in models]
+    duplicate_models = sorted(
+        model_id for model_id, count in Counter(model_ids).items() if count > 1
+    )
+    if duplicate_models:
+        raise ValueError("duplicate model IDs: " + ", ".join(duplicate_models))
+    known = set(question_ids)
+    unknown = sorted({prediction.question_id for prediction in preds} - known)
+    if unknown:
+        raise ValueError("predictions reference unknown question IDs: " + ", ".join(unknown))
+    pairs = [(prediction.model_id, prediction.question_id) for prediction in preds]
+    duplicate_pairs = sorted(pair for pair, count in Counter(pairs).items() if count > 1)
+    if duplicate_pairs:
+        rendered = ", ".join(
+            f"{model_id}/{question_id}" for model_id, question_id in duplicate_pairs
+        )
+        raise ValueError("duplicate model/question predictions: " + rendered)
 
 
 def _baseline_c_index(questions: list[Question]) -> dict[str, float | None]:
