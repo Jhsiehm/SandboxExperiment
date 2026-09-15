@@ -146,7 +146,10 @@ def fetch_snapshot(original: str, timestamp: str, client, dest: Path, pace: Pace
 
 def _wayback_reachable(client, cdx_api: str) -> bool:
     """One short CDX probe so a down web.archive.org does not stall `--live`."""
-    probe = f"{cdx_api}?{urlencode({'url': 'example.com', 'to': '20120630', 'output': 'json', 'limit': '1'})}"
+    query = urlencode(
+        {"url": "example.com", "to": "20120630", "output": "json", "limit": "1"}
+    )
+    probe = f"{cdx_api}?{query}"
     try:
         resp = client.get(probe, timeout=12.0)
         return resp.status_code < 500

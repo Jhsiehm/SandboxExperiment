@@ -16,6 +16,7 @@ from pathlib import Path
 from psbx.config import load_epochs
 from psbx.paths import repo_root, resolve
 from psbx.sandbox.clock import faketime_stamp
+from psbx.security import allowlisted_subprocess_env
 
 HOST_PORT = 8766
 PID_FILE = "data/runs/.sandbox/host.pid"
@@ -48,7 +49,10 @@ def up(epoch_id: str = "e2012", source_type: str | None = None) -> str:
     down()
     epoch = load_epochs()[epoch_id]
     lib = dylib_path()
-    env = os.environ.copy()
+    # Search never calls model providers. Keep provider keys and unrelated host
+    # secrets out of this less-isolated Docker fallback process.
+    env = allowlisted_subprocess_env(include_model_access=False)
+    env["PSBX_DISABLE_DOTENV"] = "1"
     env["FAKETIME"] = faketime_stamp(epoch.cutoff_date)
     env["FAKETIME_NO_CACHE"] = "1"
     env["FAKETIME_DONT_FAKE_MONOTONIC"] = "1"

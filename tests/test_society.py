@@ -83,18 +83,24 @@ def test_as2_module_contract():
     assert try_as2_router(FrozenEpochEnv()) in {"shim", "agentsociety2"}
 
 
-def test_society_cli_mock_does_not_clobber_smoke(monkeypatch) -> None:
+def test_society_cli_mock_does_not_clobber_smoke(tmp_path, monkeypatch) -> None:
     _ensure_e2012_index()
     smoke = resolve("data/runs/phase1-e2012-smoke/predictions.jsonl")
     before = (smoke.stat().st_mtime_ns, smoke.stat().st_size) if smoke.exists() else None
     monkeypatch.setenv("PSBX_MOCK_LLM", "1")
+    def isolated_run_dir(run_id):
+        return tmp_path / "runs" / run_id
+
+    monkeypatch.setattr("psbx.cli.run_dir", isolated_run_dir)
+    monkeypatch.setattr("psbx.society.experiment.resolve_run_dir", isolated_run_dir)
+    monkeypatch.setattr("psbx.run_provenance.run_dir", isolated_run_dir)
     runner = CliRunner()
     result = runner.invoke(
         app,
         ["society", "run", "--config", "config/run-society.yaml", "--limit", "1"],
     )
     assert result.exit_code == 0, result.output
-    dest = resolve("data/runs/phase1-e2012-society/predictions.jsonl")
+    dest = isolated_run_dir("phase1-e2012-society") / "predictions.jsonl"
     assert dest.exists()
     assert dest != smoke
     if before is not None:
@@ -146,12 +152,17 @@ def test_as2_swarm_export_matches_roster_and_cli_contract(tmp_path):
     assert '"schema_version": 1' in (tmp_path / "SOCIETY.json").read_text(encoding="utf-8")
 
 
-def test_society_swarm_mock_writes_workspaces(monkeypatch) -> None:
+def test_society_swarm_mock_writes_workspaces(tmp_path, monkeypatch) -> None:
     _ensure_e2012_index()
     monkeypatch.setenv("PSBX_MOCK_LLM", "1")
     from psbx.config import load_run
     from psbx.society.experiment import run_society
 
+    def isolated_run_dir(run_id):
+        return tmp_path / "runs" / run_id
+
+    monkeypatch.setattr("psbx.society.experiment.resolve_run_dir", isolated_run_dir)
+    monkeypatch.setattr("psbx.run_provenance.run_dir", isolated_run_dir)
     run = load_run("config/run-society-swarm.yaml")
     run = run.model_copy(
         update={
@@ -164,10 +175,10 @@ def test_society_swarm_mock_writes_workspaces(monkeypatch) -> None:
     preds = run_society(run, limit=1)
     assert preds
     assert preds[0].model_id == "swarm-median"
-    society = resolve("data/runs/test-society-swarm/society")
+    society = isolated_run_dir("test-society-swarm") / "society"
     assert (society / "init_config.json").exists()
     assert (society / "agents" / "agent_0006" / "AGENT.json").exists()
-    votes = resolve("data/runs/test-society-swarm/swarm_votes.jsonl")
+    votes = isolated_run_dir("test-society-swarm") / "swarm_votes.jsonl"
     assert votes.exists()
 
 

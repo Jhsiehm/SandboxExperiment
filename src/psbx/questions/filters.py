@@ -3,8 +3,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-import numpy as np
-
 from psbx.corpus.embed import embed_texts
 from psbx.schemas import Question
 

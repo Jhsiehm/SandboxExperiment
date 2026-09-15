@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 
 import pytest
@@ -84,6 +85,7 @@ artifacts:
     docs = ingest_synced_survey_sources(
         epoch,
         manifest_path=tmp_path / "cache" / "e2012" / "manifest.json",
+        catalog_path=catalog,
     )
     assert len(docs) == 1
     assert docs[0].source_type == "survey"
@@ -163,6 +165,64 @@ artifacts:
     assert payload["counts"] == {"error": 1}
     assert "does not match pinned" in payload["artifacts"][0]["reason"]
     assert not (tmp_path / "cache" / "e2012" / "pew" / "pinned.html").exists()
+
+
+def test_direct_download_does_not_claim_an_archival_snapshot(tmp_path):
+    body = (
+        "<html><body>"
+        + ("A checksum-pinned direct survey release. " * 12)
+        + "</body></html>"
+    ).encode()
+    digest = hashlib.sha256(body).hexdigest()
+    catalog = tmp_path / "catalog.yaml"
+    catalog.write_text(
+        f"""
+artifacts:
+  - id: pinned
+    provider: pew
+    outlet: Pew
+    title: Pinned release
+    url: https://example.com/report.html
+    fieldwork_year_start: 2012
+    fieldwork_year_end: 2012
+    released_at: 2012-05-01T12:00:00Z
+    access: public
+    retrieval: direct
+    format: html
+    expected_sha256: {digest}
+    index: true
+""",
+        encoding="utf-8",
+    )
+
+    def fetcher(artifact, epoch, destination):
+        del artifact, epoch
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(body)
+        return {
+            "snapshot_timestamp": "20120501120000",
+            "snapshot_url": "https://not-really-an-archive.example/report",
+        }
+
+    payload = sync_survey_sources(
+        load_epochs()["e2012"],
+        catalog_path=catalog,
+        cache_root=tmp_path / "cache",
+        fetcher=fetcher,
+    )
+    row = payload["artifacts"][0]
+    assert row["status"] == "downloaded"
+    assert row["source_url"] == "https://example.com/report.html"
+    assert "snapshot_timestamp" not in row
+    assert "snapshot_url" not in row
+    docs = ingest_synced_survey_sources(
+        load_epochs()["e2012"],
+        manifest_path=tmp_path / "cache" / "e2012" / "manifest.json",
+        catalog_path=catalog,
+    )
+    assert len(docs) == 1
+    assert "checksum-pinned direct release" in docs[0].provenance
+    assert "snapshot" not in docs[0].provenance.casefold()
 
 
 def test_provider_sync_drops_removed_rows_for_that_provider(tmp_path):

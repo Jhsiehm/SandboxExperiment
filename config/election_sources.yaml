@@ -1,0 +1,103 @@
+schema_version: 1
+sources:
+  - id: fec_federal_elections_1982_2022
+    provider: U.S. Federal Election Commission
+    title: Biennial Federal Elections publications
+    scope: federal
+    official: true
+    status: ready
+    year_start: 1982
+    year_end: 2022
+    election_geographies: [state, congressional_district]
+    office_levels: [president, us_senate, us_house]
+    access: public_download
+    url: https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/
+    release_date: null
+    release_verified: false
+    normalized: false
+    notes: Official certified result compilations; pin each downloaded workbook or PDF by SHA-256.
+
+  - id: fec_president_2024
+    provider: U.S. Federal Election Commission
+    title: Official 2024 Presidential General Election Results
+    scope: federal
+    official: true
+    status: partial
+    year_start: 2024
+    year_end: 2024
+    election_geographies: [state]
+    office_levels: [president]
+    access: public_download
+    url: https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/
+    release_date: null
+    release_verified: false
+    normalized: false
+    notes: Presidential workbook is available; this entry does not claim complete 2024 House/Senate normalization.
+
+  - id: house_clerk_election_statistics_1920_2024
+    provider: Office of the Historian, U.S. House of Representatives
+    title: Election Statistics, 1920 to Present
+    scope: federal
+    official: true
+    status: ready
+    year_start: 1920
+    year_end: 2024
+    election_geographies: [state, congressional_district]
+    office_levels: [president, us_senate, us_house]
+    access: public_download
+    url: https://history.house.gov/Institution/Election-Statistics/Election-Statistics/
+    release_date: null
+    release_verified: false
+    normalized: false
+    notes: State-certified vote totals compiled in official House election-statistics volumes.
+
+  - id: eac_state_and_local_office_directory
+    provider: U.S. Election Assistance Commission
+    title: State election office and local election office directory
+    scope: state
+    official: true
+    status: adapter_required
+    year_start: null
+    year_end: null
+    election_geographies: [state, state_legislative_upper, state_legislative_lower, county, municipality, precinct]
+    office_levels: [statewide, state_senate, state_house, county, municipal]
+    access: state_or_local_portal
+    url: https://www.eac.gov/voters/register-and-vote-in-your-state
+    release_date: null
+    release_verified: false
+    normalized: false
+    notes: Directory only. Each jurisdiction needs its own source adapter, certification metadata, and historical boundary vintage.
+
+  - id: census_acs5_electoral_geographies
+    provider: U.S. Census Bureau
+    title: American Community Survey 5-year estimates by electoral comparison geography
+    scope: demographic
+    official: true
+    status: ready
+    year_start: 2009
+    year_end: 2024
+    election_geographies: [state, congressional_district, state_legislative_upper, state_legislative_lower, county, municipality]
+    office_levels: []
+    access: public_api
+    url: https://api.census.gov/data/2024/acs/acs5/examples.html
+    release_date: null
+    release_verified: false
+    normalized: true
+    notes: Census place is a comparison geography, not proof that it matches a municipal election jurisdiction.
+
+  - id: tiger_line_geography_vintages
+    provider: U.S. Census Bureau
+    title: TIGER/Line electoral and civil geography boundaries
+    scope: demographic
+    official: true
+    status: adapter_required
+    year_start: 2007
+    year_end: 2026
+    election_geographies: [state, congressional_district, state_legislative_upper, state_legislative_lower, county, municipality, precinct]
+    office_levels: []
+    access: public_download
+    url: https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    release_date: null
+    release_verified: false
+    normalized: false
+    notes: Use an election-specific vintage and a documented crosswalk; VTDs are not universally identical to election precincts.

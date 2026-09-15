@@ -26,7 +26,12 @@ def build_site(run_id: str) -> Path:
 <meta charset="utf-8"/>
 <title>Prediction Sandbox — {run_id}</title>
 <style>
-  body {{ font-family: "IBM Plex Mono", ui-monospace, monospace; background:#EFE7D6; color:#1E2530; margin:32px; }}
+  body {{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    background:#EFE7D6;
+    color:#1E2530;
+    margin:32px;
+  }}
   table {{ border-collapse: collapse; }}
   td, th {{ border-bottom:1px solid #C6B896; padding:6px 12px; text-align:left; }}
   h1 {{ font-weight:400; }}

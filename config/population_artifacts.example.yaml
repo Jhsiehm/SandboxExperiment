@@ -1,0 +1,48 @@
+# Copy beside the real input artifacts, replace placeholders, and compute every SHA-256.
+# Relative local_path values are resolved from this manifest's directory.
+id: REPLACE_ME-e2012-population-artifacts
+notes: >-
+  This manifest proves exactly which historical files were used. A source registry entry alone is
+  not sufficient for a sealed build.
+artifacts:
+  - source_id: census_2010_sf1
+    artifact_id: REPLACE_ME-sf1-state-or-extract
+    local_path: raw/REPLACE_ME-sf1.zip
+    reference_period_start: 2010-04-01
+    reference_period_end: 2010-04-01
+    release_date: REPLACE_ME
+    release_verified: true
+    downloaded_at: REPLACE_ME
+    sha256: REPLACE_WITH_64_HEX_CHARACTERS
+    geography_vintage: "2010"
+    zone: population_build
+    access_note: Public Census artifact.
+    transformation_note: Record any table/row extraction in a separate derived-artifact record.
+
+  - source_id: acs5_2006_2010
+    artifact_id: REPLACE_ME-acs5-constraints
+    local_path: derived/REPLACE_ME-acs5-constraints.csv
+    reference_period_start: 2006-01-01
+    reference_period_end: 2010-12-31
+    release_date: 2011-12-08
+    release_verified: true
+    downloaded_at: REPLACE_ME
+    sha256: REPLACE_WITH_64_HEX_CHARACTERS
+    geography_vintage: "2010"
+    zone: population_build
+    access_note: Derived from public ACS estimates; retain estimates and MOEs.
+    transformation_note: Document API query, table IDs, geography clauses, and code commit.
+
+  - source_id: acs_pums_2006_2010
+    artifact_id: REPLACE_ME-pums-donor-pool
+    local_path: derived/REPLACE_ME-donor_people.csv
+    reference_period_start: 2006-01-01
+    reference_period_end: 2010-12-31
+    release_date: 2011-12-29
+    release_verified: true
+    downloaded_at: REPLACE_ME
+    sha256: REPLACE_WITH_64_HEX_CHARACTERS
+    geography_vintage: 2000 PUMA definitions
+    zone: population_build
+    access_note: Public anonymized donor microdata; not local resident records.
+    transformation_note: Record state/PUMA selection, recodes, exclusions, and weight handling.

@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 
 from psbx.paths import resolve
+from psbx.population.schemas import PopulationSpec
 from psbx.schemas import (
     Epoch,
     EpochAdvanceSpec,
@@ -14,7 +15,6 @@ from psbx.schemas import (
     RunConfig,
     SwarmRoster,
 )
-
 
 _YAML_CACHE: dict[str, tuple[float, int, dict[str, Any]]] = {}
 
@@ -68,3 +68,10 @@ def load_epoch_advance(path: str | Path = "config/epoch-advance.yaml") -> EpochA
     from psbx.epochs import load_advance_spec
 
     return load_advance_spec(path)
+
+
+def load_population(path: str | Path = "config/track_b_fixture.yaml") -> PopulationSpec:
+    """Load the separate Track B population-build contract."""
+    from psbx.population.runner import load_population_spec
+
+    return load_population_spec(resolve(path))

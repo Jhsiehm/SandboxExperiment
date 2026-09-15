@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -13,8 +13,8 @@ SourceType = Literal["news", "wire", "wiki", "gov", "trade", "survey", "ad", "ac
 CitationSupport = Literal["yes", "no", "context"]
 Provider = Literal["openai", "anthropic", "together", "local_vllm", "openrouter"]
 SandboxMode = Literal["host", "container"]
-Urbanicity = Literal["urban", "suburban", "rural"]
-PartyId = Literal["democrat", "republican", "independent"]
+Urbanicity = Literal["urban", "suburban", "rural", "unspecified"]
+PartyId = Literal["democrat", "republican", "independent", "unspecified"]
 ResponseKind = Literal["binary_outcome", "poll_share"]
 StimulusKind = Literal["contemporaneous_media"]
 
@@ -61,8 +61,8 @@ class Question(BaseModel):
     resolution_date: date
     ground_truth: bool
     generator: str
-    source_url: Optional[str] = None
-    prior_signal: Optional[PriorSignal] = None
+    source_url: str | None = None
+    prior_signal: PriorSignal | None = None
 
     @model_validator(mode="after")
     def phrasing_and_dates(self) -> Question:
@@ -86,7 +86,7 @@ class Document(BaseModel):
     source_type: SourceType
     prominence: float = 0.0
     syndication_count: int = 1
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
     gdelt_mention_count: int = 0
     front_page_minutes: float = 0.0
     provenance: str | None = None
@@ -148,14 +148,14 @@ class ModelConfig(BaseModel):
     model_name: str
     declared_pretraining_cutoff: date
     is_instruction_tuned: bool
-    max_tokens: int = 1024
+    max_tokens: int = Field(default=1024, ge=1, le=32_768)
     temperature: float = 0.2
-    cost_per_1k_input: float = 0.0
-    cost_per_1k_output: float = 0.0
+    cost_per_1k_input: float = Field(default=0.0, ge=0)
+    cost_per_1k_output: float = Field(default=0.0, ge=0)
     label: str = ""
     notes: str = ""
     needs_endpoint: bool = False
-    openrouter_fallback: Optional[str] = None
+    openrouter_fallback: str | None = None
 
 
 class SwarmVote(BaseModel):
@@ -234,14 +234,14 @@ class RunConfig(BaseModel):
     source_type: SourceType | None = None
     models: list[str]
     question_set: str
-    max_tool_calls: int = 12
+    max_tool_calls: int = Field(default=12, ge=0, le=25)
     min_prominence: float = 0.0
-    n_questions: int = 50
+    n_questions: int = Field(default=50, ge=1, le=500)
     category_balance: dict[str, int] = Field(default_factory=dict)
     sandbox_mode: SandboxMode = "host"
     embedding_backend: Literal["hashing", "sentence-transformers"] = "hashing"
     allow_mock: bool = True
-    swarm_roster: Optional[str] = None
+    swarm_roster: str | None = None
     use_swarm: bool = False
     perspectives: str | None = None
 
@@ -264,14 +264,14 @@ class SearchHit(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    query: str
-    k: int = 10
-    min_prominence: float = 0.0
-    source_types: list[str] = Field(default_factory=list)
+    query: str = Field(min_length=1, max_length=500)
+    k: int = Field(default=10, ge=1, le=25)
+    min_prominence: float = Field(default=0.0, ge=0.0, le=1.0)
+    source_types: list[str] = Field(default_factory=list, max_length=10)
 
 
 class FetchRequest(BaseModel):
-    document_id: str
+    document_id: str = Field(min_length=1, max_length=256)
 
 
 class CalibrationBin(BaseModel):
@@ -304,9 +304,9 @@ class ContaminationResult(BaseModel):
     model_id: str
     declared_pretraining_cutoff: date
     buckets: list[ContaminationBucket]
-    pre_cutoff_mean_brier: Optional[float] = None
-    post_cutoff_mean_brier: Optional[float] = None
-    contamination_delta: Optional[float] = None
+    pre_cutoff_mean_brier: float | None = None
+    post_cutoff_mean_brier: float | None = None
+    contamination_delta: float | None = None
 
 
 class ScoreReport(BaseModel):
@@ -321,9 +321,9 @@ class ScoreReport(BaseModel):
     calibration: dict[str, CalibrationResult]
     contamination: list[ContaminationResult]
     n_flagged: int
-    c_index_by_model: dict[str, Optional[float]] = Field(default_factory=dict)
+    c_index_by_model: dict[str, float | None] = Field(default_factory=dict)
     c_index_pairs_by_model: dict[str, int] = Field(default_factory=dict)
-    c_index_baselines: dict[str, Optional[float]] = Field(default_factory=dict)
+    c_index_baselines: dict[str, float | None] = Field(default_factory=dict)
 
 
 class PerspectivePersona(BaseModel):

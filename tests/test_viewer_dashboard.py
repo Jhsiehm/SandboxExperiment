@@ -149,6 +149,11 @@ def test_dashboard_html_a11y_landmarks():
     assert 'id="tab-activity"' in html
     assert 'id="view-activity"' in html
     assert 'id="agent-grid"' in html
+    assert 'id="tab-leaderboard"' in html
+    assert 'id="view-leaderboard"' in html
+    assert 'id="arena-podium-stage"' in html
+    assert 'id="arena-rankings"' in html
+    assert 'id="arena-match-list"' in html
     assert 'id="tab-runs"' in html
     assert 'id="view-runs"' in html
     assert 'id="swarm-builder"' in html
@@ -156,15 +161,21 @@ def test_dashboard_html_a11y_landmarks():
     assert 'id="saved-log"' in html
     assert 'id="tab-architecture"' in html
     assert 'id="view-architecture"' in html
+    assert 'id="tab-population"' in html
+    assert 'id="view-population"' in html
+    assert 'id="population-states"' in html
     assert 'id="arch-flow"' in html
     assert 'id="arch-inspector"' in html
     assert "Repository tree" in html
     assert "they do not independently browse" in html
     assert "Run live mix" in html
     assert "Run live AI" not in html
-    assert "app.js?v=27" in html
-    assert "app.css?v=23" in html
-    assert "enchant.css?v=8" in html
+    assert "app.js?v=43" in html
+    assert "app.css?v=44" in html
+    assert "geography-map.js?v=3" in html
+    assert "enchant.css" not in html
+    assert "fonts.googleapis.com" not in html
+    assert "fonts.gstatic.com" not in html
     assert 'id="perf-plots"' in html
     assert 'id="goal-chart"' in html
     assert 'id="goal-percent"' in html
@@ -172,7 +183,7 @@ def test_dashboard_html_a11y_landmarks():
     assert 'aria-live="polite"' in html
     assert "sr-only" in html
     assert 'for="run-select"' in html
-    assert "tabindex=" not in html.split("enchant-menu")[1].split("</ol>")[0]
+    assert 'aria-label="Interactive three-dimensional United States geography map"' in html
 
 
 def test_era_catalog_reports_only_built_epochs_as_ready():
@@ -191,7 +202,9 @@ def test_viewer_era_api_routes_selected_epoch():
 
     from leaderboard.app import create_viewer
 
-    client = TestClient(create_viewer())
+    client = TestClient(
+        create_viewer(), base_url="http://127.0.0.1:8765", client=("127.0.0.1", 50000)
+    )
     catalog = client.get("/api/eras")
     assert catalog.status_code == 200
     assert catalog.json()["default_epoch_id"] == "e2012"
@@ -200,7 +213,67 @@ def test_viewer_era_api_routes_selected_epoch():
     assert overview.status_code == 200
     assert overview.json()["epoch"]["id"] == "e2012"
     assert overview.json()["goal_progress"]["benchmark_questions"] == 50
-    assert overview.json()["goal_progress"]["points"]
+    assert isinstance(overview.json()["goal_progress"]["points"], list)
+
+    population = client.get("/api/population", params={"epoch": "e2012"})
+    assert population.status_code == 200
+    population_data = population.json()
+    assert population_data["track"] == "B"
+    assert population_data["census"]["expected_artifact_count"] == 625
+    assert len(population_data["census"]["states"]) == 51
+    assert len(population_data["census"]["tables"]) == 10
+    assert "local_path" not in population.text
+    assert "synthetic_people" not in population.text
+
+    catalog = client.get("/api/data/catalog", params={"epoch": "e2012"})
+    assert catalog.status_code == 200
+    catalog_data = catalog.json()
+    assert {row["id"] for row in catalog_data["kinds"]} == {
+        "population",
+        "census",
+        "election",
+    }
+    assert catalog_data["default_layer_id"] == "e2012-population-builds"
+    assert all("local_path" not in str(row) for row in catalog_data["layers"])
+    assert catalog_data["comparison_layer_policy"]["runtime_access"] is False
+    assert all(
+        row["runtime_access"] is False
+        for row in catalog_data["layers"]
+        if row["kind"] in {"census", "election"}
+    )
+
+    geography_catalog = client.get("/api/geography/catalog", params={"epoch": "e2012"})
+    assert geography_catalog.status_code == 200
+    geography_data = geography_catalog.json()
+    assert geography_data["world"]["id"] == "us"
+    assert geography_data["future_worlds"]["status"] == "not_built"
+    assert {row["id"] for row in geography_data["layers"]} >= {
+        "states",
+        "congressional",
+        "state_senate",
+        "state_house",
+        "county",
+        "voting_district",
+    }
+
+    states = client.get("/api/geography", params={"epoch": "e2012", "layer": "states"})
+    assert states.status_code == 200
+    assert states.json()["feature_count"] == 51
+    assert "local_path" not in states.text
+
+    new_jersey_house = client.get(
+        "/api/geography",
+        params={"epoch": "e2012", "layer": "congressional", "state": "34"},
+    )
+    assert new_jersey_house.status_code == 200
+    assert new_jersey_house.json()["feature_count"] == 12
+
+    missing_layer = client.get(
+        "/api/geography",
+        params={"epoch": "e2012", "layer": "voting_district", "state": "06"},
+    )
+    assert missing_layer.status_code == 200
+    assert missing_layer.json()["available"] is False
 
     search = client.post(
         "/api/eras/e2012/search", json={"query": "unemployment", "k": 2}
@@ -221,10 +294,27 @@ def test_viewer_era_api_routes_selected_epoch():
         100,
     }
 
+    leaderboard = client.get("/api/leaderboard", params={"epoch": "e2012"})
+    assert leaderboard.status_code == 200
+    arena = leaderboard.json()
+    assert arena["rules"]["primary_metric"].startswith("Brier")
+    assert set(arena) >= {"agents", "swarms", "models", "corporations"}
+    if arena["agents"]:
+        champion = arena["agents"][0]
+        assert champion["rank"] == 1
+        assert champion["asset"] in {"openai", "anthropic", "google", "meta", "qwen", "local"}
+        assert 0 <= champion["arena_score"] <= 100
+        assert champion["n_forecasts"] > 0
+    if arena["swarms"]:
+        assert arena["swarms"][0]["rank"] == 1
+        assert arena["swarms"][0]["n_votes"] > 0
+
 
 def test_activity_payload_distinguishes_forecast_from_human_validation(monkeypatch):
     from leaderboard.activity import build_activity_payload
     from leaderboard.store import bootstrap
+    from psbx.config import load_run
+    from psbx.schemas import SwarmVote
 
     monkeypatch.setattr(
         "leaderboard.activity.sandbox_snapshot",
@@ -235,6 +325,32 @@ def test_activity_payload_distinguishes_forecast_from_human_validation(monkeypat
             "cutoff_match": cutoff == "2012-06-30",
         },
     )
+    swarm_config = load_run("config/run-swarm.yaml").model_copy(
+        update={"run_id": "phase2-e2012-swarm-probe"}
+    )
+    model_config = load_run("config/run.yaml")
+    vote = SwarmVote(
+        run_id="phase2-e2012-swarm-probe",
+        question_id="fred-unrate-2012-07",
+        agent_index=0,
+        agent_id="swarm:openrouter-gpt-4.1-mini:00",
+        model_id="openrouter-gpt-4.1-mini",
+        model_slug="openai/gpt-4.1-mini",
+        temperature=0.2,
+        max_tokens=128,
+        probability=0.65,
+    )
+    monkeypatch.setattr(
+        "leaderboard.activity._run_config",
+        lambda run_id, _job: (
+            swarm_config if run_id == "phase2-e2012-swarm-probe" else model_config
+        ),
+    )
+    monkeypatch.setattr(
+        "leaderboard.activity._load_votes",
+        lambda run_id: [vote] if run_id == "phase2-e2012-swarm-probe" else [],
+    )
+    monkeypatch.setattr("leaderboard.activity.load_predictions", lambda _run_id: [])
     payload = build_activity_payload(
         bootstrap("e2012"),
         "phase2-e2012-swarm-probe",
@@ -243,8 +359,18 @@ def test_activity_payload_distinguishes_forecast_from_human_validation(monkeypat
     assert payload["experiment"]["score_target"] == "later observed ground-truth outcomes"
     assert "not yet validated" in payload["experiment"]["human_emulation_status"]
     assert payload["run"]["shared_retrieval"] is True
+    assert payload["run"]["chain_available"] is True
+    assert payload["run"]["chain_question_id"] == "fred-unrate-2012-07"
     assert payload["run"]["n_agents"] == 12
     assert payload["access"]["verified"] is True
+
+    model_payload = build_activity_payload(
+        bootstrap("e2012"),
+        "phase1-e2012-smoke",
+        {"status": "idle", "run_id": "phase2-e2012-swarm-probe", "log": []},
+    )
+    assert model_payload["run"]["chain_available"] is False
+    assert model_payload["run"]["chain_questions"] == []
 
 
 def test_dashboard_config_can_force_container_and_source_silo(tmp_path, monkeypatch):
@@ -284,6 +410,10 @@ def test_dashboard_config_saves_a_unique_100_agent_roster(tmp_path, monkeypatch)
         return candidate if candidate.is_absolute() else tmp_path / candidate
 
     monkeypatch.setattr("leaderboard.jobs.resolve", fake_resolve)
+    monkeypatch.setattr(
+        "leaderboard.jobs.resolve_run_dir",
+        lambda run_id: tmp_path / run_id,
+    )
     prepared, path = _dashboard_config(
         load_run("config/run-swarm.yaml"),
         "config/run-swarm.yaml",

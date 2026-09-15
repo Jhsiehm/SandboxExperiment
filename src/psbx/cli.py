@@ -10,9 +10,11 @@ from psbx.config import load_epochs, load_models, load_run
 from psbx.corpus.build_index import build_index
 from psbx.corpus.fetch_wayback import DEFAULT_MAX_DOCS
 from psbx.corpus.index import SOURCE_TYPES, load_index
+from psbx.elections.cli import app as elections_app
 from psbx.env import load_dotenv
 from psbx.io import read_json, read_jsonl, write_json, write_jsonl
 from psbx.paths import resolve, run_dir, validate_run_id
+from psbx.population.cli import app as population_app
 from psbx.questions.build_set import build_questions, write_question_set
 from psbx.sandbox.harness import run_set
 from psbx.schemas import Prediction, Question
@@ -33,6 +35,8 @@ app.add_typer(society_app, name="society")
 app.add_typer(eval_app, name="eval")
 app.add_typer(epoch_app, name="epoch")
 app.add_typer(sandbox_app, name="sandbox")
+app.add_typer(population_app, name="population")
+app.add_typer(elections_app, name="elections")
 
 
 @app.callback()
@@ -434,10 +438,16 @@ def viewer_cmd(
     host: Annotated[str, typer.Option("--host")] = "127.0.0.1",
     port: Annotated[int, typer.Option("--port")] = 8765,
 ) -> None:
-    """Connected HTML console plus the same POST /search and POST /fetch contract."""
+    """Local-only HTML console plus the same POST /search and POST /fetch contract."""
     import sys
 
     from psbx.paths import repo_root
+    from psbx.security import require_loopback_host
+
+    try:
+        host = require_loopback_host(host)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--host") from exc
 
     root = str(repo_root())
     if root not in sys.path:

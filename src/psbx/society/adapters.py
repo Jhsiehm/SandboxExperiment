@@ -35,7 +35,9 @@ class EnvSearchClient:
                     document_id=row["document_id"],
                     title=row["title"],
                     outlet=row["outlet"],
-                    published_at=datetime.fromisoformat(str(row["published_at"]).replace("Z", "+00:00")),
+                    published_at=datetime.fromisoformat(
+                        str(row["published_at"]).replace("Z", "+00:00")
+                    ),
                     snippet=row.get("snippet") or "",
                     prominence=float(row.get("prominence") or 0.0),
                     source_type=row.get("source_type"),

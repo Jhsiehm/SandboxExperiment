@@ -49,7 +49,10 @@ def monthly_topic_share(index: HybridIndex) -> dict[str, dict[str, float]]:
     return {month: topic_mass(docs) for month, docs in sorted(by_month.items())}
 
 
-def correlate_gallup(index: HybridIndex, gallup_path: str = "data/sources/gallup_mip_2012.json") -> dict:
+def correlate_gallup(
+    index: HybridIndex,
+    gallup_path: str = "data/sources/gallup_mip_2012.json",
+) -> dict:
     gallup = read_json(gallup_path)
     shares = monthly_topic_share(index)
     pairs_by_topic: dict[str, list[tuple[float, float]]] = defaultdict(list)
@@ -63,7 +66,9 @@ def correlate_gallup(index: HybridIndex, gallup_path: str = "data/sources/gallup
         for topic in TOPIC_CUES:
             if topic not in by_month[nxt]:
                 continue
-            pairs_by_topic[topic].append((shares[month].get(topic, 0.0), float(by_month[nxt][topic])))
+            pairs_by_topic[topic].append(
+                (shares[month].get(topic, 0.0), float(by_month[nxt][topic]))
+            )
     out: dict[str, dict[str, float]] = {}
     for topic, pairs in pairs_by_topic.items():
         if len(pairs) < 3:

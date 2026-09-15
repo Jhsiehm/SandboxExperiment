@@ -18,6 +18,7 @@ from psbx.run_provenance import ensure_run_provenance
 from psbx.sandbox.citations import validate_citations
 from psbx.sandbox.client import HttpSearchClient, LocalSearchClient
 from psbx.schemas import Epoch, ModelConfig, Prediction, Question, RunConfig, SwarmVote
+from psbx.spending import begin_spend_run, preflight_paid_requests
 
 
 def require_question_epoch(questions: list[Question], epoch: Epoch) -> None:
@@ -77,6 +78,7 @@ def run_set(
     run: RunConfig,
 ) -> list[Prediction]:
     require_question_epoch(questions, epoch)
+    prepare_spend_guard(questions, models, run)
     if run.use_swarm:
         return run_swarm_set(questions, epoch, run)
     index = load_index(epoch, source_type=run.source_type)
@@ -116,6 +118,48 @@ def run_set(
             done.add(key)
             write_jsonl(dest, preds)
     return preds
+
+
+def prepare_spend_guard(
+    questions: list[Question],
+    models: list[ModelConfig],
+    run: RunConfig,
+) -> dict | None:
+    """Preflight the maximum paid-call shape before retrieval or provider I/O."""
+    if os.environ.get("PSBX_MOCK_LLM", "0") == "1":
+        return None
+    n_questions = max(1, min(run.n_questions, len(questions)))
+    if run.use_swarm:
+        from psbx.agents.swarm import worker_models
+
+        roster = load_roster(run.swarm_roster or "config/swarm.yaml")
+        # Each worker gets one strict JSON retry at most.
+        workers = worker_models(roster)
+        for worker in workers:
+            reason = skip_reason(worker)
+            if reason:
+                raise RuntimeError(f"{worker.id}: {reason}")
+        requests = [(worker, n_questions * 2) for worker in workers]
+    else:
+        # The live loop is itself bounded by max_tool_calls + 4 turns.
+        for model in models:
+            reason = skip_reason(model)
+            if reason and model.provider != "local_vllm":
+                raise RuntimeError(f"{model.id}: {reason}")
+        requests = [
+            (model, n_questions * (run.max_tool_calls + 4))
+            for model in models
+        ]
+    estimate = preflight_paid_requests(requests)
+    begin_spend_run(run.run_id)
+    if estimate.get("paid"):
+        print(
+            "spend guard "
+            f"max_requests={estimate['maximum_requests']} "
+            f"estimated_max_usd=${estimate['estimated_max_usd']:.4f}",
+            flush=True,
+        )
+    return estimate
 
 
 def run_swarm_set(
@@ -161,6 +205,7 @@ def run_swarm_set(
             client,
             roster=roster,
             max_retrieval=n_fetch,
+            perspectives_path=run.perspectives,
         )
         pred = validate_citations(result.prediction, index)
         preds.append(pred)

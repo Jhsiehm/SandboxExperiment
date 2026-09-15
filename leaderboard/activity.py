@@ -136,6 +136,25 @@ def _saved_run_label(run_id: str) -> str:
     return run_label(run_id)
 
 
+def _population_selection(run_id: str, job: dict[str, Any]) -> dict[str, Any] | None:
+    if job.get("run_id") == run_id and job.get("population_selection"):
+        return dict(job["population_selection"])
+    path = run_dir(run_id) / "manifest.json"
+    if not path.is_file():
+        return None
+    try:
+        selection = read_json(path).get("population_selection")
+    except (OSError, ValueError):
+        return None
+    if not isinstance(selection, dict):
+        return None
+    return {
+        key: selection.get(key)
+        for key in ("population_id", "label", "geography_id", "strategy", "n_agents")
+        if selection.get(key) is not None
+    }
+
+
 def _dedupe(values: list[str]) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
@@ -202,6 +221,8 @@ def _swarm_agents(
     votes: list[SwarmVote],
     job: dict[str, Any],
     run_id: str,
+    *,
+    allow_unscoped_log: bool = True,
 ) -> list[dict[str, Any]]:
     from psbx.agents.swarm import expand_bodies
     from psbx.society.perspectives import assign_personas, load_perspectives
@@ -219,7 +240,11 @@ def _swarm_agents(
     for vote in votes:
         latest_votes[vote.agent_id] = vote
         vote_counts[vote.agent_id] += 1
-    logged = _logged_votes(job.get("log") or []) if job.get("run_id") == run_id else {}
+    logged = (
+        _logged_votes(job.get("log") or [])
+        if allow_unscoped_log and job.get("run_id") == run_id
+        else {}
+    )
     active = job.get("status") == "running" and job.get("run_id") == run_id
     finished_ids = set(latest_votes) | set(logged)
     next_index = next(
@@ -315,26 +340,57 @@ def build_activity_payload(
     state: ViewerState,
     run_id: str,
     job: dict[str, Any],
+    question_id: str | None = None,
 ) -> dict[str, Any]:
     """Build a truthful, secret-free activity snapshot for the dashboard."""
     config = _run_config(run_id, job) or state.run.model_copy(update={"run_id": run_id})
     votes = _load_votes(run_id)
     predictions = load_predictions(run_id)
     is_swarm = bool(config.use_swarm or votes)
+    persisted_question_ids = _dedupe(
+        [vote.question_id for vote in votes]
+        + [prediction.question_id for prediction in predictions]
+    )
+    configured_question_ids = [
+        question.id for question in state.questions[: max(1, int(config.n_questions or 1))]
+    ]
+    chain_question_ids = (
+        (persisted_question_ids or configured_question_ids) if is_swarm else []
+    )
+    selected_question_id = (
+        question_id
+        if question_id in chain_question_ids
+        else chain_question_ids[0]
+        if chain_question_ids
+        else None
+    )
+    chain_votes = [vote for vote in votes if vote.question_id == selected_question_id]
+    chain_predictions = [
+        prediction for prediction in predictions if prediction.question_id == selected_question_id
+    ]
+    chain_available = bool(is_swarm and selected_question_id)
     agents = (
-        _swarm_agents(config, votes, job, run_id)
+        _swarm_agents(
+            config,
+            chain_votes,
+            job,
+            run_id,
+            allow_unscoped_log=config.n_questions <= 1,
+        )
         if is_swarm
         else _model_agents(config, run_id, job)
     )
     completed = sum(1 for agent in agents if agent["status"] == "complete")
+    evidence_predictions = chain_predictions if chain_available else predictions
+    evidence_votes = chain_votes if chain_available else votes
     queries = _dedupe(
-        [query for pred in predictions for query in pred.search_queries]
-        + [query for vote in votes for query in vote.search_queries]
+        [query for pred in evidence_predictions for query in pred.search_queries]
+        + [query for vote in evidence_votes for query in vote.search_queries]
     )
     docs_by_id = {doc.id: doc for doc in state.index.docs}
     evidence_docs: list[dict[str, Any]] = []
     seen_docs: set[str] = set()
-    for prediction in predictions:
+    for prediction in evidence_predictions:
         for citation in prediction.citations:
             if citation.document_id in seen_docs:
                 continue
@@ -359,6 +415,8 @@ def build_activity_payload(
     access["scope_match"] = access.get("selection") == config_scope
     access["available_sources"] = {"all": len(state.index.docs), **dict(sorted(sources.items()))}
     is_society = "society" in run_id or bool(config.perspectives)
+    population_selection = _population_selection(run_id, job)
+    question_labels = {question.id: question.text for question in state.questions}
     objective = (
         "Agents use explicit demographic personas and frozen evidence to forecast "
         "later public or political outcomes."
@@ -400,16 +458,34 @@ def build_activity_payload(
             "phase": job.get("phase") if job.get("run_id") == run_id else "",
             "sandbox_mode": config.sandbox_mode,
             "shared_retrieval": is_swarm,
+            "chain_available": chain_available,
+            "chain_reason": (
+                ""
+                if chain_available
+                else "This run does not contain question-scoped shared-retrieval swarm votes."
+            ),
+            "chain_question_id": selected_question_id,
+            "chain_question_label": question_labels.get(
+                selected_question_id or "", selected_question_id or ""
+            ),
+            "chain_questions": [
+                {
+                    "id": available_id,
+                    "label": question_labels.get(available_id, available_id),
+                }
+                for available_id in chain_question_ids
+            ],
             "n_agents": len(agents),
             "n_complete": completed,
             "progress": (completed / len(agents)) if agents else 0.0,
+            "population_selection": population_selection,
         },
         "access": access,
         "agents": agents,
         "evidence": {
             "queries": queries,
             "documents": evidence_docs,
-            "n_tool_calls": sum(pred.n_tool_calls for pred in predictions),
+            "n_tool_calls": sum(pred.n_tool_calls for pred in evidence_predictions),
             "all_documents_within_cutoff": all(
                 doc["within_cutoff"] for doc in evidence_docs
             ),

@@ -65,7 +65,8 @@ class FredGenerator(QuestionGenerator):
                     category="economic",
                     text=text,
                     resolution_criteria=(
-                        f"Resolves YES if the ALFRED vintage of {series['id']} for {obs.isoformat()} "
+                        f"Resolves YES if the ALFRED vintage of {series['id']} for "
+                        f"{obs.isoformat()} "
                         f"as of {item['release_vintage']} {verb}s {threshold}. "
                         f"Observed vintage value={value}. Source: {series['source_url']}."
                     ),
@@ -77,7 +78,10 @@ class FredGenerator(QuestionGenerator):
                     prior_signal=PriorSignal(
                         kind="analyst_consensus",
                         probability=float(item["prior"]),
-                        source=f"{series['consensus']}; last known {last['obs_date']}={last['value']}",
+                        source=(
+                            f"{series['consensus']}; last known "
+                            f"{last['obs_date']}={last['value']}"
+                        ),
                     ),
                 )
                 emitted += 1

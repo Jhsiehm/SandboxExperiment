@@ -1,0 +1,4 @@
+target_id,task_id,group_field,group_value,observed_probability,sample_size,source_id
+turnout_all,turnout_fixture,__all__,__all__,0.52,600,fixture
+turnout_18_24,turnout_fixture,age_band,18_24,0.32,120,fixture
+turnout_65_plus,turnout_fixture,age_band,65_plus,0.72,140,fixture

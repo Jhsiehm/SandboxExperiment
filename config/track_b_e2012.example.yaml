@@ -1,0 +1,52 @@
+# Copy to a new file and replace every REPLACE_ME value after selecting a geography.
+id: REPLACE_ME-population-e2012
+epoch_id: e2012
+cutoff_date: 2012-06-30
+experiment_mode: sealed_forecast
+geography:
+  id: REPLACE_ME
+  label: REPLACE_ME
+  geography_type: county_subdivision
+  state_fips: REPLACE_ME
+  county_fips: REPLACE_ME
+  county_subdivision: REPLACE_ME
+  vintage: "2010"
+universe: citizen_voting_age
+target_population: 0
+source_registry: config/population_sources.yaml
+source_ids:
+  - census_2010_dp1
+  - acs5_2006_2010
+  - acs_pums_2006_2010
+  - cvap_2006_2010
+# Add tiger_2010 only after exact artifact release verification.
+constraints_path: data/population-input/e2012/REPLACE_ME/constraints.csv
+donors_path: data/population-input/e2012/REPLACE_ME/donor_people.csv
+output_root: data/population
+seed: 20120630
+max_iterations: 500
+tolerance: 0.0001
+validation_tvd_tolerance: 0.02
+sample_moe_realization: true
+donor_weight_column: donor_weight
+profile_fields:
+  - age
+  - age_band
+  - census_sex
+  - race_ethnicity
+  - citizenship
+  - education
+  - household_income_band
+  - employment
+  - tenure
+  - marital_status
+  - household_size
+representative_cell_fields:
+  - age_band
+  - census_sex
+  - race_ethnicity
+  - citizenship
+  - education
+  - household_income_band
+reasoning_call_budget: 1000
+notes: Synthetic population only. Never describe records as actual residents.

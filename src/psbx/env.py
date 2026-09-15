@@ -8,6 +8,10 @@ from psbx.paths import repo_root
 
 
 def load_dotenv() -> None:
+    # Child processes receive an explicit environment allowlist. They must not
+    # repopulate stripped secrets by rereading the repository-level .env file.
+    if os.environ.get("PSBX_DISABLE_DOTENV") == "1":
+        return
     path = repo_root() / ".env"
     if not path.exists():
         return
@@ -40,7 +44,11 @@ def provider_status() -> dict[str, bool]:
 
 
 def live_ready() -> bool:
-    """True if OpenRouter is set, or both native Anthropic and OpenAI keys."""
+    """True only with credentials and the explicit paid-traffic switch."""
+    from psbx.spending import paid_models_enabled
+
+    if not paid_models_enabled():
+        return False
     status = provider_status()
     if status["openrouter"]:
         return True

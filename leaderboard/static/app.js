@@ -1,5 +1,5 @@
 const ALIASES = { overview: "results", scoring: "results" };
-const VIEWS = ["eras", "activity", "runs", "architecture", "results", "forecasts", "questions", "corpus", "lab"];
+const VIEWS = ["eras", "activity", "leaderboard", "runs", "architecture", "population", "results", "forecasts", "questions", "corpus", "lab"];
 const ARCHITECTURE_NODES = [
   {
     id: "sources",
@@ -84,6 +84,7 @@ const state = {
   selectedEra: null,
   switchingEra: false,
   activity: null,
+  activityQuestion: null,
   activityTimer: null,
   resealing: false,
   overview: null,
@@ -99,7 +100,26 @@ const state = {
   runs: [],
   runListKey: "",
   architectureNode: "sandbox",
+  population: null,
+  agentView: "graph",
+  geographyView: "map",
+  geographyCatalog: null,
+  geographyLayer: "states",
+  geographyPayload: null,
+  geographyRequestToken: 0,
+  geographySelection: { level: "nation", id: "us:1" },
+  datasetKind: "population",
+  datasetLayerId: null,
+  datasetCompareLayerId: null,
+  mapShadeMode: "density",
+  populationSelection: null,
+  leaderboard: null,
+  leaderboardMode: "agents",
+  leaderboardMetric: "score",
+  leaderboardCorporation: "",
 };
+
+const GEOGRAPHY_CACHE = new Map();
 
 const RUN_ORDER = [
   "phase2-e2012-swarm-probe-container",
@@ -163,8 +183,10 @@ function setView(name) {
   const labels = {
     eras: "Eras",
     activity: "Agents live",
+    leaderboard: "Leaderboard",
     runs: "Runs",
     architecture: "Architecture",
+    population: "Population",
     results: "Results",
     forecasts: "Each answer",
     questions: "The questions",
@@ -183,8 +205,10 @@ function setView(name) {
   if (location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
   if (name === "eras") renderEras();
   if (name === "activity") loadActivity();
+  if (name === "leaderboard") loadLeaderboard();
   if (name === "runs") renderRunHistory(state.runs);
   if (name === "architecture") renderArchitecture(state.architectureNode);
+  if (name === "population") loadPopulation();
   syncActivityPolling(name === "activity");
   if (name === "results") loadScores();
   if (name === "forecasts") loadForecasts();
@@ -279,7 +303,12 @@ async function selectEra(epochId) {
   state.overview = null;
   state.questions = null;
   state.activity = null;
+  state.population = null;
+  state.leaderboard = null;
+  state.geographySelection = { level: "nation", id: "us:1" };
+  state.populationSelection = null;
   state.selectedRun = null;
+  state.activityQuestion = null;
   state.runs = [];
   state.runListKey = "";
   const url = new URL(window.location.href);
@@ -522,20 +551,54 @@ function updateSwarmEstimate() {
   const agents = bodies.reduce((sum, row) => sum + row.count, 0);
   const questions = Math.max(1, Number.parseInt($("#swarm-questions").value || "1", 10) || 1);
   const calls = agents * questions;
+  const maximumRequests = calls * 2;
   const ceiling = Number(options.ceiling || 100);
-  const invalid = agents < 1 || agents > ceiling;
+  const guard = options.cost_controls || {};
+  const requestCeiling = Number(guard.max_paid_requests || 0);
+  const maxRunUsd = Number(guard.max_run_usd || 0);
+  const prices = new Map(
+    (options.species || []).map((model) => [model.model_id, Number(model.estimated_usd_per_request || 0)])
+  );
+  const estimatedMaxUsd = bodies.reduce(
+    (sum, row) => sum + row.count * questions * 2 * (prices.get(row.model_id) || 0),
+    0
+  );
+  const countInvalid = agents < 1 || agents > ceiling;
+  const requestInvalid = requestCeiling > 0 && maximumRequests > requestCeiling;
+  const costInvalid = maxRunUsd > 0 && estimatedMaxUsd > maxRunUsd;
+  const invalid = countInvalid || requestInvalid || costInvalid;
   setText("#swarm-total", `${agents} agent${agents === 1 ? "" : "s"}`);
-  setText("#swarm-calls", `${calls} model call${calls === 1 ? "" : "s"}`);
+  setText(
+    "#swarm-calls",
+    `${calls} planned call${calls === 1 ? "" : "s"} · up to ${maximumRequests} with JSON retries`
+  );
   setText(
     "#swarm-estimate",
-    `At least ${durationWords(calls * Number(options.minimum_seconds_per_call || 2))}, plus provider latency.`
+    `At least ${durationWords(calls * Number(options.minimum_seconds_per_call || 2))}, plus provider latency. Conservative local ceiling estimate: $${estimatedMaxUsd.toFixed(3)}.`
   );
+  let error = "";
+  if (countInvalid) error = `Choose between 1 and ${ceiling} total agents.`;
+  else if (requestInvalid) error = `This run can attempt ${maximumRequests} paid requests; the local limit is ${requestCeiling}.`;
+  else if (costInvalid) error = `The $${estimatedMaxUsd.toFixed(3)} estimate exceeds the local $${maxRunUsd.toFixed(2)} run limit.`;
   setText(
     "#swarm-builder-error",
-    invalid ? `Choose between 1 and ${ceiling} total agents.` : ""
+    error
   );
   const launch = $("#swarm-launch");
-  if (launch) launch.disabled = invalid || state.lastJobStatus === "running";
+  const liveOk = Boolean(state.ready && state.ready.live_ready);
+  const eraRunnable = Boolean(state.ready && state.ready.run_epoch === state.selectedEra);
+  if (launch) {
+    launch.disabled = invalid || state.lastJobStatus === "running" || !liveOk || !eraRunnable;
+    launch.title = !eraRunnable
+      ? `No swarm run config targets ${state.selectedEra || "this era"} yet`
+      : !liveOk
+        ? "Add OPENROUTER_API_KEY and set PSBX_ENABLE_PAID_MODELS=1 for an intentional live session"
+        : error || "Run this bounded, preflighted swarm";
+  }
+  if (state.populationSelection) {
+    state.populationSelection.n_agents = agents;
+    renderPopulationLens();
+  }
   return { agents, questions, calls, bodies, invalid };
 }
 
@@ -589,9 +652,10 @@ function renderRunHistory(runs) {
         const selected = run.run_id === state.selectedRun;
         const score = run.primary_brier == null ? "—" : fmt(run.primary_brier);
         const rank = run.primary_c_index == null ? "—" : fmt(run.primary_c_index);
+        const population = run.population_selection || null;
         return `<tr data-selected="${selected}">
           <td><strong>${escapeHtml(run.label || run.run_id)}</strong><small>${escapeHtml(when)} · ${escapeHtml(run.source_type || "all")} sources</small><code>${escapeHtml(run.run_id)}</code></td>
-          <td class="run-swarm-cell"><b>${Number(run.n_agents || 0)}</b><small>${escapeHtml(rosterSummary(run.composition))}</small></td>
+          <td class="run-swarm-cell"><b>${Number(run.n_agents || 0)}</b><small>${escapeHtml(rosterSummary(run.composition))}</small>${population ? `<small class="run-population">Weighted to ${escapeHtml(population.label || population.population_id)}</small>` : ""}</td>
           <td class="num">${Number(run.n_questions || 0)}</td>
           <td class="num">${score}</td>
           <td class="num">${rank}</td>
@@ -604,6 +668,7 @@ function renderRunHistory(runs) {
 
 async function openSavedRun(runId, view = "results") {
   state.selectedRun = runId;
+  state.activityQuestion = null;
   fillRunSelect(state.runs, runId);
   await loadScores();
   await loadForecasts();
@@ -614,6 +679,7 @@ async function openSavedRun(runId, view = "results") {
 async function loadSavedLog(runId) {
   const data = await getJSON(withEra(`/api/runs/${encodeURIComponent(runId)}/log`));
   const run = data.run || {};
+  if (location.hash !== "#runs") setView("runs");
   $("#saved-log").hidden = false;
   setText("#saved-log-heading", run.label || runId);
   setText(
@@ -628,6 +694,111 @@ function isolationFact(label, value, ok) {
   return `<div><dt>${escapeHtml(label)}</dt><dd class="${ok ? "ok" : "warn"}">${escapeHtml(value)}</dd></div>`;
 }
 
+function median(values) {
+  const rows = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  if (!rows.length) return null;
+  const middle = Math.floor(rows.length / 2);
+  return rows.length % 2 ? rows[middle] : (rows[middle - 1] + rows[middle]) / 2;
+}
+
+function agentChainMarkup(data, compact = false) {
+  const run = data && data.run ? data.run : {};
+  const evidence = data && data.evidence ? data.evidence : {};
+  const agents = data && data.agents ? data.agents : [];
+  const probabilities = agents
+    .filter((agent) => agent.probability != null)
+    .map((agent) => Number(agent.probability))
+    .filter((value) => Number.isFinite(value));
+  if (!run.chain_available) {
+    return `<div class="chain-unavailable">
+      <strong>Question-scoped swarm chain unavailable</strong>
+      <span>${escapeHtml(run.chain_reason || "Choose a shared-retrieval swarm run with saved votes.")}</span>
+    </div>`;
+  }
+  const aggregate = median(probabilities);
+  const selection = run.population_selection || null;
+  const populationLine = selection
+    ? `<span class="chain-population">Weighted to ${escapeHtml(selection.label || selection.population_id)}</span>`
+    : `<span class="chain-population muted">Default explicit persona panel</span>`;
+  const agentButtons = agents.length
+    ? agents
+        .map((agent) => {
+          const status = agent.status || "queued";
+          const probability = agent.probability == null ? "—" : pct(agent.probability);
+          const label = `${agent.model_label || agent.agent_id}, ${agent.persona_label || "unassigned"}, ${status}${agent.probability == null ? "" : `, vote ${probability}`}`;
+          return `<button type="button" class="chain-agent" data-status="${escapeHtml(status)}" data-agent-open="${Number(agent.index || 1) - 1}" aria-label="${escapeHtml(label)}">
+            <span class="chain-agent-index">${String(agent.index || 0).padStart(2, "0")}</span>
+            <span class="chain-agent-body"><strong>${escapeHtml(agent.model_label || agent.agent_id)}</strong><small>${escapeHtml(agent.persona_label || "Unassigned simulation role")}</small></span>
+            <span class="chain-agent-vote">${probability}</span>
+          </button>`;
+        })
+        .join("")
+    : `<p class="chain-empty">No agent roster is attached to this run.</p>`;
+  const complete = Number(run.n_complete || 0);
+  const total = Number(run.n_agents || agents.length || 0);
+  return `<div class="chain-canvas${compact ? " is-compact" : ""}">
+    <section class="chain-stage chain-origin" aria-label="Frozen experiment source">
+      <span class="chain-stage-label">01 · SOURCE</span>
+      <strong>${escapeHtml((data.epoch && data.epoch.id) || state.selectedEra || "Epoch")}</strong>
+      <small>world sealed ${escapeHtml((data.epoch && data.epoch.cutoff_date) || "at cutoff")}</small>
+    </section>
+    <span class="chain-link" aria-hidden="true"><i></i></span>
+    <section class="chain-stage chain-pack" aria-label="Shared evidence pack">
+      <span class="chain-stage-label">02 · SHARED PACK</span>
+      <strong>${Number((evidence.documents || []).length)} cited docs</strong>
+      <small>${Number((evidence.queries || []).length)} searches · ${(evidence.n_tool_calls || 0)} calls</small>
+    </section>
+    <span class="chain-link branch" aria-hidden="true"><i></i></span>
+    <section class="chain-agent-field" aria-label="Independent sequential agent votes">
+      <header><span>03 · INDEPENDENT VOTES</span>${populationLine}</header>
+      <div class="chain-agent-grid">${agentButtons}</div>
+      <p class="execution-rail"><span>${complete}/${total} returned</span><i aria-hidden="true"></i><span>execution order only</span></p>
+    </section>
+    <span class="chain-link merge" aria-hidden="true"><i></i></span>
+    <section class="chain-stage chain-aggregate" aria-label="Swarm aggregate">
+      <span class="chain-stage-label">04 · MEDIAN</span>
+      <strong>${aggregate == null ? "—" : pct(aggregate)}</strong>
+      <small>${probabilities.length} saved vote${probabilities.length === 1 ? "" : "s"}</small>
+    </section>
+  </div>`;
+}
+
+function setAgentView(mode) {
+  state.agentView = mode === "list" ? "list" : "graph";
+  const graph = $("#agent-chain-live");
+  const list = $("#agent-grid");
+  if (graph) graph.hidden = state.agentView !== "graph";
+  if (list) list.hidden = state.agentView !== "list";
+  document.querySelectorAll("[data-agent-view]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.agentView === state.agentView));
+  });
+}
+
+function renderAgentChains(data) {
+  const live = $("#agent-chain-live");
+  if (live) {
+    live.innerHTML = agentChainMarkup(data);
+    live.setAttribute("aria-busy", data.run && data.run.status === "running" ? "true" : "false");
+  }
+  const results = $("#agent-chain-results");
+  if (results) results.innerHTML = agentChainMarkup(data, true);
+  setAgentView(state.agentView);
+}
+
+function renderChainQuestionPickers(run) {
+  const questions = run.chain_questions || [];
+  document.querySelectorAll("[data-chain-question]").forEach((select) => {
+    const field = select.closest(".chain-question-picker");
+    if (field) field.hidden = !run.chain_available || questions.length <= 1;
+    select.innerHTML = questions
+      .map(
+        (question, index) => `<option value="${escapeHtml(question.id)}">${index + 1}. ${escapeHtml(question.label)}</option>`
+      )
+      .join("");
+    select.value = run.chain_question_id || "";
+  });
+}
+
 function renderActivity(data) {
   state.activity = data;
   const experiment = data.experiment || {};
@@ -635,6 +806,24 @@ function renderActivity(data) {
   const access = data.access || {};
   const agents = data.agents || [];
   const evidence = data.evidence || {};
+  renderChainQuestionPickers(run);
+  setText("#agents-heading", run.chain_available ? "Agent chain map" : "Agent run detail");
+  setText(
+    "#shared-retrieval-note",
+    run.chain_available
+      ? `Question-scoped view — ${run.chain_question_label || run.chain_question_id} Agents share this question’s sealed pack, vote independently, and do not influence one another.`
+      : run.chain_reason || "This run does not expose a truthful shared-retrieval chain."
+  );
+  setText(
+    "#result-chain-heading",
+    run.chain_available ? "How this swarm reached the result" : "Agent chain not available"
+  );
+  setText(
+    "#result-chain-note",
+    run.chain_available
+      ? `Question-scoped view — ${run.chain_question_label || run.chain_question_id} One frozen pack, independent votes, one median.`
+      : run.chain_reason || "This saved run does not contain a question-scoped swarm chain."
+  );
   setText("#activity-objective", experiment.objective || "No experiment selected.");
   setText("#activity-score-target", `Current target: ${experiment.score_target || "unknown"}.`);
   setText("#activity-human-gap", experiment.human_emulation_status || experiment.next_validation || "Not evaluated yet.");
@@ -705,6 +894,7 @@ function renderActivity(data) {
         })
         .join("")
     : `<p class="empty">No agent roster is attached to this run.</p>`;
+  renderAgentChains(data);
 
   const queries = evidence.queries || [];
   $("#activity-queries").innerHTML = queries.length
@@ -730,7 +920,11 @@ async function loadActivity(quiet = false) {
   if (!state.selectedEra || !state.selectedRun) return;
   try {
     const q = new URLSearchParams({ epoch: state.selectedEra, run_id: state.selectedRun });
+    if (state.activityQuestion) q.set("question_id", state.activityQuestion);
     const data = await getJSON(`/api/activity?${q}`);
+    state.activityQuestion = data.run && data.run.chain_question_id
+      ? data.run.chain_question_id
+      : null;
     renderActivity(data);
   } catch (err) {
     if (!quiet) {
@@ -752,7 +946,7 @@ async function sealContainer(ev) {
   try {
     const res = await fetch("/api/sandbox/select", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-PSBX-CSRF": "1" },
       body: JSON.stringify({
         epoch_id: state.selectedEra,
         source_type: source === "all" ? null : source,
@@ -810,6 +1004,779 @@ function renderLab() {
   const swarm = $("#overview-swarm");
   if (swarm && state.ready && state.ready.swarm_note) {
     swarm.textContent = state.ready.swarm_note;
+  }
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes || 0);
+  if (!value) return "—";
+  return `${(value / 1_000_000_000).toFixed(2)} GB`;
+}
+
+function populationProfiles() {
+  return (((state.population || {}).explorer || {}).profiles || []);
+}
+
+function profileById(populationId) {
+  return populationProfiles().find((profile) => profile.population_id === populationId) || null;
+}
+
+function stateByFips(fips) {
+  return (((state.population || {}).census || {}).states || []).find(
+    (area) => String(area.fips) === String(fips)
+  ) || null;
+}
+
+function profileForState(area, type = "state") {
+  if (!area) return null;
+  return populationProfiles().find(
+    (profile) => profile.geography?.state_fips === area.fips && profile.geography?.type === type
+  ) || null;
+}
+
+function canonicalGeographyId(value) {
+  return String(value || "").replace(/^district:/, "congressional_district:");
+}
+
+function profileForGeographyId(geographyId) {
+  const canonical = canonicalGeographyId(geographyId);
+  return populationProfiles().find(
+    (profile) => canonicalGeographyId(profile.geography?.id) === canonical
+  ) || null;
+}
+
+function selectedGeographyProfile() {
+  const selection = state.geographySelection || {};
+  if (selection.populationId) return profileById(selection.populationId);
+  const exact = profileForGeographyId(selection.id);
+  if (exact) return exact;
+  if (selection.level === "state") return profileForState(stateByFips(selection.stateFips));
+  if (selection.level === "nation") {
+    return populationProfiles().find(
+      (profile) => profile.population_id === "national-us-e2012" || profile.geography?.id === "us:1"
+    ) || null;
+  }
+  return null;
+}
+
+function geographyButton(area, mode) {
+  const profile = profileForState(area);
+  const status = profile && profile.runnable ? "profile" : area.ready ? "sources" : "planned";
+  const selected = state.geographySelection && state.geographySelection.stateFips === area.fips;
+  return `<button type="button" class="geography-tile ${mode === "map" ? "map-tile" : "box-tile"}" data-geo-state="${escapeHtml(area.fips)}" data-status="${status}" aria-pressed="${selected}">
+    <strong>${escapeHtml(area.abbreviation)}</strong>
+    <span>${escapeHtml(area.name)}</span>
+    <small>${Number(area.district_count || 1)} House district${Number(area.district_count || 1) === 1 ? "" : "s"} · ${profile?.runnable ? "profile ready" : "profile missing"}</small>
+  </button>`;
+}
+
+function geographySelectionForProfile(profile) {
+  const isNation = profile.population_id === "national-us-e2012" || profile.geography.id === "us:1";
+  return {
+    level: isNation ? "nation" : profile.geography.type || "area",
+    id: profile.geography.id,
+    label: profile.label,
+    stateFips: profile.geography.state_fips,
+    populationId: profile.population_id,
+  };
+}
+
+function chooseGeography(selection) {
+  if (selection?.level === "state" && selection.stateFips && state.geographyLayer === "states") {
+    state.geographyLayer = "congressional";
+  }
+  state.geographySelection = selection;
+  renderGeographyExplorer(state.population);
+}
+
+function dataCatalog() {
+  return (state.population || {}).data_catalog || { kinds: [], layers: [] };
+}
+
+function selectedDataLayer() {
+  const catalog = dataCatalog();
+  return (catalog.layers || []).find((layer) => layer.id === state.datasetLayerId) || null;
+}
+
+function selectedCompareLayer() {
+  const catalog = dataCatalog();
+  return (catalog.layers || []).find((layer) => layer.id === state.datasetCompareLayerId) || null;
+}
+
+function displayDataLayers() {
+  const catalog = dataCatalog();
+  return (catalog.layers || []).filter(
+    (layer) => layer.kind !== "population" || layer.id === catalog.default_layer_id
+  );
+}
+
+function coverageRowForArea(layer, area) {
+  if (!layer || !area) return null;
+  const rows = layer.coverage_by_state || {};
+  return rows[area.fips] || rows[area.abbreviation] || null;
+}
+
+function coverageLevelIds(row, level) {
+  if (!row) return [];
+  const ids = (row.geography_ids || {})[level] || [];
+  return Array.isArray(ids) ? ids.map(canonicalGeographyId) : [];
+}
+
+function layerCoversFeature(layer, area, level, geographyId) {
+  const row = coverageRowForArea(layer, area);
+  if (!row) return false;
+  const levels = row.geography_levels || row.levels || layer.geography_levels || [];
+  if (!levels.includes(level)) return false;
+  const ids = coverageLevelIds(row, level);
+  return !ids.length || ids.includes(canonicalGeographyId(geographyId));
+}
+
+function currentDatasetSelection() {
+  const layer = selectedDataLayer();
+  if (!layer) return null;
+  const supportedLevels = new Set([
+    "nation",
+    "state",
+    "congressional_district",
+    "state_legislative_upper",
+    "state_legislative_lower",
+    "county",
+    "municipality",
+    "precinct",
+  ]);
+  const activeLevel = state.geographySelection?.level || "all";
+  const selection = {
+    kind: layer.kind,
+    layer_id: layer.id,
+    year: "all",
+    geography_level: supportedLevels.has(activeLevel) ? activeLevel : "all",
+  };
+  if (state.datasetCompareLayerId) selection.compare_layer_id = state.datasetCompareLayerId;
+  return selection;
+}
+
+function renderDataControls() {
+  const catalog = dataCatalog();
+  const kinds = catalog.kinds || [];
+  const layers = displayDataLayers();
+  if (!state.datasetLayerId) state.datasetLayerId = catalog.default_layer_id || layers[0]?.id || null;
+  const currentLayer = layers.find((layer) => layer.id === state.datasetLayerId) || layers[0] || null;
+  if (currentLayer) {
+    state.datasetLayerId = currentLayer.id;
+    state.datasetKind = currentLayer.kind;
+  }
+
+  const kindSelect = $("#dataset-kind");
+  if (kindSelect) {
+    kindSelect.innerHTML = kinds.map(
+      (kind) => `<option value="${escapeHtml(kind.id)}">${escapeHtml(kind.label)}</option>`
+    ).join("");
+    kindSelect.value = state.datasetKind;
+  }
+  const primary = $("#dataset-layer");
+  const familyLayers = layers.filter((layer) => layer.kind === state.datasetKind);
+  if (primary) {
+    primary.innerHTML = familyLayers.length
+      ? familyLayers.map((layer) => `<option value="${escapeHtml(layer.id)}">${escapeHtml(layer.label)} · ${escapeHtml(layer.status || "registered")}</option>`).join("")
+      : `<option value="">No imported ${escapeHtml(state.datasetKind)} layers</option>`;
+    if (!familyLayers.some((layer) => layer.id === state.datasetLayerId)) {
+      state.datasetLayerId = familyLayers[0]?.id || null;
+    }
+    primary.value = state.datasetLayerId || "";
+  }
+  const compare = $("#dataset-compare-layer");
+  if (compare) {
+    const choices = layers.filter((layer) => layer.id !== state.datasetLayerId);
+    compare.innerHTML = `<option value="">No comparison</option>` + choices.map(
+      (layer) => `<option value="${escapeHtml(layer.id)}">${escapeHtml(layer.label)}</option>`
+    ).join("");
+    if (!choices.some((layer) => layer.id === state.datasetCompareLayerId)) {
+      state.datasetCompareLayerId = null;
+    }
+    compare.value = state.datasetCompareLayerId || "";
+  }
+  const geoLayer = $("#geography-layer");
+  if (geoLayer) geoLayer.value = state.geographyLayer;
+  const shade = $("#map-shade-mode");
+  if (shade) shade.value = state.mapShadeMode;
+}
+
+function demographicBars(profile) {
+  if (!profile || !profile.demographics || !profile.demographics.length) return "";
+  return profile.demographics
+    .map((group, index) => {
+      const categories = (group.categories || []).slice(0, 5);
+      const visibleShare = categories.reduce((sum, category) => sum + Number(category.share || 0), 0);
+      if (visibleShare < 0.995) {
+        categories.push({ label: "All other groups", share: Math.max(0, 1 - visibleShare) });
+      }
+      const bars = categories
+        .map((category) => `<li>
+          <span>${escapeHtml(category.label)}</span>
+          <div><i style="--share:${Math.max(0, Math.min(1, Number(category.share || 0)))}"></i></div>
+          <b>${pct(category.share)}</b>
+        </li>`)
+        .join("");
+      return `<details class="demographic-group"${index < 2 ? " open" : ""}>
+        <summary>${escapeHtml(group.label)}</summary>
+        <ul>${bars}</ul>
+      </details>`;
+    })
+    .join("");
+}
+
+function projectionForAgentCount(nAgents) {
+  return ((state.swarmOptions || {}).representative_swarm_projections || []).find(
+    (row) => Number(row.representative_agents || row.agents) === Number(nAgents)
+  ) || null;
+}
+
+function renderRepresentativeAgentOptions() {
+  const select = $("#population-agent-count");
+  if (!select) return;
+  const previous = Number(select.value || 12);
+  const options = state.swarmOptions || {};
+  const counts = options.representative_agent_counts || [12, 25, 50, 100];
+  const labels = { 12: "quick panel", 25: "broader panel", 50: "default paid limit", 100: "maximum" };
+  select.innerHTML = counts.map((count) => {
+    const projection = projectionForAgentCount(count);
+    const suffix = projection?.status === "blocked" ? " · blocked by current caps" : "";
+    return `<option value="${Number(count)}">${Number(count)} · ${labels[count] || "representatives"}${suffix}</option>`;
+  }).join("");
+  select.value = counts.includes(previous) ? String(previous) : String(counts[0] || 12);
+}
+
+function renderPopulationCostEnvelope(profile) {
+  renderRepresentativeAgentOptions();
+  const options = state.swarmOptions || {};
+  const guard = options.cost_controls || {};
+  const nAgents = Number($("#population-agent-count")?.value || 12);
+  const projection = projectionForAgentCount(nAgents);
+  setText("#cost-mode-state", guard.enabled ? "ENABLED" : "OFF");
+  setText(
+    "#cost-agent-cap",
+    `${Number(options.paid_agent_ceiling_per_question || 0)} per question`
+  );
+  setText(
+    "#cost-run-cap",
+    guard.max_run_usd == null ? "not configured" : `$${Number(guard.max_run_usd).toFixed(2)}`
+  );
+  setText(
+    "#cost-estimate",
+    projection
+      ? `${Number(projection.maximum_requests || 0)} reserved requests · ≤$${Number(projection.estimated_max_usd || 0).toFixed(3)} · ${String(projection.status || "unknown").replaceAll("_", " ")}`
+      : "projection unavailable"
+  );
+  const use = $("#population-swarm-use");
+  if (use) {
+    const capBlocked = projection?.status === "blocked";
+    use.disabled = !(profile && profile.runnable) || capBlocked;
+    use.title = capBlocked
+      ? (projection.blocking_reasons || ["Current local spending caps block this size."]).join(" ")
+      : "Configure this representative population in the Runs workspace";
+  }
+}
+
+function selectedMapFeature() {
+  const features = state.geographyPayload?.feature_collection?.features || [];
+  const selectedId = canonicalGeographyId(state.geographySelection?.id);
+  return features.find(
+    (feature) => canonicalGeographyId(feature.id || feature.properties?.id) === selectedId
+  ) || null;
+}
+
+function renderDatasetReadout(area) {
+  const layer = selectedDataLayer();
+  const compare = selectedCompareLayer();
+  const selection = state.geographySelection || {};
+  let coverage = false;
+  if (selection.level === "nation") {
+    coverage = Boolean(layer && (layer.states || []).length);
+  } else if (area) {
+    coverage = layerCoversFeature(layer, area, selection.level, selection.id);
+  }
+  const stateLabel = !layer
+    ? "No dataset imported for this family"
+    : coverage
+      ? `${layer.label} · coverage found`
+      : `${layer.label} · no matching coverage at this level`;
+  setText("#geography-data-state", stateLabel);
+  const comparison = compare ? ` Compared against ${compare.label}.` : "";
+  setText(
+    "#geography-data-detail",
+    `${layer?.note || "Select a registered data layer to inspect its coverage."}${comparison} These layers are display/evaluation metadata only (runtime access off) and never enter agent prompts or retrieval.`
+  );
+  const registry = $("#dataset-source-registry");
+  if (registry) {
+    const sources = (dataCatalog().registered_sources || []).filter(
+      (source) => source.kind === state.datasetKind && (!source.normalized || source.status !== "ready")
+    );
+    registry.innerHTML = sources.slice(0, 4).map((source) => {
+      const years = source.year_start
+        ? `${source.year_start}${source.year_end && source.year_end !== source.year_start ? `–${source.year_end}` : ""}`
+        : "undated";
+      const status = source.normalized
+        ? source.status
+        : source.status === "partial"
+          ? "partial · not normalized"
+          : source.status === "adapter_required"
+            ? "adapter required"
+            : "registered · not normalized";
+      return `<li><span>${escapeHtml(years)} · ${escapeHtml(source.label)}</span><strong data-status="${escapeHtml(source.status || "registered")}">${escapeHtml(status)}</strong></li>`;
+    }).join("");
+  }
+}
+
+function renderGeographyInspector() {
+  const data = state.population || {};
+  const census = data.census || {};
+  const selection = state.geographySelection || { level: "nation", id: "us:1" };
+  const area = selection.stateFips ? stateByFips(selection.stateFips) : null;
+  const profile = selectedGeographyProfile();
+  const levelLabels = {
+    nation: "Nation",
+    state: "State aggregate",
+    district: "Congressional district",
+    congressional_district: "U.S. House district",
+    state_legislative_upper: "State senate district",
+    state_legislative_lower: "State house / assembly district",
+    county: "County",
+    county_subdivision: "County subdivision",
+    tract: "Census tract",
+    voting_district: "Voting district",
+    custom: "Built test area",
+  };
+  const label = selection.label || (area && area.name) || "United States";
+  setText("#geography-level", levelLabels[selection.level] || "Built area");
+  setText("#geography-name", label);
+  const profileState = $("#geography-profile-state");
+  const substate = !["nation", "state"].includes(selection.level);
+  const stateSourcesReady = selection.level === "state" && area && area.ready;
+  profileState.dataset.status = profile && profile.runnable ? "runnable" : stateSourcesReady ? "sources" : "waiting";
+  profileState.textContent = profile && profile.runnable
+    ? "Validated · runnable"
+    : stateSourcesReady
+      ? "Sources ready · build needed"
+      : ["district", "congressional_district"].includes(selection.level)
+        ? "District profile not built"
+        : "Profile not built";
+  const summary = profile
+    ? profile.disclosure
+    : substate
+      ? "This boundary is selectable, but a validated synthetic population profile has not been built for it. Comparison-layer coverage does not make the area swarm-ready."
+      : selection.level === "state"
+        ? "The state source pack and the runnable synthetic population are tracked separately. Open a built profile when one becomes available."
+        : "Select a state or D.C. to open its district layer, or choose any validated build below to inspect its demographic distribution.";
+  setText("#geography-summary", summary);
+
+  const facts = selection.level === "nation" && profile
+    ? [
+        ["Represents", `${Number(profile.target_population || 0).toLocaleString()} synthetic people`],
+        ["Compressed cells", Number(profile.representative_cells || 0).toLocaleString()],
+        ["State builds", `${Number((data.builds || {}).state_populations || 0)} validated`],
+        ["Reasoning budget", `${Number(profile.reasoning_calls || 0)} calls`],
+      ]
+    : selection.level === "nation"
+    ? [
+        ["Coverage", `${census.states_plus_dc || 51} states + D.C.`],
+        ["District layer", "2012 apportionment"],
+        ["Source archives", `${census.artifact_count || 0}/${census.expected_artifact_count || 625}`],
+        ["Runnable builds", populationProfiles().filter((item) => item.runnable).length],
+      ]
+    : profile
+      ? [
+          ["Represents", `${Number(profile.target_population || 0).toLocaleString()} synthetic people`],
+          ["Compressed cells", Number(profile.representative_cells || 0).toLocaleString()],
+          ["Reasoning budget", `${Number(profile.reasoning_calls || 0)} calls`],
+          ["Vintage", profile.geography.vintage || "not recorded"],
+        ]
+      : (() => {
+          const feature = selectedMapFeature();
+          const layer = selectedDataLayer();
+          const covered = area && layerCoversFeature(layer, area, selection.level, selection.id);
+          const landSqMi = Number(feature?.properties?.land_m2 || 0) / 2_589_988.11;
+          return [
+            ["Boundary", feature ? "materialized" : "not materialized"],
+            ["Land area", landSqMi ? `${Math.round(landSqMi).toLocaleString()} sq mi` : "—"],
+            ["Comparison layer", covered ? "coverage found" : "no matching row"],
+            ["Runnable profile", "not built"],
+          ];
+        })();
+  $("#geography-facts").innerHTML = facts
+    .map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`)
+    .join("");
+  $("#demographic-empty").hidden = Boolean(profile && profile.runnable);
+  $("#demographic-groups").innerHTML = demographicBars(profile);
+
+  const profileSelect = $("#population-profile-select");
+  const runnable = populationProfiles().filter((item) => item.runnable);
+  profileSelect.innerHTML = runnable.length
+    ? `<option value="">Choose a validated build…</option>` + runnable
+        .map((item) => `<option value="${escapeHtml(item.population_id)}">${escapeHtml(item.label)} · ${Number(item.target_population || 0).toLocaleString()} represented</option>`)
+        .join("")
+    : `<option value="">No validated builds available</option>`;
+  if (profile && profile.runnable) profileSelect.value = profile.population_id;
+  renderDatasetReadout(area);
+  renderPopulationCostEnvelope(profile);
+  setText(
+    "#population-swarm-note",
+    profile && profile.runnable
+      ? `Ready to sample ${profile.label} by population weight. Unspecified politics, urbanicity, and media habits remain unspecified.`
+      : "Choose a validated build. Demographics shape explicit simulation roles; unspecified politics or media habits are never inferred."
+  );
+}
+
+function renderSubareas(area, payload = state.geographyPayload) {
+  const container = $("#population-subareas");
+  if (!area || !payload) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+  const stateProfile = profileForState(area);
+  const features = payload.feature_collection?.features || [];
+  const featureButtons = features.map((feature) => {
+    const properties = feature.properties || {};
+    const featureId = feature.id || properties.id;
+    const profile = profileForGeographyId(featureId);
+    const selected = canonicalGeographyId(state.geographySelection?.id) === canonicalGeographyId(featureId);
+    return `<button type="button" class="district-tile" data-geo-feature="${escapeHtml(featureId)}" aria-pressed="${selected}">
+      <span>${escapeHtml(payload.layer?.short_label || "Area")}</span><strong>${escapeHtml(properties.abbreviation || properties.code || "—")}</strong><small>${profile?.runnable ? "validated profile" : "profile not built"}</small>
+    </button>`;
+  }).join("");
+  const unavailable = payload.available
+    ? ""
+    : `<div class="subarea-empty"><strong>Layer unavailable</strong><span>No ${escapeHtml(payload.layer?.label || "selected")} geometry is materialized for ${escapeHtml(area.name)}.</span></div>`;
+  container.innerHTML = `<button type="button" class="state-aggregate" data-geo-state-aggregate="${escapeHtml(area.fips)}" data-status="${stateProfile && stateProfile.runnable ? "profile" : "planned"}">
+      <span>State aggregate</span><strong>${escapeHtml(area.name)}</strong><small>${stateProfile && stateProfile.runnable ? "validated profile" : "population build needed"}</small>
+    </button>
+    ${unavailable}<div class="district-field">${featureButtons}</div>`;
+  container.hidden = state.geographyView !== "boxes";
+}
+
+function normalizedDensityValues(features) {
+  const values = features.map((feature) => {
+    const area = stateByFips(feature.properties?.state_fips);
+    const profile = profileForState(area);
+    const landSqMi = Number(feature.properties?.land_m2 || 0) / 2_589_988.11;
+    const density = profile?.runnable && landSqMi > 0
+      ? Number(profile.target_population || 0) / landSqMi
+      : 0;
+    return density;
+  });
+  const logged = values.filter(Boolean).map((value) => Math.log1p(value));
+  const min = logged.length ? Math.min(...logged) : 0;
+  const max = logged.length ? Math.max(...logged) : 1;
+  return values.map((value) => value ? 0.16 + ((Math.log1p(value) - min) / Math.max(0.001, max - min)) * 0.84 : 0);
+}
+
+function mapFeatureStyles(payload) {
+  const features = payload.feature_collection?.features || [];
+  const primary = selectedDataLayer();
+  const densities = payload.layer?.id === "states" ? normalizedDensityValues(features) : [];
+  return Object.fromEntries(features.map((feature, index) => {
+    const properties = feature.properties || {};
+    const featureId = feature.id || properties.id;
+    const area = stateByFips(properties.state_fips);
+    const profile = payload.layer?.id === "states"
+      ? profileForState(area)
+      : profileForGeographyId(featureId);
+    const covered = layerCoversFeature(primary, area, payload.layer?.geography_level, featureId);
+    const sourceReady = payload.layer?.id === "states" && area?.ready;
+    const status = profile?.runnable ? "active" : covered ? "coverage" : sourceReady ? "source" : "missing";
+    const density = densities[index] || 0;
+    const value = state.mapShadeMode === "coverage"
+      ? (covered ? 0.68 : profile?.runnable ? 0.48 : 0.04)
+      : density || (profile?.runnable ? 0.34 : covered ? 0.18 : 0.03);
+    const landSqMi = Number(properties.land_m2 || 0) / 2_589_988.11;
+    const detail = profile?.runnable && density
+      ? `${Number(profile.target_population || 0).toLocaleString()} represented · ${Math.round(Number(profile.target_population || 0) / Math.max(1, landSqMi)).toLocaleString()} per sq mi`
+      : profile?.runnable
+        ? "validated population profile"
+        : covered
+          ? "comparison coverage; population profile not built"
+          : sourceReady
+            ? "source pack ready; population profile not built"
+            : "boundary only; population profile not built";
+    return [featureId, { status, value, detail }];
+  }));
+}
+
+function handleMapFeatureSelect(feature) {
+  const payload = state.geographyPayload;
+  if (!payload) return;
+  const properties = feature.properties || {};
+  const featureId = feature.id || properties.id;
+  if (payload.layer?.id === "states") {
+    const area = stateByFips(properties.state_fips);
+    if (!area) return;
+    const profile = profileForState(area);
+    chooseGeography({
+      level: "state",
+      id: `state:${area.fips}`,
+      label: area.name,
+      stateFips: area.fips,
+      populationId: profile?.population_id || null,
+    });
+    return;
+  }
+  const area = stateByFips(properties.state_fips);
+  const profile = profileForGeographyId(featureId);
+  chooseGeography({
+    level: payload.layer?.geography_level || "area",
+    id: featureId,
+    label: `${area?.name || "Area"} · ${properties.label || properties.abbreviation || properties.code || "selection"}`,
+    stateFips: properties.state_fips,
+    populationId: profile?.population_id || null,
+  });
+}
+
+function renderMapGeometry(payload = state.geographyPayload) {
+  const map = $("#population-map");
+  if (!map || !payload) return;
+  const loading = $("#map-loading");
+  const empty = $("#map-empty");
+  if (loading) loading.hidden = true;
+  if (empty) empty.hidden = Boolean(payload.available);
+  setText("#map-feature-count", payload.available ? `${Number(payload.feature_count || 0).toLocaleString()} SELECTABLE CELLS` : "NO CELLS MATERIALIZED");
+  setText("#map-source-label", `${payload.source_agency || "Official boundary source"} · ${payload.boundary_vintage || "vintage not recorded"}`);
+  map.hidden = state.geographyView !== "map";
+  if (state.geographyView !== "map" || !window.PolisimGeoMap) return;
+  window.PolisimGeoMap.mount(map, {
+    onError: () => {
+      if (empty) {
+        empty.hidden = false;
+        empty.querySelector("strong").textContent = "WEBGL MAP UNAVAILABLE";
+        empty.querySelector("span").textContent = "Use the Index view to select the same official geography boundaries.";
+      }
+    },
+  });
+  window.PolisimGeoMap.render(payload.feature_collection, {
+    scope: payload.layer?.scope || "state",
+    featureStyles: mapFeatureStyles(payload),
+    selectedId: state.geographySelection?.id,
+    onSelect: handleMapFeatureSelect,
+  });
+}
+
+async function loadGeographyWorld() {
+  const selection = state.geographySelection || { level: "nation" };
+  const area = selection.stateFips ? stateByFips(selection.stateFips) : null;
+  const layerId = area ? (state.geographyLayer === "states" ? "congressional" : state.geographyLayer) : "states";
+  const cacheKey = `${state.selectedEra || "e2012"}:${layerId}:${area?.fips || "us"}`;
+  const token = ++state.geographyRequestToken;
+  const loading = $("#map-loading");
+  const empty = $("#map-empty");
+  if (loading) loading.hidden = false;
+  if (empty) empty.hidden = true;
+  try {
+    if (!state.geographyCatalog) {
+      state.geographyCatalog = await getJSON(withEra("/api/geography/catalog"));
+    }
+    let payload = GEOGRAPHY_CACHE.get(cacheKey);
+    if (!payload) {
+      const params = new URLSearchParams({ layer: layerId });
+      if (area) params.set("state", area.fips);
+      payload = await getJSON(withEra(`/api/geography?${params}`));
+      GEOGRAPHY_CACHE.set(cacheKey, payload);
+    }
+    if (token !== state.geographyRequestToken) return;
+    state.geographyPayload = payload;
+    renderSubareas(area, payload);
+    renderMapGeometry(payload);
+    renderGeographyInspector();
+  } catch (error) {
+    if (token !== state.geographyRequestToken) return;
+    if (loading) loading.hidden = true;
+    if (empty) {
+      empty.hidden = false;
+      empty.querySelector("strong").textContent = "GEOGRAPHY LOAD FAILED";
+      empty.querySelector("span").textContent = String(error);
+    }
+    setText("#map-feature-count", "GEOMETRY ERROR");
+  }
+}
+
+function renderGeographyExplorer(data) {
+  if (!data) return;
+  const states = (data.census && data.census.states) || [];
+  const selection = state.geographySelection || { level: "nation", id: "us:1" };
+  const area = selection.stateFips ? stateByFips(selection.stateFips) : null;
+  renderDataControls();
+  $("#population-boxes").innerHTML = `<button type="button" class="box-tile nation-box" data-geo-home><strong>US</strong><span>United States</span><small>${states.length} states + D.C.</small></button>`
+    + states.map((row) => geographyButton(row, "boxes")).join("");
+  $("#population-map").hidden = state.geographyView !== "map";
+  $("#population-boxes").hidden = Boolean(area) || state.geographyView !== "boxes";
+  renderSubareas(area);
+  setText(
+    "#geography-path-current",
+    !["nation", "state"].includes(selection.level)
+      ? selection.label
+      : area
+        ? area.name
+        : selection.populationId
+          ? selection.label
+          : "All states + D.C."
+  );
+  setText(
+    "#map-zoom-label",
+    area
+      ? `L02 · ${state.geographyLayer.replaceAll("_", " ").toUpperCase()}`
+      : selection.populationId
+        ? `PROFILE · ${selection.level.toUpperCase()}`
+        : "L01 · STATE"
+  );
+  $("#geography-home").setAttribute(
+    "aria-current",
+    selection.level === "nation" ? "location" : "false"
+  );
+  document.querySelectorAll("[data-geography-view]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.geographyView === state.geographyView));
+  });
+  renderGeographyInspector();
+  loadGeographyWorld();
+}
+
+function renderPopulationLens() {
+  const lens = $("#swarm-population-lens");
+  if (!lens) return;
+  const selection = state.populationSelection;
+  lens.hidden = !selection;
+  if (!selection) return;
+  setText("#swarm-population-title", selection.label);
+  setText(
+    "#swarm-population-detail",
+    `${selection.n_agents} deterministic population-weighted personas · ${selectedDataLayer()?.label || "no comparison layer"} recorded for evaluation only · political behavior not inferred`
+  );
+}
+
+function configurePopulationSwarm(ev) {
+  ev.preventDefault();
+  const profile = selectedGeographyProfile();
+  if (!profile || !profile.runnable) return;
+  const nAgents = Number($("#population-agent-count").value || 12);
+  state.populationSelection = {
+    population_id: profile.population_id,
+    geography_id: profile.geography.id,
+    label: profile.label,
+    strategy: "population_weighted",
+    n_agents: nAgents,
+  };
+  applySwarmPreset(`balanced-${nAgents}`);
+  $("#swarm-preset").value = `balanced-${nAgents}`;
+  $("#swarm-label").value = `${profile.label} · weighted ${nAgents}`;
+  renderPopulationLens();
+  setView("runs");
+  $("#swarm-builder").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderPopulation(data) {
+  state.population = data;
+  const census = data.census || {};
+  const builds = data.builds || {};
+  const convergence = data.convergence || {};
+  const behavior = data.behavior_validation || {};
+  const fixture = builds.fixture || {};
+  const inputsComplete = census.status === "verified";
+  const populationsComplete =
+    Number(builds.state_populations || 0) === Number(builds.expected_state_populations || 51)
+    && Boolean(builds.national_population && builds.national_population.runnable);
+  const complete = inputsComplete && populationsComplete;
+  const verdict = $("#population-verdict");
+  verdict.dataset.status = complete ? "verified" : census.status || "incomplete";
+  verdict.setAttribute("aria-busy", "false");
+  setText(
+    "#population-intro",
+    `Track B uses material released by ${data.cutoff_date}. This view distinguishes acquired inputs from populations and behavioral evidence.`
+  );
+  setText(
+    "#population-headline",
+    complete
+      ? "All 51 state and D.C. populations plus the national aggregate are validated."
+      : census.status === "not_downloaded"
+        ? "The Census input pack has not been downloaded in this workspace."
+        : "The Census input pack is incomplete and needs verification."
+  );
+  setText(
+    "#population-detail",
+    complete
+      ? `${census.artifact_count} source archives and ${builds.validated_profiles} weighted builds are checksum-bound. ${convergence.passed ? `${convergence.conditions} convergence budgets were tested offline.` : "Convergence is pending."} ${behavior.passed ? "One mechanically sealed neutral-baseline behavior calibration is available; it is not analyst-blind validation." : "Held-out behavior validation is still pending."}`
+      : "Run the population Census sync and verifier before building state-scale populations."
+  );
+  setText("#population-stamp", complete ? "POPULATIONS VALIDATED" : inputsComplete ? "BUILD INCOMPLETE" : "ACTION NEEDED");
+
+  $("#population-pipeline").innerHTML = (data.pipeline || [])
+    .map(
+      (step) => `<li data-status="${escapeHtml(step.status)}">
+        <span class="pipeline-marker" aria-hidden="true"></span>
+        <strong>${escapeHtml(step.label)}</strong>
+        <small>${escapeHtml(step.detail)}</small>
+      </li>`
+    )
+    .join("");
+
+  setText("#population-state-total", `${census.states_ready || 0} / ${census.states_plus_dc || 51} ready`);
+  setText(
+    "#population-national",
+    builds.national_population && builds.national_population.runnable
+      ? "Validated"
+      : census.national_aggregate
+        ? "Inputs only"
+        : "Missing"
+  );
+  setText("#population-artifacts", `${census.artifact_count || 0} / ${census.expected_artifact_count || 625}`);
+  setText("#population-size", formatBytes(census.total_bytes));
+  setText("#population-coverage-count", `${census.states_ready || 0} of ${census.states_plus_dc || 51} complete`);
+
+  $("#population-states").innerHTML = (census.states || [])
+    .map(
+      (area) => `<li data-ready="${Boolean(area.ready)}" title="${escapeHtml(area.name)}: ${area.artifacts}/${area.expected_artifacts} archives">
+        <strong>${escapeHtml(area.abbreviation)}</strong>
+        <span>${area.artifacts}/${area.expected_artifacts}</span>
+      </li>`
+    )
+    .join("");
+  const national = $("#population-national-row");
+  national.dataset.ready = String(Boolean(census.national_aggregate));
+  national.querySelector("span").textContent = census.national_aggregate
+    ? "National demographic profile and selected ACS summary sequences are included; national PUMS is derived from the 51 state/D.C. archives."
+    : "The national summary layer is not present in this workspace.";
+
+  $("#population-families").innerHTML = (census.families || [])
+    .map(
+      (family) => `<tr><td>${escapeHtml(family.label)}</td><td class="num">${family.artifacts}</td></tr>`
+    )
+    .join("");
+  $("#population-tables").innerHTML = (census.tables || [])
+    .map(
+      (table) => `<li><code>${escapeHtml(table.code)}</code><span>${escapeHtml(table.label)}</span></li>`
+    )
+    .join("");
+
+  setText("#fixture-status", fixture.validated ? "Validation passed" : "Not validated");
+  setText("#fixture-people", fixture.target_population == null ? "—" : `${fixture.target_population} exact`);
+  setText("#fixture-cells", fixture.representative_cells == null ? "—" : fixture.representative_cells);
+  setText("#fixture-calls", fixture.reasoning_calls == null ? "—" : `${fixture.reasoning_calls} calls`);
+  setText("#fixture-tvd", fixture.max_total_variation == null ? "—" : fmt(fixture.max_total_variation, 3));
+  $("#population-claims").innerHTML = (data.claims || [])
+    .map((claim) => `<li>${escapeHtml(claim)}</li>`)
+    .join("");
+  renderGeographyExplorer(data);
+}
+
+async function loadPopulation() {
+  const verdict = $("#population-verdict");
+  if (verdict) verdict.setAttribute("aria-busy", "true");
+  try {
+    renderPopulation(await getJSON(withEra("/api/population")));
+  } catch (err) {
+    if (verdict) {
+      verdict.dataset.status = "error";
+      verdict.setAttribute("aria-busy", "false");
+    }
+    setText("#population-headline", "Population status could not be loaded.");
+    setText("#population-detail", `Refresh the page or inspect the viewer API: ${String(err)}`);
+    setText("#population-stamp", "LOAD ERROR");
   }
 }
 
@@ -887,7 +1854,6 @@ async function runSearch(ev) {
     min_prominence: Number($("#search-prom").value) || 0,
   };
   $("#search-status").textContent = "Searching…";
-  if (window.Enchant) Enchant.setPose("search");
   const res = await fetch(`/api/eras/${encodeURIComponent(state.selectedEra)}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -895,15 +1861,10 @@ async function runSearch(ev) {
   });
   if (!res.ok) {
     $("#search-status").textContent = `Search failed ${res.status}`;
-    if (window.Enchant) Enchant.setPose("error");
     return;
   }
   const hits = await res.json();
   $("#search-status").textContent = `${hits.length} hits · all on or before cutoff`;
-  if (window.Enchant) {
-    Enchant.setPose("done");
-    setTimeout(() => Enchant.setPose("idle"), 1800);
-  }
   $("#search-table tbody").innerHTML = hits
     .map(
       (h) => `<tr>
@@ -992,6 +1953,199 @@ async function loadForecasts() {
       </tr>`;
     })
     .join("");
+}
+
+const ARENA_ASSETS = {
+  openai: "/static/agents/openai.png",
+  anthropic: "/static/agents/anthropic.png",
+  google: "/static/agents/google.png",
+  meta: "/static/agents/meta.png",
+  qwen: "/static/agents/qwen.png",
+  local: "/static/agents/local.png",
+};
+
+function arenaCorporationForModel(modelId = "") {
+  const id = String(modelId).toLowerCase();
+  if (id.includes("anthropic") || id.includes("claude") || id === "frontier-a") return "anthropic";
+  if (id.includes("google") || id.includes("gemini")) return "google";
+  if (id.includes("meta") || id.includes("llama")) return "meta";
+  if (id.includes("qwen") || id.includes("alibaba")) return "qwen";
+  if (id.includes("openai") || id === "frontier-b") return "openai";
+  return "local";
+}
+
+function arenaAvatar(row, className = "arena-avatar") {
+  if (row.asset === "swarm") {
+    const assets = [...new Set((row.composition || []).map((item) => arenaCorporationForModel(item.model_id)))].slice(0, 3);
+    const selected = assets.length ? assets : ["local"];
+    return `<span class="${className} arena-avatar-stack" aria-label="Multi-model swarm">${selected
+      .map((asset) => `<img src="${ARENA_ASSETS[asset]}" alt="" loading="lazy">`)
+      .join("")}</span>`;
+  }
+  const asset = ARENA_ASSETS[row.asset] || ARENA_ASSETS.local;
+  const alt = `${row.corporation || row.label || "Synthetic"} bot portrait`;
+  return `<span class="${className}"><img src="${asset}" alt="${escapeHtml(alt)}" loading="lazy"></span>`;
+}
+
+function renderArenaPodium(data) {
+  const stage = $("#arena-podium-stage");
+  if (!stage) return;
+  const top = (data.agents || []).slice(0, 3);
+  if (!top.length) {
+    stage.innerHTML = `<p class="arena-empty">No scored individual swarm ballots yet. Finish a swarm run to open the podium.</p>`;
+    return;
+  }
+  const displayOrder = top.length === 3 ? [top[1], top[0], top[2]] : top;
+  stage.innerHTML = displayOrder.map((row) => {
+    const place = Number(row.rank || top.indexOf(row) + 1);
+    return `<article class="podium-agent" data-place="${place}">
+      ${arenaAvatar(row, "podium-portrait")}
+      <div class="podium-plate">
+        <span class="podium-place">#${place}</span>
+        <div><strong>${escapeHtml(row.label)}</strong><small>${escapeHtml(row.model)} · ${row.n_forecasts} forecast${row.n_forecasts === 1 ? "" : "s"}</small></div>
+        <b>${fmt(row.arena_score, 1)}</b>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function arenaRows() {
+  const data = state.leaderboard || {};
+  let rows = [...(data[state.leaderboardMode] || [])];
+  if (state.leaderboardCorporation && ["agents", "models"].includes(state.leaderboardMode)) {
+    rows = rows.filter((row) => row.corporation_id === state.leaderboardCorporation);
+  }
+  const metric = state.leaderboardMetric;
+  rows.sort((a, b) => {
+    if (metric === "accuracy") {
+      const av = state.leaderboardMode === "swarms" ? Number(a.c_index ?? -1) : Number(a.accuracy ?? -1);
+      const bv = state.leaderboardMode === "swarms" ? Number(b.c_index ?? -1) : Number(b.accuracy ?? -1);
+      return bv - av || Number(a.brier ?? 9) - Number(b.brier ?? 9);
+    }
+    if (metric === "volume") {
+      const av = Number(state.leaderboardMode === "swarms" ? a.n_votes : a.n_forecasts);
+      const bv = Number(state.leaderboardMode === "swarms" ? b.n_votes : b.n_forecasts);
+      return bv - av || Number(a.brier ?? 9) - Number(b.brier ?? 9);
+    }
+    return Number(a.brier ?? 9) - Number(b.brier ?? 9) || Number(b.n_forecasts ?? b.n_votes ?? 0) - Number(a.n_forecasts ?? a.n_votes ?? 0);
+  });
+  return rows;
+}
+
+function arenaRecord(row, mode) {
+  if (mode === "agents") return `${row.wins} run win${row.wins === 1 ? "" : "s"} · ${row.n_forecasts} forecasts`;
+  if (mode === "models") return `${row.n_runs} run${row.n_runs === 1 ? "" : "s"} · ${row.n_agents ? `${row.n_agents} swarm agent${row.n_agents === 1 ? "" : "s"}` : "direct forecasts"}`;
+  if (mode === "corporations") return `${row.n_models} models · ${row.n_forecasts} forecasts`;
+  return `${row.n_agents} agents · ${row.n_questions} question${row.n_questions === 1 ? "" : "s"}`;
+}
+
+function arenaIdentity(row, mode) {
+  if (mode === "agents") return `${escapeHtml(row.perspective)} · simulation role`;
+  if (mode === "models") return `${escapeHtml(row.corporation)} · ${escapeHtml(row.model_type)}`;
+  if (mode === "corporations") return `${row.n_models} ranked model${row.n_models === 1 ? "" : "s"} · ${row.n_agents} swarm agent${row.n_agents === 1 ? "" : "s"}`;
+  const date = row.created_at ? new Date(row.created_at).toLocaleDateString() : "date unavailable";
+  return `${escapeHtml(date)} · ${escapeHtml(row.source_type)} evidence`;
+}
+
+function renderArenaRankings() {
+  const data = state.leaderboard;
+  if (!data) return;
+  const mode = state.leaderboardMode;
+  const rows = arenaRows();
+  const copy = {
+    agents: "Individual synthetic agents, scored directly from their saved swarm ballots.",
+    swarms: "Complete scored swarms, with direct access to each archived result and execution log.",
+    models: "Model families aggregated across individual votes and ordinary saved forecasts.",
+    corporations: "Corporations aggregated from the same underlying scored model forecasts.",
+  };
+  setText("#arena-board-copy", copy[mode]);
+  const thirdHeader = $(".arena-table-head [role='columnheader']:nth-child(4)");
+  if (thirdHeader) thirdHeader.textContent = mode === "swarms" ? "C-index" : "Hit rate";
+  document.querySelectorAll("[data-arena-mode]").forEach((button) => {
+    button.setAttribute("aria-pressed", button.dataset.arenaMode === mode ? "true" : "false");
+  });
+  const corporation = $("#arena-corporation");
+  if (corporation) corporation.disabled = !["agents", "models"].includes(mode);
+  const target = $("#arena-rankings");
+  if (!rows.length) {
+    target.innerHTML = `<p class="arena-empty">No scored competitors match this view yet.</p>`;
+    return;
+  }
+  target.innerHTML = rows.map((row, index) => {
+    const rank = index + 1;
+    const brier = row.brier == null ? "—" : fmt(row.brier);
+    const accuracy = mode === "swarms"
+      ? (row.c_index == null ? "—" : fmt(row.c_index))
+      : (row.accuracy == null ? "—" : pct(row.accuracy));
+    const action = mode === "swarms"
+      ? `<span class="arena-row-actions"><button type="button" class="linkish" data-run-results="${escapeHtml(row.id)}" ${row.has_predictions ? "" : "disabled"}>Result</button><button type="button" class="linkish" data-run-log="${escapeHtml(row.id)}" ${row.has_log ? "" : "disabled"}>Log</button></span>`
+      : "";
+    const tag = mode === "swarms" && row.beats_prior ? `<span class="arena-win-tag">Beat prior</span>` : "";
+    return `<article class="arena-row" role="row" data-top="${rank <= 3}">
+      <div class="arena-competitor" role="cell">
+        <span class="arena-rank">${String(rank).padStart(2, "0")}</span>
+        ${arenaAvatar(row)}
+        <div><strong>${escapeHtml(row.label)}</strong><small>${arenaIdentity(row, mode)}</small>${tag}</div>
+      </div>
+      <div class="arena-score" role="cell"><strong>${fmt(row.arena_score, 1)}</strong><span class="arena-score-track"><i style="--arena-w:${Math.max(0, Math.min(100, Number(row.arena_score || 0)))}"></i></span></div>
+      <div class="arena-stat" role="cell"><strong>${brier}</strong><small>lower better</small></div>
+      <div class="arena-stat" role="cell"><strong>${accuracy}</strong><small>${mode === "swarms" ? "ranking" : "correct side"}</small></div>
+      <div class="arena-record" role="cell"><span>${arenaRecord(row, mode)}</span>${action}</div>
+    </article>`;
+  }).join("");
+}
+
+function renderArenaMatchLog(data) {
+  const rows = [...(data.swarms || [])].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 6);
+  setText("#arena-log-count", `${rows.length} recent`);
+  const list = $("#arena-match-list");
+  list.innerHTML = rows.length ? rows.map((row) => {
+    const date = row.created_at ? new Date(row.created_at).toLocaleDateString() : "Archived";
+    return `<li>
+      <div><span>${escapeHtml(date)}</span><b>${fmt(row.arena_score, 1)} score</b></div>
+      <strong>${escapeHtml(row.label)}</strong>
+      <small>${row.n_agents} agents · Brier ${fmt(row.brier)}${row.champion_agent ? ` · top ${escapeHtml(row.champion_agent)}` : ""}</small>
+      <div class="arena-log-actions"><button type="button" class="linkish" data-run-results="${escapeHtml(row.id)}">Open result</button><button type="button" class="linkish" data-run-log="${escapeHtml(row.id)}" ${row.has_log ? "" : "disabled"}>Open log</button></div>
+    </li>`;
+  }).join("") : `<li class="arena-empty">No scored swarm results are archived yet.</li>`;
+}
+
+function renderLeaderboard(data = state.leaderboard) {
+  if (!data) return;
+  const summary = data.summary || {};
+  const updated = data.updated_at ? new Date(data.updated_at).toLocaleString() : "No scored archive yet";
+  setText("#arena-season-status", data.status === "measured" ? `${state.selectedEra} arena online` : "Arena awaiting results");
+  setText("#arena-season-meta", `Archive updated ${updated}`);
+  setText("#arena-ballots", summary.n_scored_ballots || 0);
+  setText("#arena-agents", summary.n_agents || 0);
+  setText("#arena-swarms", summary.n_swarms || 0);
+  setText("#arena-models", summary.n_models || 0);
+  renderArenaPodium(data);
+  const corporations = data.corporations || [];
+  const corporation = $("#arena-corporation");
+  const previous = state.leaderboardCorporation;
+  corporation.innerHTML = `<option value="">All corporations</option>` + corporations
+    .map((row) => `<option value="${escapeHtml(row.id)}">${escapeHtml(row.label)}</option>`)
+    .join("");
+  if ([...corporation.options].some((option) => option.value === previous)) corporation.value = previous;
+  renderArenaRankings();
+  renderArenaMatchLog(data);
+}
+
+async function loadLeaderboard() {
+  if (state.leaderboard) {
+    renderLeaderboard();
+    return;
+  }
+  const target = $("#arena-rankings");
+  if (target) target.innerHTML = `<p class="arena-empty">Calculating saved standings…</p>`;
+  try {
+    state.leaderboard = await getJSON(withEra("/api/leaderboard"));
+    renderLeaderboard();
+  } catch (error) {
+    if (target) target.innerHTML = `<p class="arena-empty">The saved standings could not be loaded. ${escapeHtml(String(error))}</p>`;
+    setText("#arena-season-status", "Arena unavailable");
+  }
 }
 
 function tagFor(row) {
@@ -1108,6 +2262,9 @@ async function loadScores() {
   $("#cal-note").textContent = eces || "This chart needs forecasts with known outcomes.";
   $("#contam-note").textContent = ex.contamination_note || "";
   $("#contam-chart").innerHTML = contaminationSVG(report.contamination || []);
+  const chainRunId = state.activity && state.activity.run ? state.activity.run.run_id : null;
+  if (state.selectedRun && chainRunId !== state.selectedRun) await loadActivity(true);
+  else if (state.activity) renderAgentChains(state.activity);
   await loadPlots(state.selectedRun || data.run_id);
 }
 
@@ -1221,16 +2378,6 @@ function contaminationSVG(curves) {
   </svg>`;
 }
 
-function poseFromJob(job) {
-  if (!window.Enchant) return;
-  const status = job.status || "idle";
-  const phase = job.phase || "";
-  if (status === "running" && phase === "score") Enchant.setPose("maths");
-  else if (status === "running") Enchant.setPose("search");
-  else if (status === "error" && state.lastJobStatus === "running") Enchant.setPose("error");
-  else if (status === "done" && state.lastJobStatus === "running") Enchant.setPose("done");
-}
-
 function jobKind(job) {
   if (job && job.kind) return job.kind;
   if (job && job.mock) return "mock";
@@ -1269,7 +2416,7 @@ function renderJob(job) {
     ? `No live run config targets ${state.selectedEra || "this era"} yet`
     : liveOk
     ? "Score each of the six OpenRouter species once on 1 question (not the 12-agent swarm)"
-    : "Add OPENROUTER_API_KEY, or both ANTHROPIC_API_KEY and OPENAI_API_KEY, to .env";
+    : "Add provider keys and set PSBX_ENABLE_PAID_MODELS=1 for an intentional live session";
   if (swarmBtn) {
     swarmBtn.disabled = busy || !liveOk || !eraRunnable;
     swarmBtn.textContent = busy && kind === "swarm" ? "Running…" : "Run configured swarm";
@@ -1277,7 +2424,7 @@ function renderJob(job) {
       ? `No swarm run config targets ${state.selectedEra || "this era"} yet`
       : liveOk
       ? "Launch the roster and question count configured in the Runs tab"
-      : "Add OPENROUTER_API_KEY to .env for a configured swarm";
+      : "Add OPENROUTER_API_KEY and set PSBX_ENABLE_PAID_MODELS=1 for an intentional live session";
   }
   if (launchBtn) {
     const estimate = updateSwarmEstimate();
@@ -1293,7 +2440,6 @@ function renderJob(job) {
     $("#run-log").textContent = log || "(no output yet)";
     $("#run-log").scrollTop = $("#run-log").scrollHeight;
   }
-  poseFromJob(job);
 }
 
 async function pollJob() {
@@ -1321,9 +2467,11 @@ async function pollJob() {
 
 async function refreshAfterJob(runId) {
   if (runId) state.selectedRun = runId;
+  state.leaderboard = null;
   await loadOverview();
   await loadScores();
   await loadForecasts();
+  if (location.hash === "#leaderboard") await loadLeaderboard();
 }
 
 async function startSimulation(kind) {
@@ -1341,17 +2489,18 @@ async function startSimulation(kind) {
   const starting = {
     mock: "Starting practice (keyword lookup)…",
     live: "Starting live mix (6 species × 1 question)…",
-    swarm: `Starting swarm (${custom ? custom.agents : 12} sequential votes × ${custom ? custom.questions : 1} questions)…`,
+    swarm: state.populationSelection
+      ? `Starting ${state.populationSelection.label} swarm (${custom ? custom.agents : 12} weighted personas × ${custom ? custom.questions : 1} questions)…`
+      : `Starting swarm (${custom ? custom.agents : 12} sequential votes × ${custom ? custom.questions : 1} questions)…`,
   };
   if (kind === "mock") mockBtn.textContent = "Running…";
   else if (kind === "swarm" && swarmBtn) swarmBtn.textContent = "Running…";
   else liveBtn.textContent = "Running…";
   $("#run-log-band").hidden = false;
   $("#run-log").textContent = starting[kind] || "Starting…";
-  if (window.Enchant) Enchant.setPose("search");
   const res = await fetch("/api/jobs/run", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-PSBX-CSRF": "1" },
     body: JSON.stringify({
       kind,
       mock: kind === "mock",
@@ -1364,6 +2513,8 @@ async function startSimulation(kind) {
       label: kind === "swarm" ? ($("#swarm-label").value || null) : null,
       n_questions: kind === "swarm" ? custom.questions : null,
       swarm_bodies: kind === "swarm" ? custom.bodies : null,
+      population_selection: kind === "swarm" ? state.populationSelection : null,
+      dataset_selection: kind === "swarm" ? currentDatasetSelection() : null,
     }),
   });
   if (res.status === 409) {
@@ -1385,11 +2536,11 @@ async function startSimulation(kind) {
     liveBtn.textContent = "Run live mix";
     if (swarmBtn) swarmBtn.textContent = "Run configured swarm";
     applyReady(state.ready);
-    if (window.Enchant) Enchant.setPose("error");
     return;
   }
   const started = await res.json();
   state.selectedRun = started.run_id || state.selectedRun;
+  state.activityQuestion = null;
   renderJob(started);
   state.lastJobStatus = "running";
   setView("activity");
@@ -1416,10 +2567,29 @@ function applyReady(ready) {
 
 function bind() {
   bindTablist();
+  document.querySelectorAll("[data-chain-question]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.activityQuestion = select.value || null;
+      loadActivity();
+    });
+  });
   $("#reveal-truth").addEventListener("change", loadQuestions);
   $("#q-category").addEventListener("change", loadQuestions);
   $("#search-form").addEventListener("submit", runSearch);
   $("#scope-form").addEventListener("submit", sealContainer);
+  $("#population-swarm-form").addEventListener("submit", configurePopulationSwarm);
+  $("#population-agent-count").addEventListener("change", () => {
+    renderPopulationCostEnvelope(selectedGeographyProfile());
+  });
+  $("#population-profile-select").addEventListener("change", () => {
+    const profile = profileById($("#population-profile-select").value);
+    if (profile) chooseGeography(geographySelectionForProfile(profile));
+  });
+  $("#swarm-population-clear").addEventListener("click", () => {
+    state.populationSelection = null;
+    renderPopulationLens();
+  });
+  $("#result-chain-open-live").addEventListener("click", () => setView("activity"));
   $("#run-btn").addEventListener("click", () => startSimulation("mock"));
   $("#run-live-btn").addEventListener("click", () => startSimulation("live"));
   const swarmBtn = $("#run-swarm-btn");
@@ -1443,6 +2613,7 @@ function bind() {
   });
   $("#run-select").addEventListener("change", async () => {
     state.selectedRun = $("#run-select").value || null;
+    state.activityQuestion = null;
     try {
       await loadScores();
       await loadForecasts();
@@ -1454,7 +2625,42 @@ function bind() {
   });
   $("#f-model").addEventListener("change", loadForecasts);
   $("#f-reveal").addEventListener("change", loadForecasts);
-  document.body.addEventListener("click", (ev) => {
+  $("#arena-metric").addEventListener("change", () => {
+    state.leaderboardMetric = $("#arena-metric").value;
+    renderArenaRankings();
+  });
+  $("#arena-corporation").addEventListener("change", () => {
+    state.leaderboardCorporation = $("#arena-corporation").value;
+    renderArenaRankings();
+  });
+  $("#geography-layer").addEventListener("change", () => {
+    state.geographyLayer = $("#geography-layer").value || "states";
+    renderGeographyExplorer(state.population);
+  });
+  $("#dataset-kind").addEventListener("change", () => {
+    state.datasetKind = $("#dataset-kind").value;
+    state.datasetLayerId = (dataCatalog().layers || []).find(
+      (layer) => layer.kind === state.datasetKind
+    )?.id || null;
+    state.datasetCompareLayerId = null;
+    renderGeographyExplorer(state.population);
+  });
+  $("#dataset-layer").addEventListener("change", () => {
+    state.datasetLayerId = $("#dataset-layer").value || null;
+    renderGeographyExplorer(state.population);
+  });
+  $("#dataset-compare-layer").addEventListener("change", () => {
+    state.datasetCompareLayerId = $("#dataset-compare-layer").value || null;
+    renderGeographyExplorer(state.population);
+  });
+  $("#map-shade-mode").addEventListener("change", () => {
+    state.mapShadeMode = $("#map-shade-mode").value === "coverage" ? "coverage" : "density";
+    renderMapGeometry();
+  });
+  $("#map-zoom-in").addEventListener("click", () => window.PolisimGeoMap?.zoomIn());
+  $("#map-zoom-out").addEventListener("click", () => window.PolisimGeoMap?.zoomOut());
+  $("#map-reset-view").addEventListener("click", () => window.PolisimGeoMap?.resetCamera());
+  document.body.addEventListener("click", async (ev) => {
     const eraBtn = ev.target.closest("[data-era]");
     if (eraBtn) selectEra(eraBtn.dataset.era);
     const fetchBtn = ev.target.closest("[data-fetch]");
@@ -1465,7 +2671,69 @@ function bind() {
     if (logBtn) loadSavedLog(logBtn.dataset.runLog);
     const architectureNode = ev.target.closest("[data-arch-node]");
     if (architectureNode) renderArchitecture(architectureNode.dataset.archNode);
+    const arenaMode = ev.target.closest("[data-arena-mode]");
+    if (arenaMode) {
+      state.leaderboardMode = arenaMode.dataset.arenaMode;
+      if (state.leaderboardMode === "corporations" || state.leaderboardMode === "swarms") {
+        state.leaderboardCorporation = "";
+        $("#arena-corporation").value = "";
+      }
+      renderArenaRankings();
+    }
+    const agentView = ev.target.closest("[data-agent-view]");
+    if (agentView) setAgentView(agentView.dataset.agentView);
+    const agentNode = ev.target.closest("[data-agent-open]");
+    if (agentNode) {
+      setView("activity");
+      await loadActivity(true);
+      setAgentView("list");
+      const rows = document.querySelectorAll("#agent-grid .agent-row");
+      const row = rows[Number(agentNode.dataset.agentOpen)];
+      if (row) {
+        row.open = true;
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+    const geographyView = ev.target.closest("[data-geography-view]");
+    if (geographyView) {
+      state.geographyView = geographyView.dataset.geographyView === "boxes" ? "boxes" : "map";
+      renderGeographyExplorer(state.population);
+    }
+    const stateNode = ev.target.closest("[data-geo-state]");
+    if (stateNode) {
+      const area = stateByFips(stateNode.dataset.geoState);
+      if (area) chooseGeography({ level: "state", id: `state:${area.fips}`, label: area.name, stateFips: area.fips });
+    }
+    const aggregateNode = ev.target.closest("[data-geo-state-aggregate]");
+    if (aggregateNode) {
+      const area = stateByFips(aggregateNode.dataset.geoStateAggregate);
+      const profile = profileForState(area);
+      if (area) chooseGeography({
+        level: "state",
+        id: `state:${area.fips}`,
+        label: area.name,
+        stateFips: area.fips,
+        populationId: profile ? profile.population_id : null,
+      });
+    }
+    const featureNode = ev.target.closest("[data-geo-feature]");
+    if (featureNode) {
+      const feature = (state.geographyPayload?.feature_collection?.features || []).find(
+        (row) => String(row.id || row.properties?.id) === featureNode.dataset.geoFeature
+      );
+      if (feature) handleMapFeatureSelect(feature);
+    }
+    const profileNode = ev.target.closest("[data-geo-profile]");
+    if (profileNode) {
+      const profile = profileById(profileNode.dataset.geoProfile);
+      if (profile) chooseGeography(geographySelectionForProfile(profile));
+    }
+    if (ev.target.closest("#geography-home, [data-geo-home]")) {
+      state.geographyLayer = "states";
+      chooseGeography({ level: "nation", id: "us:1", label: "United States" });
+    }
   });
+  window.addEventListener("polisim-geography-ready", () => renderMapGeometry());
   window.addEventListener("hashchange", () => setView(location.hash.replace("#", "")));
 }
 

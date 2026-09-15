@@ -10,10 +10,16 @@ from pathlib import Path
 from psbx.config import load_epochs, load_models, load_run
 from psbx.corpus.index import load_index
 from psbx.io import read_jsonl, write_json, write_jsonl
-from psbx.paths import repo_root, run_dir as resolve_run_dir
+from psbx.paths import repo_root
+from psbx.paths import run_dir as resolve_run_dir
 from psbx.run_provenance import ensure_run_provenance
 from psbx.sandbox.citations import validate_citations
-from psbx.sandbox.harness import require_question_epoch, run_question, search_client_for
+from psbx.sandbox.harness import (
+    prepare_spend_guard,
+    require_question_epoch,
+    run_question,
+    search_client_for,
+)
 from psbx.schemas import Prediction, Question, RunConfig, SwarmVote
 from psbx.society.adapters import EnvSearchClient
 from psbx.society.as2_config import export_society_bundle, swarm_agent_specs
@@ -69,14 +75,19 @@ def run_society(
     config_path: str | Path | None = None,
 ) -> list[Prediction]:
     """Route every search/fetch through FrozenEpochEnv, then existing scoring JSONL."""
-    if run.use_swarm:
-        return run_society_swarm(run, limit=limit, config_path=config_path)
     n = limit if limit is not None else run.n_questions
+    if limit is not None:
+        run = run.model_copy(update={"n_questions": n})
+    all_questions = read_jsonl(run.question_set, Question)
+    if run.use_swarm:
+        prepare_spend_guard(all_questions, [], run)
+        return run_society_swarm(run, limit=limit, config_path=config_path)
     env, epoch, index = bind_frozen_env(run.epoch, run.min_prominence, source_type=run.source_type)
     models = load_models()
     chosen = [models[mid] for mid in run.models]
-    qs = read_jsonl(run.question_set, Question)[:n]
+    qs = all_questions[:n]
     require_question_epoch(qs, epoch)
+    prepare_spend_guard(qs, chosen, run)
     dest = resolve_run_dir(run.run_id) / "predictions.jsonl"
     ensure_run_provenance(run, epoch, index, qs, [dest])
     existing: list[Prediction] = []
@@ -208,6 +219,7 @@ def run_society_swarm(
             client,
             roster=roster,
             max_retrieval=n_fetch,
+            perspectives_path=run.perspectives,
         )
         pred = validate_citations(result.prediction, index)
         preds.append(pred)

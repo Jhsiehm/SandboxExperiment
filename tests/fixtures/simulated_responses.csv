@@ -1,0 +1,7 @@
+task_id,synthetic_person_id,predicted_probability
+turnout_fixture,p1,0.25
+turnout_fixture,p2,0.35
+turnout_fixture,p3,0.5
+turnout_fixture,p4,0.55
+turnout_fixture,p5,0.7
+turnout_fixture,p6,0.75

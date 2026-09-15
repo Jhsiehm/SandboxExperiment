@@ -35,6 +35,7 @@ def _or_model() -> ModelConfig:
 
 
 def test_live_ready_openrouter_only(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     monkeypatch.setenv("OPENAI_API_KEY", "")
@@ -44,6 +45,7 @@ def test_live_ready_openrouter_only(monkeypatch):
 
 
 def test_live_ready_dual_native(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "ak-test")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
@@ -51,6 +53,7 @@ def test_live_ready_dual_native(monkeypatch):
 
 
 def test_live_ready_missing_all(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     monkeypatch.setenv("OPENAI_API_KEY", "")
@@ -64,6 +67,8 @@ def test_skip_reason_openrouter(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
     assert skip_reason(model) == "OPENROUTER_API_KEY is not set"
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    assert "paid models are disabled" in str(skip_reason(model))
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     assert skip_reason(model) is None
 
 
@@ -92,6 +97,7 @@ def test_openrouter_config_is_cheap():
 
 
 def test_jobs_pick_openrouter_config(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     monkeypatch.setenv("OPENAI_API_KEY", "")
@@ -112,6 +118,7 @@ def test_jobs_pick_openrouter_config(monkeypatch):
 
 
 def test_live_mix_prefers_openrouter_even_with_native_keys(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-oa")
@@ -133,6 +140,7 @@ def test_live_mix_prefers_openrouter_even_with_native_keys(monkeypatch):
 
 
 def test_chat_completion_headers_and_429(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-not-real")
     monkeypatch.setenv("OPENROUTER_MIN_INTERVAL_SEC", "0")
     monkeypatch.setenv("OPENROUTER_MAX_PER_MINUTE", "20")
@@ -150,6 +158,9 @@ def test_chat_completion_headers_and_429(monkeypatch):
         assert headers["X-Title"] == "Prediction Sandbox"
         assert headers["authorization"].startswith("Bearer ")
         assert json["max_tokens"] == 16
+        assert json["provider"]["sort"] == "price"
+        assert json["provider"]["data_collection"] == "deny"
+        assert json["provider"]["max_price"]["prompt"] == pytest.approx(0.4)
         req = httpx.Request("POST", url)
         if calls["n"] < 3:
             return httpx.Response(429, request=req, text="rate limited")
@@ -200,6 +211,7 @@ def test_sanitize_openai_message_strips_400_bait():
 
 
 def test_chat_completion_includes_400_body(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-not-real")
     monkeypatch.setenv("OPENROUTER_MIN_INTERVAL_SEC", "0")
     reset_gate_for_tests()
@@ -222,6 +234,7 @@ def test_chat_completion_includes_400_body(monkeypatch):
 
 
 def test_chat_completion_surfaces_expired_key_message(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-not-real")
     monkeypatch.setenv("OPENROUTER_MIN_INTERVAL_SEC", "0")
     reset_gate_for_tests()
@@ -342,6 +355,7 @@ def test_live_loop_does_not_replay_unmatched_tool_calls(monkeypatch):
 
 
 def test_chat_completion_gives_up_after_two_429_retries(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-not-real")
     monkeypatch.setenv("OPENROUTER_MIN_INTERVAL_SEC", "0")
     reset_gate_for_tests()

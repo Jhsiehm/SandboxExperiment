@@ -11,6 +11,7 @@ from psbx.agents.swarm import (
     MINI_VOICE,
     OPEN_WEIGHT_VOICE,
     SWARM_MEDIAN_ID,
+    _voice_for,
     expand_bodies,
     load_roster,
     median_probability,
@@ -18,10 +19,16 @@ from psbx.agents.swarm import (
     require_swarm_ready,
     run_swarm,
     worker_models,
-    _voice_for,
 )
 from psbx.config import load_models, load_run, load_swarm
-from psbx.schemas import Epoch, ModelConfig, Question, SearchHit, SwarmRoster, SwarmSpecies
+from psbx.schemas import (
+    Epoch,
+    ModelConfig,
+    Question,
+    SearchHit,
+    SwarmRoster,
+    SwarmSpecies,
+)
 
 
 def _question() -> Question:
@@ -211,6 +218,7 @@ def test_require_swarm_ready_fails_without_key(monkeypatch):
 
 
 def test_run_swarm_shared_pack_and_median(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-not-real")
     monkeypatch.delenv("PSBX_MOCK_LLM", raising=False)
     ps = [0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.15, 0.25, 0.35, 0.45]

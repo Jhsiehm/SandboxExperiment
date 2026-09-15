@@ -169,10 +169,9 @@ def _download_direct_artifact(
         destination.unlink(missing_ok=True)
         raise RuntimeError(f"downloaded file lacks expected marker {artifact.expected_marker!r}")
     return {
-        "snapshot_url": artifact.url,
-        "snapshot_timestamp": artifact.released_at.strftime("%Y%m%d120000")
-        if artifact.released_at
-        else "",
+        # A checksum-pinned direct release is not an archival capture. Keep the
+        # two kinds of evidence distinct instead of inventing a snapshot time.
+        "source_url": artifact.url,
         "content_type": response.headers.get("content-type", "application/octet-stream"),
     }
 
@@ -276,6 +275,10 @@ def sync_survey_sources(
             if marker_ok:
                 row.update(previous)
                 row.update(artifact.model_dump(mode="json"))
+                if artifact.retrieval == "direct":
+                    row.pop("snapshot_url", None)
+                    row.pop("snapshot_timestamp", None)
+                    row["source_url"] = artifact.url
                 row["epoch"] = epoch.id
                 row["cutoff"] = epoch.cutoff_date.isoformat()
                 row["status"] = "cached"
@@ -292,6 +295,13 @@ def sync_survey_sources(
                     f"expected_sha256 {artifact.expected_sha256}"
                 )
             row.update(extra)
+            if artifact.retrieval == "direct":
+                # Custom fetchers and older manifests may use Wayback-shaped
+                # fields. Never represent a current direct fetch as a dated
+                # archival snapshot.
+                row.pop("snapshot_url", None)
+                row.pop("snapshot_timestamp", None)
+                row["source_url"] = artifact.url
             row["status"] = "downloaded"
             row["eligible_for_index"] = artifact.index
             row["local_path"] = _repo_relative(destination)
@@ -330,6 +340,7 @@ def ingest_synced_survey_sources(
     epoch: Epoch,
     *,
     manifest_path: str | Path | None = None,
+    catalog_path: str | Path = CATALOG_PATH,
 ) -> list[Document]:
     """Convert only manifest-approved, cutoff-safe public pages to Documents."""
     path = resolve(manifest_path) if manifest_path else survey_manifest_path(epoch)
@@ -338,41 +349,70 @@ def ingest_synced_survey_sources(
     payload = read_json(path)
     if payload.get("epoch") != epoch.id or payload.get("cutoff") != epoch.cutoff_date.isoformat():
         raise ValueError(f"survey manifest does not match epoch {epoch.id}")
+    catalog = {artifact.id: artifact for artifact in load_survey_catalog(catalog_path)}
     docs: list[Document] = []
     for row in payload.get("artifacts", []):
         if row.get("status") not in {"downloaded", "cached"} or not row.get("eligible_for_index"):
             continue
+        artifact = catalog.get(str(row.get("id") or ""))
+        if artifact is None or not artifact.index:
+            raise ValueError(
+                f"survey artifact is no longer approved by the catalog: {row.get('id')}"
+            )
+        catalog_row = artifact.model_dump(mode="json")
+        checked_fields = (
+            "provider",
+            "outlet",
+            "title",
+            "url",
+            "fieldwork_year_start",
+            "fieldwork_year_end",
+            "released_at",
+            "retrieval",
+            "format",
+        )
+        if any(row.get(field) != catalog_row[field] for field in checked_fields):
+            raise ValueError(f"survey manifest metadata is stale: {row['id']}")
         released = datetime.fromisoformat(str(row["released_at"]).replace("Z", "+00:00"))
         if released.date() > epoch.cutoff_date:
             raise AssertionError(f"survey release leakage: {row['id']}")
-        snapshot_timestamp = str(row.get("snapshot_timestamp") or "")
-        if snapshot_timestamp and snapshot_timestamp[:8] > epoch.cutoff_date.strftime("%Y%m%d"):
-            raise AssertionError(f"survey snapshot leakage: {row['id']}")
+        snapshot_timestamp = ""
+        if artifact.retrieval == "wayback":
+            snapshot_timestamp = str(row.get("snapshot_timestamp") or "")
+            if not snapshot_timestamp:
+                raise ValueError(f"archived survey artifact lacks snapshot time: {row['id']}")
+            if snapshot_timestamp[:8] > epoch.cutoff_date.strftime("%Y%m%d"):
+                raise AssertionError(f"survey snapshot leakage: {row['id']}")
         local_path = resolve(row["local_path"])
         local_sha = _sha256(local_path) if local_path.is_file() else None
         if local_sha is None or local_sha != row.get("sha256"):
             raise ValueError(f"survey artifact missing or checksum mismatch: {row['id']}")
-        expected_sha = row.get("expected_sha256")
+        expected_sha = artifact.expected_sha256
         if expected_sha and local_sha != expected_sha:
             raise ValueError(f"survey artifact differs from pinned checksum: {row['id']}")
-        text = _extract_artifact_text(local_path, str(row.get("format") or "html"))
-        expected_marker = str(row.get("expected_marker") or "")
+        text = _extract_artifact_text(local_path, artifact.format)
+        expected_marker = str(artifact.expected_marker or "")
         if expected_marker and expected_marker.casefold() not in text.casefold():
             raise ValueError(f"survey artifact marker mismatch: {row['id']}")
         if len(text) < 200:
             continue
+        verification = (
+            f"Wayback snapshot {snapshot_timestamp}"
+            if artifact.retrieval == "wayback"
+            else f"checksum-pinned direct release sha256={expected_sha}"
+        )
         provenance = (
-            f"Cutoff-safe archived public summary from {row['provider']}; "
-            f"fieldwork {row['fieldwork_year_start']}-{row['fieldwork_year_end']}; "
-            f"release {released.date()}; snapshot {snapshot_timestamp or 'verified file'}"
+            f"Cutoff-safe public summary from {artifact.provider}; "
+            f"fieldwork {artifact.fieldwork_year_start}-{artifact.fieldwork_year_end}; "
+            f"release {released.date()}; {verification}"
         )
         docs.append(
             Document(
                 id=document_id_for(text),
-                url=row["url"],
-                outlet=row["outlet"],
+                url=artifact.url,
+                outlet=artifact.outlet,
                 published_at=released,
-                title=row["title"],
+                title=artifact.title,
                 text=text[:20000],
                 source_type="survey",
                 prominence=0.0,

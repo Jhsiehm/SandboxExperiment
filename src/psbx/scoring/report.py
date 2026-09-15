@@ -9,7 +9,14 @@ import matplotlib.pyplot as plt
 
 from psbx.io import read_jsonl
 from psbx.paths import resolve
-from psbx.schemas import CalibrationResult, ContaminationResult, ModelConfig, Prediction, Question, ScoreReport
+from psbx.schemas import (
+    CalibrationResult,
+    ContaminationResult,
+    ModelConfig,
+    Prediction,
+    Question,
+    ScoreReport,
+)
 from psbx.scoring.baselines import as_predictions, baseline_scores
 from psbx.scoring.brier import brier, brier_by_category, brier_by_model, brier_index
 from psbx.scoring.calibration import calibration_curve

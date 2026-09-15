@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from urllib.request import urlopen
 
 from psbx.io import read_json
-from psbx.paths import resolve
 from psbx.schemas import Document, Epoch
 
 UTC = timezone.utc
@@ -41,7 +40,10 @@ def ingest_gdelt(epoch: Epoch, live: bool = False) -> list[Document]:
     with zipfile.ZipFile(io.BytesIO(raw)) as zf:
         name = zf.namelist()[0]
         with zf.open(name) as fh:
-            reader = csv.reader(io.TextIOWrapper(fh, encoding="utf-8", errors="replace"), delimiter="\t")
+            reader = csv.reader(
+                io.TextIOWrapper(fh, encoding="utf-8", errors="replace"),
+                delimiter="\t",
+            )
             for i, row in enumerate(reader):
                 if i >= 25:
                     break
@@ -53,7 +55,11 @@ def ingest_gdelt(epoch: Epoch, live: bool = False) -> list[Document]:
                 docs.append(
                     Document(
                         id=f"gdelt-{stamp}-{i}",
-                        url=row[57] if row[57].startswith("http") else f"https://gdeltproject.org/event/{row[0]}",
+                        url=(
+                            row[57]
+                            if row[57].startswith("http")
+                            else f"https://gdeltproject.org/event/{row[0]}"
+                        ),
                         outlet="GDELT",
                         published_at=datetime(day.year, day.month, day.day, tzinfo=UTC),
                         title=text[:160],

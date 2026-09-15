@@ -398,6 +398,7 @@ def run_swarm(
     roster: SwarmRoster | None = None,
     model: ModelConfig | None = None,
     max_retrieval: int = PACK_FETCH_DEFAULT,
+    perspectives_path: str | Path | None = None,
 ) -> SwarmResult:
     """One shared pack, sequential OpenRouter votes, median probability."""
     from psbx.society.perspectives import assign_personas, load_perspectives
@@ -406,9 +407,8 @@ def run_swarm(
     roster = roster or load_roster()
     workers = require_swarm_ready(roster)
     output = model or load_models()[SWARM_MEDIAN_ID]
-    personas_path = getattr(roster, "perspectives", None)
     try:
-        catalog = load_perspectives(personas_path or "config/perspectives.yaml")
+        catalog = load_perspectives(perspectives_path or "config/perspectives.yaml")
         personas = assign_personas(roster, catalog)
     except FileNotFoundError:
         personas = []

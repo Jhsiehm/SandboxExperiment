@@ -14,12 +14,16 @@ import os
 import threading
 import time
 from collections import deque
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 import httpx
 
 from psbx.env import load_dotenv
+from psbx.schemas import ModelConfig
+from psbx.security import require_safe_provider_base_url
+from psbx.spending import record_paid_usage, reserve_paid_request
 
 log = logging.getLogger("psbx.openrouter")
 
@@ -102,7 +106,23 @@ def capped_max_tokens(requested: int | None) -> int:
 
 
 def base_url() -> str:
-    return os.environ.get("OPENROUTER_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+    raw = os.environ.get("OPENROUTER_BASE_URL", DEFAULT_BASE_URL)
+    return require_safe_provider_base_url(raw, "openrouter")
+
+
+def _model_config_for_slug(slug: str) -> ModelConfig:
+    from psbx.config import load_models
+
+    matches = [
+        model
+        for model in load_models().values()
+        if model.provider == "openrouter" and model.model_name == slug
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"{slug}: OpenRouter model must have unique local price metadata"
+        )
+    return matches[0]
 
 
 class OpenRouterGate:
@@ -173,6 +193,7 @@ def reset_gate_for_tests() -> None:
 def chat_completion(
     *,
     model: str,
+    model_config: ModelConfig | None = None,
     messages: list[dict[str, Any]],
     max_tokens: int | None = None,
     temperature: float = 0.2,
@@ -192,6 +213,19 @@ def chat_completion(
     }
     if tools:
         payload["tools"] = tools
+    pricing = model_config or _model_config_for_slug(model)
+    if pricing.provider != "openrouter" or pricing.model_name != model:
+        raise RuntimeError("OpenRouter model configuration does not match request slug")
+    payload["provider"] = {
+        "sort": "price",
+        "require_parameters": True,
+        "data_collection": "deny",
+        "max_price": {
+            "prompt": pricing.cost_per_1k_input * 1000.0,
+            "completion": pricing.cost_per_1k_output * 1000.0,
+        },
+    }
+    reservation = reserve_paid_request(pricing, payload)
     headers = {
         "authorization": f"Bearer {key}",
         "content-type": "application/json",
@@ -219,4 +253,5 @@ def chat_completion(
         data = resp.json()
         if not isinstance(data, dict):
             raise RuntimeError("openrouter returned a non-object body")
+        record_paid_usage(reservation, data.get("usage"), pricing)
         return data

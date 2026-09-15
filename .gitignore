@@ -14,6 +14,13 @@ build/
 data/corpus/
 data/runs/
 data/corpus-cache/
+data/population-input/
+data/population/
+data/census-cache/
+data/survey-microdata/
+data/evaluation-vault/
+data/elections/
+config/population-artifacts.local.yaml
 *.warc
 *.warc.gz
 *.zim
@@ -28,6 +35,7 @@ custom/.agentsociety/
 .idea/
 .vscode/
 leaderboard/site/
+.impeccable/review/
 *.png
 !docs/**
-!leaderboard/static/enchant/*.png
+!leaderboard/static/agents/*.png

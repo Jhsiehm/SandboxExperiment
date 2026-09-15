@@ -11,9 +11,14 @@ contamination signal. Flat means the contemporaneous corpus is doing the work.
 
 from __future__ import annotations
 
-from psbx.schemas import ContaminationBucket, ContaminationResult, ModelConfig, Prediction, Question
+from psbx.schemas import (
+    ContaminationBucket,
+    ContaminationResult,
+    ModelConfig,
+    Prediction,
+    Question,
+)
 from psbx.scoring.brier import brier_one
-
 
 DEFAULT_EDGES = (-8000, -4000, -2000, -365, 0, 365, 2000, 5000)
 

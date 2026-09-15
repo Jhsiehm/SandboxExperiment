@@ -5,28 +5,33 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from leaderboard.activity import build_activity_payload, reseal_sandbox, sandbox_snapshot
 from leaderboard.explain import run_label
+from leaderboard.geography import geography_catalog, geography_payload
 from leaderboard.jobs import (
     EraNotRunnable,
     InvalidSwarm,
     JobBusy,
     LiveNotReady,
     SandboxNotReady,
+    SpendingBlocked,
     get_job,
     ready,
     start_job,
     swarm_options,
 )
+from leaderboard.population import population_dashboard_payload
+from leaderboard.security import require_local_mutation, require_local_request_host
 from leaderboard.store import (
     ViewerState,
     bootstrap,
     build_goal_progress,
+    build_leaderboard,
     compute_scores,
     era_catalog,
     forecast_rows,
@@ -35,8 +40,8 @@ from leaderboard.store import (
     public_document_row,
     public_question,
 )
-from psbx.sandbox.search_service import create_app as create_search_app
 from psbx.paths import run_dir
+from psbx.sandbox.search_service import create_app as create_search_app
 from psbx.schemas import FetchRequest, SearchRequest
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -57,6 +62,17 @@ class RunRequest(BaseModel):
     label: str | None = Field(default=None, max_length=80)
     n_questions: int | None = Field(default=None, ge=1, le=50)
     swarm_bodies: list[dict[str, Any]] | None = None
+    population_selection: dict[str, Any] | None = Field(
+        default=None,
+        description="Validated synthetic population profile used to weight swarm personas",
+    )
+    dataset_selection: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Display/evaluation dataset filters recorded for run comparison; never "
+            "inserted into model context"
+        ),
+    )
 
 
 class SandboxSelection(BaseModel):
@@ -74,6 +90,19 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
     app.state.viewer = state
     app.state.viewer_states = {state.epoch.id: state}
     app.state.default_epoch_id = state.epoch.id
+
+    @app.middleware("http")
+    async def local_request_boundary(request: Request, call_next):
+        try:
+            require_local_request_host(request)
+        except HTTPException as exc:
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        return response
 
     def state_for(epoch_id: str | None = None) -> ViewerState:
         selected = epoch_id or app.state.default_epoch_id
@@ -152,6 +181,33 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             },
         }
 
+    @app.get("/api/population")
+    def population(epoch: str = "e2012") -> dict[str, Any]:
+        return population_dashboard_payload(epoch)
+
+    @app.get("/api/geography/catalog")
+    def geography_layers(epoch: str = "e2012") -> dict[str, Any]:
+        try:
+            return geography_catalog(epoch)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/geography")
+    def geography(
+        layer: str = "states",
+        state: str | None = None,
+        epoch: str = "e2012",
+    ) -> dict[str, Any]:
+        try:
+            return geography_payload(epoch, layer_id=layer, state_fips=state)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/data/catalog")
+    def data_catalog(epoch: str = "e2012") -> dict[str, Any]:
+        """Path-free filter metadata for population, Census, and election layers."""
+        return population_dashboard_payload(epoch)["data_catalog"]
+
     @app.get("/api/questions")
     def questions(
         reveal_truth: bool = Query(False),
@@ -200,6 +256,11 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
         for row in rows:
             row["label"] = row.get("label") or run_label(row["run_id"])
         return {"runs": rows}
+
+    @app.get("/api/leaderboard")
+    def leaderboard(epoch: str | None = None) -> dict[str, Any]:
+        s = state_for(epoch)
+        return build_leaderboard(runs_for(s), s.questions, s.models)
 
     @app.get("/api/swarm/options")
     def swarm_builder_options() -> dict[str, Any]:
@@ -304,7 +365,11 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="unknown document_id") from exc
 
     @app.get("/api/activity")
-    def activity(epoch: str | None = None, run_id: str | None = None) -> dict[str, Any]:
+    def activity(
+        epoch: str | None = None,
+        run_id: str | None = None,
+        question_id: str | None = None,
+    ) -> dict[str, Any]:
         s = state_for(epoch)
         job = get_job()
         rid = run_id or (
@@ -315,10 +380,11 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
         known = any(row["run_id"] == rid for row in runs_for(s))
         if not known and not (job.get("status") == "running" and job.get("run_id") == rid):
             raise HTTPException(status_code=404, detail="unknown run_id")
-        return build_activity_payload(s, str(rid), job)
+        return build_activity_payload(s, str(rid), job, question_id=question_id)
 
     @app.post("/api/sandbox/select")
-    def sandbox_select(body: SandboxSelection) -> dict[str, Any]:
+    def sandbox_select(request: Request, body: SandboxSelection) -> dict[str, Any]:
+        require_local_mutation(request)
         s = state_for(body.epoch_id)
         if get_job().get("status") == "running":
             raise HTTPException(
@@ -344,7 +410,8 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
         return get_job()
 
     @app.post("/api/jobs/run")
-    def job_start(body: RunRequest | None = None) -> dict[str, Any]:
+    def job_start(request: Request, body: RunRequest | None = None) -> dict[str, Any]:
+        require_local_mutation(request)
         req = body or RunRequest()
         try:
             selected = req.epoch_id or app.state.default_epoch_id
@@ -366,6 +433,8 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
                 source_type=req.source_type,
                 n_questions=req.n_questions,
                 swarm_bodies=req.swarm_bodies,
+                population_selection=req.population_selection,
+                dataset_selection=req.dataset_selection,
                 label=req.label,
                 unique_run=True,
             )
@@ -379,6 +448,8 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             raise HTTPException(status_code=412, detail=str(exc)) from exc
         except InvalidSwarm as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except SpendingBlocked as exc:
+            raise HTTPException(status_code=412, detail=str(exc)) from exc
 
     if STATIC.exists():
         app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -397,5 +468,11 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
+    from psbx.security import require_loopback_host
+
+    try:
+        host = require_loopback_host(args.host)
+    except ValueError as exc:
+        parser.error(str(exc))
     print(f"Prediction Sandbox viewer → http://{args.host}:{args.port}")
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    uvicorn.run(app, host=host, port=args.port, log_level="info")

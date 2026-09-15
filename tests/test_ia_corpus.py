@@ -48,7 +48,11 @@ def test_commoncrawl_warc_cutoff_and_domain(tmp_path, monkeypatch):
     root.mkdir()
     monkeypatch.setattr("psbx.corpus.fetch_commoncrawl.warc_dir", lambda: root)
     warc_path = root / "sample.warc.gz"
-    html = "<html><body>" + ("unemployment rate in May 2012 was discussed. " * 20) + "</body></html>"
+    html = (
+        "<html><body>"
+        + ("unemployment rate in May 2012 was discussed. " * 20)
+        + "</body></html>"
+    )
     with warc_path.open("wb") as fh:
         writer = WARCWriter(fh, gzip=True)
         headers = StatusAndHeaders("200 OK", [("Content-Type", "text/html")], protocol="HTTP/1.1")

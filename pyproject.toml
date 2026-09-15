@@ -38,14 +38,18 @@ dependencies = [
 [project.optional-dependencies]
 embeddings = ["sentence-transformers>=3.0"]
 society = ["agentsociety2>=2.8"]
-dev = ["pytest>=8.2", "ruff>=0.5"]
+dev = ["pytest>=8.2", "ruff>=0.5", "setuptools>=68", "wheel"]
 docker = ["docker>=7.1"]
 
 [project.scripts]
 psbx = "psbx.cli:app"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["psbx*", "leaderboard*"]
+
+[tool.setuptools.package-data]
+leaderboard = ["static/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

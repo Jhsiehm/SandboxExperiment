@@ -4,70 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0c0612">
-  <title>Prediction Sandbox</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/app.css?v=23">
-  <link rel="stylesheet" href="/static/enchant.css?v=8">
+  <meta name="theme-color" content="#080d0b">
+  <title>Prediction Sandbox // World Model</title>
+  <link rel="stylesheet" href="/static/app.css?v=44">
+  <script type="importmap">
+    {"imports":{"three":"/static/vendor/three/three.module.min.js"}}
+  </script>
 </head>
 <body>
-  <section class="enchant" id="enchant" data-pose="idle">
-    <div class="enchant-stage">
-      <div class="enchant-room" aria-hidden="true">
-        <div class="enchant-back"></div>
-        <div class="enchant-ceiling"></div>
-        <div class="enchant-shelves left"></div>
-        <div class="enchant-shelves left-low"></div>
-        <div class="enchant-shelves right"></div>
-        <div class="enchant-shelves right-low"></div>
-        <div class="enchant-shelves back"></div>
-        <div class="enchant-floor"></div>
-        <span class="enchant-lantern a"></span>
-        <span class="enchant-lantern b"></span>
-        <span class="enchant-lantern c"></span>
-        <span class="enchant-lantern d"></span>
-        <div class="enchant-aura"></div>
-        <div class="enchant-lapis"></div>
-        <div class="enchant-desk"></div>
-        <div class="enchant-bench">
-          <img src="/static/enchant/mc-workbench.png" alt="">
-        </div>
-        <div class="enchant-table">
-          <img src="/static/enchant/mc-enchant-table.png" alt="">
-        </div>
-        <div class="enchant-flybooks">
-          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-        </div>
-        <div class="enchant-agent">
-          <img src="/static/enchant/mc-agent.png" alt="">
-        </div>
-        <ol class="enchant-menu">
-          <li>
-            <span class="galactic" aria-hidden="true">ᓭᓵ𝙹∷ᒷ ʖ∷╎ᒷ∷</span>
-            <span class="plain">Brier score</span>
-            <em>1</em>
-          </li>
-          <li>
-            <span class="galactic" aria-hidden="true">ᓵ𝙹リᓵ𝙹∷↸ ᔑ⚍ᓵ</span>
-            <span class="plain">C-index</span>
-            <em>2</em>
-          </li>
-          <li>
-            <span class="galactic" aria-hidden="true">ᔑᓵᓵ⚍∷ᔑᓵ||</span>
-            <span class="plain">Accuracy</span>
-            <em>3</em>
-          </li>
-        </ol>
-        <p class="enchant-xp" aria-hidden="true">+XP</p>
-        <div class="enchant-xpbar" id="enchant-xpbar"><span></span></div>
-      </div>
-      <canvas class="enchant-fx" id="enchant-fx" aria-hidden="true"></canvas>
-      <button type="button" class="enchant-hit" id="enchant-hit" aria-label="Preview workshop poses. Cycles shelves, table, done, idle."></button>
-    </div>
-    <p class="enchant-caption" id="enchant-caption" aria-live="polite">Librarian at the desk. Click the stone floor to preview.</p>
-  </section>
+  <!--
+    THESIS: The dataset is the world: a live, bounded terrain for inspecting model behavior, not a decorative game scene or a generic dashboard.
+    OWN-WORLD: Matte tactical panels, phosphor telemetry, right-angle compartments, red exception states, and extruded block terrain built from official boundaries.
+    STORY: Choose a sealed era, enter the U.S. world, select a geography and data layer, inspect what is real or missing, then configure a cost-bounded representative swarm.
+    FIRST VIEWPORT: A full-width command shell leads into a dominant interactive terrain table with a dense inspector rail; the map is the primary action, not a thumbnail.
+    FORM: Voxel reconnaissance table, the user-pinned first grounded direction; seed 38d72507.
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+  -->
 
   <div class="hud">
   <a class="skip" href="#main">Skip to content</a>
@@ -75,21 +27,21 @@
 
   <header class="top" role="banner">
     <div class="brand">
-      <p class="kicker">Start here</p>
+      <p class="system-id">PSBX // WORLD MODEL</p>
       <h1>Prediction Sandbox</h1>
-      <p class="lede" id="mast-lede">Choose a sealed era, let a model search only what was available by its freeze date, then grade it on what happened next.</p>
+      <p class="lede" id="mast-lede">Enter a sealed historical world. Observe the evidence chain, the agents, and the outcome without crossing its time boundary.</p>
     </div>
     <dl class="chips" id="mast-meta">
       <div>
-        <dt>Pretend today is</dt>
+        <dt>World clock</dt>
         <dd id="mast-cutoff">…</dd>
       </div>
       <div>
-        <dt>Answers land by</dt>
+        <dt>Evaluation horizon</dt>
         <dd id="mast-resolve">…</dd>
       </div>
       <div>
-        <dt>This experiment</dt>
+        <dt>Active cell</dt>
         <dd id="mast-epoch">…</dd>
       </div>
     </dl>
@@ -124,8 +76,10 @@
   <nav class="tabs" role="tablist" aria-label="Read the experiment in order">
     <button type="button" role="tab" id="tab-eras" data-view="eras" aria-controls="view-eras" aria-selected="false" tabindex="-1">Eras</button>
     <button type="button" role="tab" id="tab-activity" data-view="activity" aria-controls="view-activity" aria-selected="false" tabindex="-1">Agents live</button>
+    <button type="button" role="tab" id="tab-leaderboard" data-view="leaderboard" aria-controls="view-leaderboard" aria-selected="false" tabindex="-1">Leaderboard</button>
     <button type="button" role="tab" id="tab-runs" data-view="runs" aria-controls="view-runs" aria-selected="false" tabindex="-1">Runs</button>
     <button type="button" role="tab" id="tab-architecture" data-view="architecture" aria-controls="view-architecture" aria-selected="false" tabindex="-1">Architecture</button>
+    <button type="button" role="tab" id="tab-population" data-view="population" aria-controls="view-population" aria-selected="false" tabindex="-1">World model</button>
     <button type="button" role="tab" id="tab-results" data-view="results" aria-controls="view-results" aria-selected="true" tabindex="0">1. Results</button>
     <button type="button" role="tab" id="tab-forecasts" data-view="forecasts" aria-controls="view-forecasts" aria-selected="false" tabindex="-1">2. Each answer</button>
     <button type="button" role="tab" id="tab-questions" data-view="questions" aria-controls="view-questions" aria-selected="false" tabindex="-1">3. The questions</button>
@@ -209,13 +163,24 @@
       <section class="activity-section" aria-labelledby="agents-heading">
         <header class="activity-section-head agent-progress-head">
           <div>
-            <h3 id="agents-heading">Sequential agent board</h3>
-            <p id="shared-retrieval-note">One container search builds a shared evidence pack. Agents read that pack sequentially; they do not independently browse.</p>
+            <h3 id="agents-heading">Agent chain map</h3>
+            <p id="shared-retrieval-note">Follow the sealed evidence into each independent vote, then see the votes converge on the median. Agents share the pack; they do not independently browse or influence one another. The dotted rail shows execution order only.</p>
           </div>
-          <output id="agent-progress-label" for="agent-progress">0 / 0 complete</output>
+          <div class="chain-head-tools">
+            <label class="chain-question-picker" hidden>
+              <span>Question</span>
+              <select data-chain-question aria-label="Agent-chain question"></select>
+            </label>
+            <output id="agent-progress-label" for="agent-progress">0 / 0 complete</output>
+            <div class="view-switch" role="group" aria-label="Agent view">
+              <button type="button" data-agent-view="graph" aria-pressed="true">Chain</button>
+              <button type="button" data-agent-view="list" aria-pressed="false">List</button>
+            </div>
+          </div>
         </header>
         <progress id="agent-progress" value="0" max="1">0%</progress>
-        <div class="agent-grid" id="agent-grid" aria-live="polite" aria-busy="false"></div>
+        <div class="agent-chain" id="agent-chain-live" aria-live="polite" aria-busy="false"></div>
+        <div class="agent-grid" id="agent-grid" aria-live="polite" aria-busy="false" hidden></div>
       </section>
 
       <section class="activity-section evidence-section" aria-labelledby="evidence-heading">
@@ -245,6 +210,78 @@
             <tbody></tbody>
           </table>
         </div>
+      </section>
+    </section>
+
+    <section id="view-leaderboard" class="view arena-view" role="tabpanel" aria-labelledby="tab-leaderboard" hidden>
+      <header class="arena-head">
+        <div>
+          <h2>Arena standings</h2>
+          <p>Every rank is calculated from saved forecast ballots and later ground truth. Switch the board to compare individual agents, whole swarms, model families, or corporations.</p>
+        </div>
+        <div class="arena-season" aria-live="polite">
+          <span class="arena-signal" aria-hidden="true"></span>
+          <div><strong id="arena-season-status">Loading the arena…</strong><small id="arena-season-meta">Selected historical epoch</small></div>
+        </div>
+      </header>
+
+      <section class="arena-podium" aria-labelledby="arena-podium-heading">
+        <h3 class="sr-only" id="arena-podium-heading">Top three individual agents</h3>
+        <div class="arena-podium-stage" id="arena-podium-stage" aria-live="polite"></div>
+        <dl class="arena-summary" aria-label="Leaderboard summary">
+          <div><dt>Scored ballots</dt><dd id="arena-ballots">—</dd></div>
+          <div><dt>Ranked agents</dt><dd id="arena-agents">—</dd></div>
+          <div><dt>Scored swarms</dt><dd id="arena-swarms">—</dd></div>
+          <div><dt>Model families</dt><dd id="arena-models">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="arena-console" aria-labelledby="arena-board-heading">
+        <header class="arena-console-head">
+          <div>
+            <h3 id="arena-board-heading">Rankings</h3>
+            <p id="arena-board-copy">Individual synthetic agents, ranked by mean Brier probability error.</p>
+          </div>
+          <div class="arena-controls">
+            <div class="arena-modes" role="group" aria-label="Leaderboard type">
+              <button type="button" data-arena-mode="agents" aria-pressed="true">Agents</button>
+              <button type="button" data-arena-mode="swarms" aria-pressed="false">Swarms</button>
+              <button type="button" data-arena-mode="models" aria-pressed="false">Models</button>
+              <button type="button" data-arena-mode="corporations" aria-pressed="false">Corporations</button>
+            </div>
+            <label class="field" for="arena-metric">
+              <span>Rank by</span>
+              <select id="arena-metric">
+                <option value="score">Forecast score</option>
+                <option value="accuracy">Hit rate</option>
+                <option value="volume">Forecast volume</option>
+              </select>
+            </label>
+            <label class="field" for="arena-corporation">
+              <span>Corporation</span>
+              <select id="arena-corporation"><option value="">All corporations</option></select>
+            </label>
+          </div>
+        </header>
+
+        <div class="arena-layout">
+          <div class="arena-board" role="table" aria-describedby="arena-rules">
+            <div class="arena-table-head" role="row">
+              <span role="columnheader">Rank / competitor</span>
+              <span role="columnheader">Forecast score</span>
+              <span role="columnheader">Brier</span>
+              <span role="columnheader">Hit rate</span>
+              <span role="columnheader">Record</span>
+            </div>
+            <div id="arena-rankings" aria-live="polite"></div>
+          </div>
+          <aside class="arena-match-log" aria-labelledby="arena-log-heading">
+            <header><h3 id="arena-log-heading">Swarm result log</h3><span id="arena-log-count">—</span></header>
+            <p>Latest scored battles. Open the full result or the saved execution log without losing the archive.</p>
+            <ol id="arena-match-list"></ol>
+          </aside>
+        </div>
+        <p class="arena-rules" id="arena-rules">Forecast score = 100 × (1 − mean Brier). Higher score is better; lower Brier is better. A short record can lead the table, so forecast count stays visible on every row.</p>
       </section>
     </section>
 
@@ -287,6 +324,13 @@
       </header>
 
       <form id="swarm-builder" class="swarm-builder">
+        <div class="population-lens" id="swarm-population-lens" hidden>
+          <div>
+            <strong id="swarm-population-title">Population-weighted swarm</strong>
+            <span id="swarm-population-detail"></span>
+          </div>
+          <button type="button" class="linkish" id="swarm-population-clear">Clear population lens</button>
+        </div>
         <div class="builder-controls">
           <label class="field" for="swarm-preset">
             <span>Starting preset</span>
@@ -386,16 +430,19 @@
 │   ├── questions/   versioned benchmark questions
 │   ├── sources/     rebuildable dated source manifests
 │   ├── corpus/      generated epoch indexes and source silos
+│   ├── population-input/  ignored raw Census build inputs
+│   ├── population/  synthetic populations, cells and validation
 │   └── runs/        run config, logs, votes, predictions, scores and plots
 ├── leaderboard/     FastAPI viewer, job control, activity and browser UI
 ├── src/psbx/
 │   ├── agents/      single-model and configurable swarm execution
 │   ├── corpus/      ingestion, normalization, indexing and retrieval
+│   ├── population/  source registry, synthesis, compression and validation
 │   ├── questions/   Congress, economic and geopolitical question builders
 │   ├── sandbox/     Docker seal, frozen clock and search service
 │   ├── scoring/     Brier, C-index, calibration and visual reports
 │   └── society/     personas and AgentSociety experiment adapters
-├── tests/           cutoff, isolation, swarm, scoring and dashboard tests
+├── tests/           cutoff, population, isolation, swarm, scoring and dashboard tests
 ├── README.md        operating and research documentation
 └── pyproject.toml   Python package, commands and dependencies</code></pre>
         </article>
@@ -409,6 +456,237 @@
             <li><strong>Evaluation boundary</strong><span>Later outcomes grade forecasts; future information is never returned to the forecasting agent.</span></li>
           </ol>
         </article>
+      </section>
+    </section>
+
+    <section id="view-population" class="view" role="tabpanel" aria-labelledby="tab-population" hidden>
+      <header class="view-head population-head world-head">
+        <div>
+          <span class="system-id">WORLD // US // E2012</span>
+          <h2>United States world model</h2>
+        </div>
+        <p id="population-intro">Checking the historical Census input pack and offline population build…</p>
+      </header>
+
+      <details class="foundation-audit">
+        <summary><span>Population build audit</span><strong>Open provenance, validation, and coverage evidence</strong></summary>
+      <section class="population-verdict" id="population-verdict" data-status="loading" aria-live="polite" aria-busy="true">
+        <div>
+          <span class="population-status-label">Track B status</span>
+          <strong id="population-headline">Reading build manifests…</strong>
+          <p id="population-detail">Raw inputs, synthetic populations, and behavioral validation are reported as separate milestones.</p>
+        </div>
+        <span class="population-stamp" id="population-stamp">CHECKING</span>
+      </section>
+
+      <ol class="population-pipeline" id="population-pipeline" aria-label="Track B implementation stages"></ol>
+
+      <dl class="population-ledger" aria-label="Census pack summary">
+        <div><dt>State coverage</dt><dd id="population-state-total">—</dd></div>
+        <div><dt>National layer</dt><dd id="population-national">—</dd></div>
+        <div><dt>Source archives</dt><dd id="population-artifacts">—</dd></div>
+        <div><dt>Verified size</dt><dd id="population-size">—</dd></div>
+      </dl>
+      </details>
+
+      <section class="population-section geography-explorer" aria-labelledby="geography-explorer-heading">
+        <header class="population-section-head geography-head">
+          <div>
+            <span class="system-id">GEOSPATIAL OPERATIONS</span>
+            <h3 id="geography-explorer-heading">Navigate the dataset as terrain</h3>
+            <p>Rotate the U.S. model, select a state, then change the boundary layer. Height and color expose population builds and source coverage; they never imply unavailable district demographics.</p>
+          </div>
+          <div class="geography-head-status">
+            <span><i data-signal="online"></i> U.S. world active</span>
+            <span><i data-signal="offline"></i> Global adapter not built</span>
+          </div>
+        </header>
+
+        <div class="geography-toolbar" aria-label="World model controls">
+          <label class="field" for="geography-layer">
+            <span>Boundary layer</span>
+            <select id="geography-layer">
+              <option value="states">State aggregates</option>
+              <option value="congressional">U.S. House districts</option>
+              <option value="state_senate">State senate districts</option>
+              <option value="state_house">State house / assembly</option>
+              <option value="county">Counties</option>
+              <option value="voting_district">Voting districts</option>
+            </select>
+          </label>
+          <label class="field" for="dataset-kind">
+            <span>Dataset family</span>
+            <select id="dataset-kind"><option value="population">Population</option></select>
+          </label>
+          <label class="field" for="dataset-layer">
+            <span>Primary layer</span>
+            <select id="dataset-layer"><option value="">Loading catalog…</option></select>
+          </label>
+          <label class="field" for="dataset-compare-layer">
+            <span>Comparison layer</span>
+            <select id="dataset-compare-layer"><option value="">No comparison</option></select>
+          </label>
+          <label class="field" for="map-shade-mode">
+            <span>Terrain encoding</span>
+            <select id="map-shade-mode">
+              <option value="density">Population density</option>
+              <option value="coverage">Data coverage</option>
+            </select>
+          </label>
+          <div class="view-switch geography-switch" role="group" aria-label="Geography selector view">
+            <button type="button" data-geography-view="map" aria-pressed="true">Terrain</button>
+            <button type="button" data-geography-view="boxes" aria-pressed="false">Index</button>
+          </div>
+        </div>
+
+        <div class="geography-path">
+          <button type="button" id="geography-home" class="path-home" aria-label="Return to national map">United States</button>
+          <span aria-hidden="true">›</span>
+          <strong id="geography-path-current">All states + D.C.</strong>
+          <span class="map-zoom-label" id="map-zoom-label">L01 · STATE</span>
+        </div>
+
+        <div class="geography-shell">
+          <div class="geography-stage">
+            <div class="map-telemetry" aria-live="polite">
+              <span id="map-source-label">OFFICIAL TIGER/LINE BOUNDARIES</span>
+              <strong id="map-feature-count">LOADING GEOMETRY</strong>
+            </div>
+            <div id="population-map" class="population-map voxel-map" role="region" aria-label="Interactive three-dimensional United States geography map">
+              <div class="voxel-map-tooltip" hidden></div>
+              <div class="map-controls" role="group" aria-label="Map camera controls">
+                <button type="button" id="map-zoom-in" aria-label="Zoom in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+                <button type="button" id="map-zoom-out" aria-label="Zoom out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                <button type="button" id="map-reset-view" aria-label="Reset camera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8V4h4M18 16v4h-4M5.5 13a7 7 0 0 0 11.8 3.8M18.5 11A7 7 0 0 0 6.7 7.2"/></svg></button>
+              </div>
+              <div class="map-loading" id="map-loading"><i></i><span>Materializing boundary terrain…</span></div>
+              <div class="map-empty" id="map-empty" hidden>
+                <strong>BOUNDARY LAYER NOT MATERIALIZED</strong>
+                <span>This level is unavailable for the selected state. No geometry or demographic profile is implied.</span>
+              </div>
+            </div>
+            <div id="population-boxes" class="population-boxes" role="group" aria-label="Selectable state and District of Columbia list" hidden></div>
+            <div id="population-subareas" class="population-subareas" role="group" aria-label="Selectable districts and areas" hidden></div>
+            <div class="map-key" aria-label="Map legend">
+              <span><i data-kind="profile"></i> validated profile</span>
+              <span><i data-kind="coverage"></i> comparison coverage</span>
+              <span><i data-kind="sources"></i> source pack only</span>
+              <span><i data-kind="planned"></i> profile not built</span>
+            </div>
+          </div>
+
+          <aside class="geography-inspector" id="geography-inspector" aria-live="polite" aria-labelledby="geography-name">
+            <header>
+              <div>
+                <span id="geography-level">Nation</span>
+                <h4 id="geography-name">United States</h4>
+              </div>
+              <span class="profile-state" id="geography-profile-state" data-status="waiting">Profile not built</span>
+            </header>
+            <p id="geography-summary">Select a state or D.C. to open its district layer and inspect what data can support a swarm.</p>
+            <dl class="geography-facts" id="geography-facts"></dl>
+            <section class="dataset-readout" aria-labelledby="dataset-readout-title">
+              <span class="system-id" id="dataset-readout-title">DATA LAYER</span>
+              <strong id="geography-data-state">Checking coverage…</strong>
+              <p id="geography-data-detail">Comparison layers are display and evaluation metadata only. Agents cannot retrieve them.</p>
+              <ul id="dataset-source-registry" class="dataset-source-registry" aria-label="Registered but unavailable or partial source adapters"></ul>
+            </section>
+            <div class="demographic-panel" id="demographic-panel">
+              <div class="demographic-empty" id="demographic-empty">
+                <strong>No validated synthetic profile at this level</strong>
+                <span>The source archives may be ready, but a runnable population and validation report are still required.</span>
+              </div>
+              <div id="demographic-groups"></div>
+            </div>
+            <form id="population-swarm-form" class="population-swarm-form">
+              <label class="field" for="population-profile-select">
+                <span>Validated population build</span>
+                <select id="population-profile-select"></select>
+              </label>
+              <label class="field" for="population-agent-count">
+                <span>Representative agents</span>
+                <select id="population-agent-count">
+                  <option value="12">12 · quick panel</option>
+                  <option value="25">25 · broader panel</option>
+                  <option value="50">50 · distribution check</option>
+                  <option value="100">100 · maximum</option>
+                </select>
+              </label>
+              <button type="submit" class="act" id="population-swarm-use" disabled>Configure weighted swarm</button>
+              <dl class="cost-envelope" aria-label="Representative swarm cost guardrails">
+                <div><dt>Paid mode</dt><dd id="cost-mode-state">OFF</dd></div>
+                <div><dt>Paid agent cap</dt><dd id="cost-agent-cap">—</dd></div>
+                <div><dt>Run ceiling</dt><dd id="cost-run-cap">—</dd></div>
+                <div><dt>Conservative ceiling</dt><dd id="cost-estimate">—</dd></div>
+              </dl>
+              <p id="population-swarm-note">Profiles are sampled deterministically by population weight. Demographics shape explicit simulation roles; unspecified politics or media habits are never inferred.</p>
+            </form>
+          </aside>
+        </div>
+      </section>
+
+      <section class="population-section" aria-labelledby="population-coverage-heading">
+        <header class="population-section-head">
+          <div>
+            <h3 id="population-coverage-heading">Every state, D.C., and the nation</h3>
+            <p>Each green cell has its person PUMS, housing PUMS, 2010 demographic profile, and nine selected ACS sequence archives.</p>
+          </div>
+          <p class="population-count" id="population-coverage-count">Loading coverage…</p>
+        </header>
+        <ul class="state-coverage" id="population-states" aria-label="State and District of Columbia Census archive coverage"></ul>
+        <div class="national-coverage" id="population-national-row" data-ready="false">
+          <strong>United States aggregate</strong>
+          <span>Loading the national profile and ACS summary layer…</span>
+        </div>
+      </section>
+
+      <section class="population-section population-source-grid" aria-labelledby="population-sources-heading">
+        <div>
+          <header class="population-section-head">
+            <div>
+              <h3 id="population-sources-heading">What was downloaded</h3>
+              <p>Only source families needed by the current Track B schema are in the pack.</p>
+            </div>
+          </header>
+          <div class="sheet-wrap">
+            <table class="sheet population-source-table">
+              <caption class="sr-only">Downloaded Census source families and archive counts</caption>
+              <thead><tr><th scope="col">Source family</th><th scope="col">Archives</th></tr></thead>
+              <tbody id="population-families"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <header class="population-section-head">
+            <div>
+              <h3>Constraint coverage</h3>
+              <p>Ten tables across nine ACS sequence groups supply the current demographic dimensions.</p>
+            </div>
+          </header>
+          <ul class="population-tables" id="population-tables"></ul>
+        </div>
+      </section>
+
+      <section class="population-section fixture-proof" aria-labelledby="fixture-heading">
+        <header class="population-section-head">
+          <div>
+            <h3 id="fixture-heading">Offline synthesis proof</h3>
+            <p>The deterministic fixture proves exact integerization and weighted compression before any costly population-scale model calls.</p>
+          </div>
+          <p class="population-count" id="fixture-status">Checking fixture…</p>
+        </header>
+        <div class="fixture-layout">
+          <dl class="fixture-facts">
+            <div><dt>Represented people</dt><dd id="fixture-people">—</dd></div>
+            <div><dt>Representative cells</dt><dd id="fixture-cells">—</dd></div>
+            <div><dt>Reasoning budget</dt><dd id="fixture-calls">—</dd></div>
+            <div><dt>Worst marginal TVD</dt><dd id="fixture-tvd">—</dd></div>
+          </dl>
+          <div class="population-boundary">
+            <h4>What this does not prove</h4>
+            <ul id="population-claims"></ul>
+          </div>
+        </div>
       </section>
     </section>
 
@@ -430,6 +708,22 @@
               <span id="verdict-d"></span>
             </p>
             <p class="ranking" id="ranking-line"></p>
+            <section class="result-chain" aria-labelledby="result-chain-heading">
+              <header>
+                <div>
+                  <h3 id="result-chain-heading">How this swarm reached the result</h3>
+                  <p id="result-chain-note">Read left to right: one frozen pack, independent persona-conditioned votes, one median. Select an agent to open its saved rationale in Agents live.</p>
+                </div>
+                <div class="result-chain-tools">
+                  <label class="chain-question-picker" hidden>
+                    <span>Question</span>
+                    <select data-chain-question aria-label="Result-chain question"></select>
+                  </label>
+                  <button type="button" class="linkish" id="result-chain-open-live">Open live detail</button>
+                </div>
+              </header>
+              <div class="agent-chain compact" id="agent-chain-results" aria-live="polite"></div>
+            </section>
           </div>
         </li>
         <li class="rung">
@@ -670,7 +964,7 @@
     <p>Search on this page is the same search the agent gets. Nothing published after the freeze date can appear.</p>
   </footer>
   </div>
-  <script src="/static/enchant.js?v=7"></script>
-  <script src="/static/app.js?v=27"></script>
+  <script type="module" src="/static/geography-map.js?v=3"></script>
+  <script src="/static/app.js?v=43"></script>
 </body>
 </html>

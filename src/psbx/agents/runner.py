@@ -180,18 +180,30 @@ def skip_reason(model: ModelConfig) -> str | None:
             f"{model.id} needs a local endpoint; refusing OpenRouter "
             "(would bill OPENROUTER_API_KEY)"
         )
-    if model.provider == "anthropic":
-        return None if os.environ.get("ANTHROPIC_API_KEY") else "ANTHROPIC_API_KEY is not set"
-    if model.provider == "openai":
-        return None if os.environ.get("OPENAI_API_KEY") else "OPENAI_API_KEY is not set"
-    if model.provider == "together":
-        return None if os.environ.get("TOGETHER_API_KEY") else "TOGETHER_API_KEY is not set"
-    if model.provider == "openrouter":
-        key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
-        return None if key else "OPENROUTER_API_KEY is not set"
+    key_names = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "together": "TOGETHER_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+    }
+    if model.provider in key_names:
+        key_name = key_names[model.provider]
+        if not (os.environ.get(key_name) or "").strip():
+            return f"{key_name} is not set"
+        from psbx.spending import paid_models_enabled
+
+        if not paid_models_enabled():
+            return (
+                "paid models are disabled; set PSBX_ENABLE_PAID_MODELS=1 only "
+                "for an intentional live run"
+            )
+        return None
     if model.provider == "local_vllm":
         base = os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
+        from psbx.security import require_loopback_base_url
+
         try:
+            base = require_loopback_base_url(base, "vLLM")
             httpx.get(base.rstrip("/") + "/models", timeout=1.5)
         except Exception:
             return f"vLLM not reachable at {base}"
@@ -204,7 +216,13 @@ def execute_tool(client: SearchClient, name: str, arguments: dict[str, Any]) -> 
         query = str(arguments.get("query") or "").strip()
         if not query:
             return "SEARCH ERROR: empty query"
-        k = int(arguments.get("k") or 10)
+        if len(query) > 500:
+            return "SEARCH ERROR: query exceeds 500 characters"
+        try:
+            k = int(arguments.get("k") or 10)
+        except (TypeError, ValueError):
+            return "SEARCH ERROR: k must be an integer"
+        k = max(1, min(k, 25))
         hits = client.search(query, k=k)
         if not hits:
             return "NO HITS"
@@ -216,6 +234,8 @@ def execute_tool(client: SearchClient, name: str, arguments: dict[str, Any]) -> 
         doc_id = str(arguments.get("document_id") or "").strip()
         if not doc_id:
             return "FETCH ERROR: empty document_id"
+        if len(doc_id) > 256:
+            return "FETCH ERROR: document_id exceeds 256 characters"
         try:
             doc = client.fetch(doc_id)
         except Exception as exc:
@@ -326,8 +346,13 @@ def _anthropic_turn(
     }
     if tools:
         payload["tools"] = ANTHROPIC_TOOLS
+    from psbx.security import require_safe_provider_base_url
+    from psbx.spending import record_paid_usage, reserve_paid_request
+
+    base = require_safe_provider_base_url("https://api.anthropic.com/v1", "anthropic")
+    reservation = reserve_paid_request(model, payload)
     resp = httpx.post(
-        "https://api.anthropic.com/v1/messages",
+        f"{base}/messages",
         headers={
             "x-api-key": key,
             "anthropic-version": "2023-06-01",
@@ -336,8 +361,9 @@ def _anthropic_turn(
         json=payload,
         timeout=120.0,
     )
-    resp.raise_for_status()
+    _raise_sanitized_provider_error(resp, model.provider)
     data = resp.json()
+    record_paid_usage(reservation, data.get("usage"), model)
     content = data.get("content") or []
     text_parts: list[str] = []
     calls: list[ToolCall] = []
@@ -377,15 +403,31 @@ def _openai_turn(
     }
     if tools:
         payload["tools"] = OPENAI_TOOLS
+    from psbx.security import require_loopback_base_url, require_safe_provider_base_url
+    from psbx.spending import record_paid_usage, reserve_paid_request
+
+    if model.provider == "local_vllm":
+        safe_base = require_loopback_base_url(base_url, "vLLM")
+    else:
+        safe_base = require_safe_provider_base_url(base_url, model.provider)
+    reservation = reserve_paid_request(model, payload)
     resp = httpx.post(
-        f"{base_url.rstrip('/')}/chat/completions",
+        f"{safe_base}/chat/completions",
         headers={"authorization": f"Bearer {api_key}"},
         json=payload,
         timeout=120.0,
     )
-    resp.raise_for_status()
-    message = resp.json()["choices"][0]["message"]
+    _raise_sanitized_provider_error(resp, model.provider)
+    data = resp.json()
+    record_paid_usage(reservation, data.get("usage"), model)
+    message = data["choices"][0]["message"]
     return _turn_from_openai_message(message)
+
+
+def _raise_sanitized_provider_error(resp: httpx.Response, provider: str) -> None:
+    """Raise without reflecting provider bodies, request headers, or credentials."""
+    if resp.status_code >= 400:
+        raise RuntimeError(f"{provider} request failed with HTTP {resp.status_code}")
 
 
 def _openrouter_turn(
@@ -398,6 +440,7 @@ def _openrouter_turn(
 
     data = chat_completion(
         model=model.model_name,
+        model_config=model,
         messages=messages,
         max_tokens=model.max_tokens,
         temperature=model.temperature,

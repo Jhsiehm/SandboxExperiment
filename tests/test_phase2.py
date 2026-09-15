@@ -9,7 +9,7 @@ from psbx.config import load_run
 from psbx.io import write_jsonl
 from psbx.paths import resolve
 from psbx.sandbox.harness import run_set
-from psbx.schemas import Citation, ModelConfig, Prediction, Question
+from psbx.schemas import Citation, ModelConfig, Prediction
 from psbx.scoring.report import score_run
 
 
@@ -83,27 +83,34 @@ def test_resume_skips_existing_pairs(tmp_path, monkeypatch):
     run = load_run("config/run.yaml").model_copy(
         update={"run_id": "phase2-resume-test", "n_questions": 2, "models": ["frontier-a"]}
     )
-    dest = resolve(f"data/runs/{run.run_id}/predictions.jsonl")
-    if dest.exists():
-        dest.unlink()
+    def isolated_run_dir(run_id):
+        return tmp_path / "runs" / run_id
+
+    monkeypatch.setattr("psbx.sandbox.harness.run_dir", isolated_run_dir)
+    monkeypatch.setattr("psbx.run_provenance.run_dir", isolated_run_dir)
+    dest = isolated_run_dir(run.run_id) / "predictions.jsonl"
     first = Prediction(
         run_id=run.run_id,
         question_id=qs[0].id,
         model_id=model.id,
         probability=0.4,
         reasoning="preexisting",
-        citations=[Citation(document_id="d", quoted_span="preexisting span text here", supports="context")],
+        citations=[
+            Citation(
+                document_id="d",
+                quoted_span="preexisting span text here",
+                supports="context",
+            )
+        ],
     )
     write_jsonl(dest, [first])
     preds = run_set(qs, [model], epoch, run)
     assert len(preds) == 2
     kept = [p for p in preds if p.question_id == qs[0].id]
     assert kept[0].reasoning == "preexisting"
-    dest.unlink(missing_ok=True)
 
 
 def test_score_includes_heuristic_and_prior(monkeypatch):
-    from psbx.config import load_epochs
     from psbx.io import read_jsonl
     from psbx.schemas import Question as Q
 
@@ -124,7 +131,13 @@ def test_score_includes_heuristic_and_prior(monkeypatch):
             model_id="frontier-a",
             probability=0.5,
             reasoning="t",
-            citations=[Citation(document_id="d", quoted_span="span text for cite", supports="context")],
+            citations=[
+                Citation(
+                    document_id="d",
+                    quoted_span="span text for cite",
+                    supports="context",
+                )
+            ],
         )
         for q in qs
     ]

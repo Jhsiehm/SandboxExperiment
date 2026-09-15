@@ -1,0 +1,46 @@
+id: fixture-township-e2012
+epoch_id: e2012
+cutoff_date: 2012-06-30
+experiment_mode: sealed_forecast
+geography:
+  id: fixture:township:001
+  label: Offline Fixture Township
+  geography_type: custom
+  state_fips: "00"
+  vintage: fixture
+universe: all_residents
+target_population: 120
+source_registry: config/population_sources.yaml
+source_ids:
+  - fixture_constraints
+  - fixture_donors
+constraints_path: tests/fixtures/population_constraints.csv
+donors_path: tests/fixtures/donor_people.csv
+output_root: data/population
+seed: 20120630
+max_iterations: 200
+tolerance: 0.000001
+validation_tvd_tolerance: 0.03
+sample_moe_realization: false
+donor_weight_column: donor_weight
+profile_fields:
+  - age
+  - age_band
+  - census_sex
+  - race_ethnicity
+  - citizenship
+  - education
+  - household_income_band
+  - employment
+  - tenure
+  - marital_status
+  - household_size
+representative_cell_fields:
+  - age_band
+  - census_sex
+  - race_ethnicity
+  - citizenship
+  - education
+  - household_income_band
+reasoning_call_budget: 25
+notes: Offline deterministic acceptance fixture. Not a real geography or electorate.

@@ -41,7 +41,10 @@ BASELINE_LABELS = {
 }
 
 BASELINE_NOTES = {
-    "prior_signal": "What a careful reader already knew in June 2012 (polls, bill status). Beat this on probability error before calling it skill.",
+    "prior_signal": (
+        "What a careful reader already knew in June 2012 (polls, bill status). "
+        "Beat this on probability error before calling it skill."
+    ),
     "always_base_rate": "Give every question the same probability.",
     "always_0.5": "Guess 50% every time.",
     "status_quo_persistence": "Assume nothing happens.",
@@ -52,17 +55,26 @@ STORY = [
     {
         "step": "1",
         "title": "Pretend today is 30 June 2012",
-        "body": "The agent may only read news and official documents published on or before that date. It cannot browse the modern web.",
+        "body": (
+            "The agent may only read news and official documents published on or "
+            "before that date. It cannot browse the modern web."
+        ),
     },
     {
         "step": "2",
         "title": "Ask 50 yes-or-no questions about the next year",
-        "body": "Unemployment, bills, geopolitics. Each question has a real later answer we already know, but the agent is not supposed to look that answer up.",
+        "body": (
+            "Unemployment, bills, geopolitics. Each question has a real later answer "
+            "we already know, but the agent is not supposed to look that answer up."
+        ),
     },
     {
         "step": "3",
         "title": "Score two different things",
-        "body": "Probability error (Brier): were the percentages honest? Ranking (C-index): did it put the events that happened above the ones that did not?",
+        "body": (
+            "Probability error (Brier): were the percentages honest? Ranking "
+            "(C-index): did it put the events that happened above the ones that did not?"
+        ),
     },
 ]
 
@@ -71,7 +83,10 @@ METRICS = [
         "id": "brier",
         "name": "Probability error",
         "short": "Brier",
-        "plain": "How far off the percentages were. 0 is perfect. About 0.25 is a coin flip. Smaller is better.",
+        "plain": (
+            "How far off the percentages were. 0 is perfect. About 0.25 is a coin "
+            "flip. Smaller is better."
+        ),
         "direction": "lower is better",
         "good": "Closer to 0 than the 2012 public prior means real skill, not just memory.",
     },
@@ -79,9 +94,16 @@ METRICS = [
         "id": "c_index",
         "name": "Ranking",
         "short": "C-index",
-        "plain": "Of every pair (one event that happened, one that did not), how often did the higher probability go to the one that happened? 0.50 is guessing. 1.00 is perfect order. Larger is better.",
+        "plain": (
+            "Of every pair (one event that happened, one that did not), how often did "
+            "the higher probability go to the one that happened? 0.50 is guessing. "
+            "1.00 is perfect order. Larger is better."
+        ),
         "direction": "higher is better",
-        "good": "A 2025 model can rank 2012 events well because it remembers history, even if its percentages are sloppy.",
+        "good": (
+            "A 2025 model can rank 2012 events well because it remembers history, "
+            "even if its percentages are sloppy."
+        ),
     },
 ]
 
@@ -103,7 +125,9 @@ def model_label(model_id: str, models: dict[str, ModelConfig] | None = None) -> 
     return model_id
 
 
-def explain_scores(payload: dict[str, Any], models: dict[str, ModelConfig] | None = None) -> dict[str, Any]:
+def explain_scores(
+    payload: dict[str, Any], models: dict[str, ModelConfig] | None = None
+) -> dict[str, Any]:
     report = payload.get("report") or {}
     bases = dict(payload.get("baselines") or report.get("baselines") or {})
     prior_view = payload.get("prior_signal") or {}
@@ -162,12 +186,20 @@ def explain_scores(payload: dict[str, Any], models: dict[str, ModelConfig] | Non
         ceiling = 1.0
     for row in rows:
         row["bar"] = None if row["brier"] is None else round(row["brier"] / ceiling, 4)
-        row["c_bar"] = None if row["c_index"] is None else round(max(0.0, min(1.0, row["c_index"])), 4)
+        row["c_bar"] = (
+            None
+            if row["c_index"] is None
+            else round(max(0.0, min(1.0, row["c_index"])), 4)
+        )
 
     beating_prior = list(report.get("models_beating_prior_signal") or [])
     if not beating_prior and prior is not None:
         beating_prior = [
-            r["id"] for r in rows if r["kind"] == "model" and r["brier"] is not None and r["brier"] < prior
+            r["id"]
+            for r in rows
+            if r["kind"] == "model"
+            and r["brier"] is not None
+            and r["brier"] < prior
         ]
 
     verdict = _verdict(rows, prior, beating_prior, payload.get("run_id"))
@@ -246,7 +278,10 @@ def _verdict(
         return {
             "tone": "empty",
             "headline": "Nothing has been scored yet.",
-            "detail": "Use Run practice for a keyword lookup, Run live mix for six species once, or Run swarm for the 12-vote median.",
+            "detail": (
+                "Use Run practice for a keyword lookup, Run live mix for six species "
+                "once, or Run swarm for the 12-vote median."
+            ),
             "ranking": "Ranking (C-index) will appear after a scored run.",
         }
     labels = {r["id"]: r["label"] for r in rows}

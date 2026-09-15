@@ -1,0 +1,7 @@
+synthetic_person_id,population_id,population_weight,age_band,census_sex
+p1,eval-fixture,1,18_24,female
+p2,eval-fixture,1,18_24,male
+p3,eval-fixture,1,35_44,female
+p4,eval-fixture,1,35_44,male
+p5,eval-fixture,1,65_plus,female
+p6,eval-fixture,1,65_plus,male

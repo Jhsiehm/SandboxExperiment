@@ -8,7 +8,7 @@ from psbx.corpus.index import load_index
 from psbx.io import read_json, read_jsonl
 from psbx.sandbox.citations import validate_citations
 from psbx.sandbox.harness import run_set
-from psbx.schemas import Prediction, Question
+from psbx.schemas import Question
 
 runner = CliRunner()
 
@@ -29,6 +29,11 @@ def test_phase1_cli_and_citations(tmp_path, monkeypatch):
     assert len(qs) == 50
     run = load_run()
     models = [load_models()[mid] for mid in run.models]
+    def isolated_run_dir(run_id):
+        return tmp_path / "runs" / run_id
+
+    monkeypatch.setattr("psbx.sandbox.harness.run_dir", isolated_run_dir)
+    monkeypatch.setattr("psbx.run_provenance.run_dir", isolated_run_dir)
     os.environ["PSBX_MOCK_LLM"] = "1"
     preds = run_set(qs, models, epoch, run)
     assert len(preds) == 50 * len(models)
@@ -38,17 +43,16 @@ def test_phase1_cli_and_citations(tmp_path, monkeypatch):
         assert not checked.flagged_for_contamination_review, checked.flag_reasons
 
     from psbx.io import write_jsonl
-    from psbx.paths import resolve
     from psbx.scoring.report import score_run, write_plots
 
-    write_jsonl(resolve(f"data/runs/{run.run_id}/predictions.jsonl"), preds)
+    write_jsonl(isolated_run_dir(run.run_id) / "predictions.jsonl", preds)
     report = score_run(preds, qs, models, run.run_id)
-    write_plots(report, f"data/runs/{run.run_id}")
+    write_plots(report, isolated_run_dir(run.run_id))
     from psbx.io import write_json
 
-    write_json(f"data/runs/{run.run_id}/results.json", report)
+    write_json(isolated_run_dir(run.run_id) / "results.json", report)
     assert report.n_predictions == len(preds)
     assert report.brier_by_model
     assert report.contamination
-    payload = read_json(f"data/runs/{run.run_id}/results.json")
+    payload = read_json(isolated_run_dir(run.run_id) / "results.json")
     assert payload["run_id"] == run.run_id

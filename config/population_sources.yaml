@@ -1,0 +1,199 @@
+# Source registry for Track B. Exact downloaded artifacts must also be checksum-pinned.
+# A source-level date does not replace artifact-level release verification.
+sources:
+  - id: fixture_constraints
+    provider: Track B kit
+    title: Offline population-constraint fixture
+    role: population_constraint
+    reference_period_start: 2010-01-01
+    reference_period_end: 2010-12-31
+    release_date: 2011-01-01
+    release_verified: true
+    geography_vintage: fixture
+    access: bundled_fixture
+    url: ""
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: false
+    notes: Synthetic test data only.
+
+  - id: fixture_donors
+    provider: Track B kit
+    title: Offline anonymized donor fixture
+    role: donor_microdata
+    reference_period_start: 2006-01-01
+    reference_period_end: 2010-12-31
+    release_date: 2011-01-01
+    release_verified: true
+    geography_vintage: fixture
+    access: bundled_fixture
+    url: ""
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: false
+    notes: Synthetic test data only.
+
+  - id: census_2010_sf1
+    provider: U.S. Census Bureau
+    title: 2010 Census Summary File 1
+    role: population_constraint
+    reference_period_start: 2010-04-01
+    reference_period_end: 2010-04-01
+    release_date: 2011-06-16
+    release_verified: true
+    geography_vintage: "2010"
+    access: public_api_or_download
+    url: https://api.census.gov/data/2010/dec/sf1
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: true
+    notes: State releases were staggered through August 2011; record the exact geography artifact date.
+
+  - id: census_2010_dp1
+    provider: U.S. Census Bureau
+    title: 2010 Census Demographic Profile Summary File
+    role: population_constraint
+    reference_period_start: 2010-04-01
+    reference_period_end: 2010-04-01
+    release_date: 2011-08-25
+    release_verified: true
+    geography_vintage: "2010"
+    access: public_download
+    url: https://www2.census.gov/census_2010/03-Demographic_Profile/
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: true
+    notes: >-
+      Compact exact-count demographic profile used instead of downloading every SF1 table. State
+      release dates varied; retain each archive's server metadata and independently verify it.
+
+  - id: census_2010_pl94_171
+    provider: U.S. Census Bureau
+    title: 2010 Census Redistricting Data P.L. 94-171
+    role: population_constraint
+    reference_period_start: 2010-04-01
+    reference_period_end: 2010-04-01
+    release_date: 2011-03-24
+    release_verified: true
+    geography_vintage: "2010"
+    access: public_api_or_download
+    url: https://api.census.gov/data/2010/dec/pl
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: true
+    notes: March 24 is the all-state completion date; preserve the state-specific release date.
+
+  - id: acs5_2006_2010
+    provider: U.S. Census Bureau
+    title: 2006-2010 ACS five-year detailed estimates
+    role: population_constraint
+    reference_period_start: 2006-01-01
+    reference_period_end: 2010-12-31
+    release_date: 2011-12-08
+    release_verified: true
+    geography_vintage: "2010"
+    access: public_api_or_download
+    url: https://api.census.gov/data/2010/acs/acs5
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: true
+    notes: Retain estimates and 90-percent margins of error.
+
+  - id: acs_pums_2006_2010
+    provider: U.S. Census Bureau
+    title: 2006-2010 ACS five-year PUMS
+    role: donor_microdata
+    reference_period_start: 2006-01-01
+    reference_period_end: 2010-12-31
+    release_date: 2011-12-29
+    release_verified: true
+    geography_vintage: 2000 PUMA definitions
+    access: public_api_or_download
+    url: https://api.census.gov/data/2010/acs/acs5/pums
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: true
+    notes: PUMS geography is PUMA, not township or precinct; records are donor microdata only.
+
+  - id: cvap_2006_2010
+    provider: U.S. Census Bureau
+    title: 2006-2010 Citizen Voting Age Population special tabulation
+    role: population_constraint
+    reference_period_start: 2006-01-01
+    reference_period_end: 2010-12-31
+    release_date: 2012-02-09
+    release_verified: true
+    geography_vintage: "2010"
+    access: public_download
+    url: https://www.census.gov/data/datasets/2010/dec/rdo/2010-cvap.html
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: true
+    notes: Use for citizen-voting-age universes; preserve published margins of error.
+
+  - id: tiger_2010
+    provider: U.S. Census Bureau
+    title: 2010 TIGER/Line geography
+    role: geography
+    reference_period_start: 2010-01-01
+    reference_period_end: 2010-12-31
+    release_date: null
+    release_verified: false
+    geography_vintage: "2010"
+    access: public_download
+    url: https://www.census.gov/geographies/mapping-files/2010/geo/tiger-line-file.html
+    allowed_zones: [population_build]
+    requires_artifact_release_verification: true
+    notes: Verify the exact historical file release before a sealed build.
+
+  - id: cps_voting_2010
+    provider: U.S. Census Bureau
+    title: November 2010 CPS Voting and Registration Supplement
+    role: behavior_prior
+    reference_period_start: 2010-11-01
+    reference_period_end: 2010-11-30
+    release_date: null
+    release_verified: false
+    geography_vintage: national_state
+    access: public_download
+    url: https://www.census.gov/data/tables/2010/demo/voting-and-registration/voting-registration-2010-election.html
+    allowed_zones: [behavior_training, evaluation]
+    requires_artifact_release_verification: true
+    notes: Registration/turnout behavior only. Never use as a population-count constraint.
+
+  - id: anes_2012
+    provider: American National Election Studies
+    title: 2012 Time Series Study
+    role: evaluation_target
+    reference_period_start: 2012-01-01
+    reference_period_end: 2013-01-31
+    release_date: 2016-05-24
+    release_verified: true
+    geography_vintage: survey
+    access: registration_or_public_download
+    url: https://electionstudies.org/data-center/2012-time-series-study/
+    allowed_zones: [behavior_training, evaluation]
+    requires_artifact_release_verification: true
+    notes: Post-cutoff for e2012. Evaluation-only for sealed e2012 runs; never mount into runtime.
+
+  - id: ces_2012
+    provider: Cooperative Election Study
+    title: 2012 common-content data
+    role: evaluation_target
+    reference_period_start: 2012-01-01
+    reference_period_end: 2012-12-31
+    release_date: null
+    release_verified: false
+    geography_vintage: survey
+    access: public_download
+    url: https://tischcollege.tufts.edu/research-faculty/research-centers/cooperative-election-study/data-downloads
+    allowed_zones: [behavior_training, evaluation]
+    requires_artifact_release_verification: true
+    notes: Verify exact file/version/release date and license before use.
+
+  - id: historical_election_returns
+    provider: State or local election authority; optional normalized repository
+    title: Certified historical aggregate election returns
+    role: evaluation_target
+    reference_period_start: null
+    reference_period_end: null
+    release_date: null
+    release_verified: false
+    geography_vintage: election_specific
+    access: public_or_manual
+    url: ""
+    allowed_zones: [evaluation]
+    requires_artifact_release_verification: true
+    notes: Evaluation-only. Record certification source, office, contest, precinct vintage, and crosswalk.

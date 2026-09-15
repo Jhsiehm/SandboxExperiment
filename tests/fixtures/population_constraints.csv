@@ -1,0 +1,20 @@
+dimension,category,target_count,source_id,universe,role,moe90,notes
+age_band,under_18,24,fixture_constraints,all_residents,raking,,offline fixture
+age_band,18_24,12,fixture_constraints,all_residents,raking,,offline fixture
+age_band,25_34,18,fixture_constraints,all_residents,raking,,offline fixture
+age_band,35_44,18,fixture_constraints,all_residents,raking,,offline fixture
+age_band,45_54,18,fixture_constraints,all_residents,raking,,offline fixture
+age_band,55_64,15,fixture_constraints,all_residents,raking,,offline fixture
+age_band,65_plus,15,fixture_constraints,all_residents,raking,,offline fixture
+census_sex,male,58,fixture_constraints,all_residents,raking,,offline fixture
+census_sex,female,62,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,white_non_hispanic,70,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,black_non_hispanic,20,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,asian_non_hispanic,8,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,american_indian_alaska_native_non_hispanic,2,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,native_hawaiian_pacific_islander_non_hispanic,1,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,other_non_hispanic,3,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,two_or_more_non_hispanic,6,fixture_constraints,all_residents,raking,,offline fixture
+race_ethnicity,hispanic_any_race,10,fixture_constraints,all_residents,raking,,offline fixture
+citizenship,citizen,112,fixture_constraints,all_residents,raking,,offline fixture
+citizenship,noncitizen,8,fixture_constraints,all_residents,raking,,offline fixture

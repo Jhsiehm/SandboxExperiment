@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +26,33 @@ from psbx.schemas import (
 QUESTIONS_DIR = "data/questions"
 RUNS_DIR = "data/runs"
 COIN_FLIP_BRIER = 0.25
+
+CORPORATION_META = {
+    "openai": {"label": "OpenAI", "asset": "openai"},
+    "anthropic": {"label": "Anthropic", "asset": "anthropic"},
+    "google": {"label": "Google", "asset": "google"},
+    "meta": {"label": "Meta", "asset": "meta"},
+    "qwen": {"label": "Alibaba / Qwen", "asset": "qwen"},
+    "local": {"label": "Local lab", "asset": "local"},
+}
+
+AGENT_CALLSIGNS = {
+    "openai": "VECTOR",
+    "anthropic": "SONAR",
+    "google": "PRISM",
+    "meta": "ATLAS",
+    "qwen": "JADE",
+    "local": "FORGE",
+}
+
+MODEL_CALLSIGNS = {
+    "openrouter-gpt-4.1-mini": "VECTOR",
+    "openrouter-gpt-4o-mini": "NOVA",
+    "openrouter-haiku": "SONAR",
+    "openrouter-gemini-flash-lite": "PRISM",
+    "openrouter-llama-3.1-8b": "ATLAS",
+    "openrouter-qwen-2.5-7b": "JADE",
+}
 
 
 @dataclass
@@ -269,6 +296,8 @@ def list_runs() -> list[dict[str, Any]]:
                 "n_scored_questions": scored_questions,
                 "n_votes": len(votes),
                 "composition": composition,
+                "population_selection": manifest.get("population_selection"),
+                "dataset_selection": manifest.get("dataset_selection"),
                 "has_predictions": bool(preds),
                 "has_scores": bool(scores),
                 "has_log": bool(_first_existing(child, ("run.log",))),
@@ -379,6 +408,325 @@ def build_goal_progress(
                 "human-emulation percentage."
             ),
         },
+    }
+
+
+def _corporation_key(
+    model_id: str,
+    model_slug: str = "",
+    models: dict[str, ModelConfig] | None = None,
+) -> str:
+    """Map configured model identity to a stable leaderboard corporation."""
+    haystack = f"{model_id} {model_slug}".lower()
+    if "anthropic" in haystack or "claude" in haystack or model_id == "frontier-a":
+        return "anthropic"
+    if "google" in haystack or "gemini" in haystack:
+        return "google"
+    if "meta" in haystack or "llama" in haystack:
+        return "meta"
+    if "qwen" in haystack or "alibaba" in haystack:
+        return "qwen"
+    if "openai" in haystack or model_id == "frontier-b":
+        return "openai"
+    if models and model_id in models:
+        provider = str(models[model_id].provider).lower()
+        if provider in CORPORATION_META:
+            return provider
+    return "local"
+
+
+def _model_type(model_id: str, model_slug: str, models: dict[str, ModelConfig]) -> str:
+    haystack = f"{model_id} {model_slug}".lower()
+    if "llama" in haystack or "qwen" in haystack or "gpt-oss" in haystack:
+        return "Open-weight model"
+    if model_id.startswith("local-") or (
+        model_id in models and str(models[model_id].provider) == "local_vllm"
+    ):
+        return "Local model"
+    return "Hosted model"
+
+
+def _agent_callsign(model_id: str, corporation: str, agent_index: int) -> str:
+    family = MODEL_CALLSIGNS.get(model_id, AGENT_CALLSIGNS[corporation])
+    return f"{family}-{agent_index + 1:02d}"
+
+
+def _arena_row(bucket: dict[str, Any]) -> dict[str, Any]:
+    forecasts = int(bucket.get("n_forecasts") or 0)
+    brier = (
+        float(bucket.get("error_sum") or 0.0) / forecasts
+        if forecasts
+        else None
+    )
+    accuracy = (
+        float(bucket.get("correct_sum") or 0.0) / forecasts
+        if forecasts
+        else None
+    )
+    return {
+        **{key: value for key, value in bucket.items() if not key.endswith("_sum")},
+        "n_forecasts": forecasts,
+        "n_runs": len(bucket.get("run_ids") or []),
+        "brier": None if brier is None else round(brier, 6),
+        "accuracy": None if accuracy is None else round(accuracy, 6),
+        "arena_score": None if brier is None else round((1.0 - brier) * 100.0, 1),
+        "run_ids": sorted(bucket.get("run_ids") or []),
+    }
+
+
+def build_leaderboard(
+    runs: list[dict[str, Any]],
+    questions: list[Question],
+    models: dict[str, ModelConfig],
+) -> dict[str, Any]:
+    """Build auditable agent, swarm, model, and corporation standings.
+
+    Individual agents are scored directly from saved ``swarm_votes.jsonl`` files.
+    Model and corporation standings add ordinary scored predictions, while excluding
+    the swarm median so an aggregate result is not counted again as a corporation.
+    """
+    from leaderboard.explain import model_label
+
+    truth = {
+        question.id: 1.0 if question.ground_truth else 0.0
+        for question in questions
+        if question.ground_truth is not None
+    }
+    agents: dict[str, dict[str, Any]] = {}
+    model_buckets: dict[str, dict[str, Any]] = {}
+    corporation_buckets: dict[str, dict[str, Any]] = {}
+    per_run_agents: dict[str, dict[str, dict[str, float]]] = defaultdict(dict)
+    per_run_champions: dict[str, str] = {}
+    scored_ballots = 0
+
+    def model_bucket(model_id: str, model_slug: str = "") -> dict[str, Any]:
+        bucket = model_buckets.get(model_id)
+        if bucket is None:
+            corporation = _corporation_key(model_id, model_slug, models)
+            meta = CORPORATION_META[corporation]
+            config = models.get(model_id)
+            bucket = {
+                "id": model_id,
+                "label": model_label(model_id, models),
+                "model_slug": model_slug or (config.model_name if config else model_id),
+                "model_type": _model_type(model_id, model_slug, models),
+                "corporation_id": corporation,
+                "corporation": meta["label"],
+                "asset": meta["asset"],
+                "error_sum": 0.0,
+                "correct_sum": 0,
+                "n_forecasts": 0,
+                "run_ids": set(),
+                "agent_ids": set(),
+            }
+            model_buckets[model_id] = bucket
+        return bucket
+
+    def corporation_bucket(corporation: str) -> dict[str, Any]:
+        bucket = corporation_buckets.get(corporation)
+        if bucket is None:
+            meta = CORPORATION_META[corporation]
+            bucket = {
+                "id": corporation,
+                "label": meta["label"],
+                "asset": meta["asset"],
+                "error_sum": 0.0,
+                "correct_sum": 0,
+                "n_forecasts": 0,
+                "run_ids": set(),
+                "model_ids": set(),
+                "agent_ids": set(),
+            }
+            corporation_buckets[corporation] = bucket
+        return bucket
+
+    for run in runs:
+        run_id = str(run["run_id"])
+        votes_path = run_dir(run_id) / "swarm_votes.jsonl"
+        votes: list[SwarmVote] = []
+        if votes_path.is_file():
+            try:
+                votes = read_jsonl(votes_path, SwarmVote)
+            except Exception:
+                votes = []
+        for vote in votes:
+            if vote.question_id not in truth:
+                continue
+            outcome = truth[vote.question_id]
+            error = (float(vote.probability) - outcome) ** 2
+            correct = int((vote.probability >= 0.5) == bool(outcome))
+            corporation = _corporation_key(vote.model_id, vote.model_slug, models)
+            meta = CORPORATION_META[corporation]
+            agent = agents.get(vote.agent_id)
+            if agent is None:
+                agent = {
+                    "id": vote.agent_id,
+                    "label": _agent_callsign(vote.model_id, corporation, vote.agent_index),
+                    "agent_index": vote.agent_index,
+                    "model_id": vote.model_id,
+                    "model": model_label(vote.model_id, models),
+                    "model_slug": vote.model_slug,
+                    "model_type": _model_type(vote.model_id, vote.model_slug, models),
+                    "corporation_id": corporation,
+                    "corporation": meta["label"],
+                    "asset": meta["asset"],
+                    "perspective": vote.perspective_label or "Unassigned simulation role",
+                    "perspective_id": vote.perspective_id,
+                    "error_sum": 0.0,
+                    "correct_sum": 0,
+                    "n_forecasts": 0,
+                    "run_ids": set(),
+                    "wins": 0,
+                }
+                agents[vote.agent_id] = agent
+            agent["error_sum"] += error
+            agent["correct_sum"] += correct
+            agent["n_forecasts"] += 1
+            agent["run_ids"].add(run_id)
+
+            run_agent = per_run_agents[run_id].setdefault(
+                vote.agent_id, {"error_sum": 0.0, "n": 0}
+            )
+            run_agent["error_sum"] += error
+            run_agent["n"] += 1
+
+            mb = model_bucket(vote.model_id, vote.model_slug)
+            mb["error_sum"] += error
+            mb["correct_sum"] += correct
+            mb["n_forecasts"] += 1
+            mb["run_ids"].add(run_id)
+            mb["agent_ids"].add(vote.agent_id)
+            cb = corporation_bucket(corporation)
+            cb["error_sum"] += error
+            cb["correct_sum"] += correct
+            cb["n_forecasts"] += 1
+            cb["run_ids"].add(run_id)
+            cb["model_ids"].add(vote.model_id)
+            cb["agent_ids"].add(vote.agent_id)
+            scored_ballots += 1
+
+        for prediction in load_predictions(run_id):
+            if prediction.question_id not in truth or prediction.model_id == "swarm-median":
+                continue
+            outcome = truth[prediction.question_id]
+            error = (float(prediction.probability) - outcome) ** 2
+            correct = int((prediction.probability >= 0.5) == bool(outcome))
+            mb = model_bucket(prediction.model_id)
+            mb["error_sum"] += error
+            mb["correct_sum"] += correct
+            mb["n_forecasts"] += 1
+            mb["run_ids"].add(run_id)
+            corporation = str(mb["corporation_id"])
+            cb = corporation_bucket(corporation)
+            cb["error_sum"] += error
+            cb["correct_sum"] += correct
+            cb["n_forecasts"] += 1
+            cb["run_ids"].add(run_id)
+            cb["model_ids"].add(prediction.model_id)
+            scored_ballots += 1
+
+    for run_id, run_agents in per_run_agents.items():
+        means = {
+            agent_id: row["error_sum"] / row["n"]
+            for agent_id, row in run_agents.items()
+            if row["n"]
+        }
+        if not means:
+            continue
+        per_run_champions[run_id] = min(
+            means,
+            key=lambda agent_id: (means[agent_id], agents[agent_id]["label"]),
+        )
+        winning_brier = min(means.values())
+        for agent_id, brier in means.items():
+            if abs(brier - winning_brier) <= 1e-12 and agent_id in agents:
+                agents[agent_id]["wins"] += 1
+
+    agent_rows = [_arena_row(row) for row in agents.values()]
+    agent_rows.sort(
+        key=lambda row: (row["brier"] is None, row["brier"], -row["n_forecasts"], row["label"])
+    )
+    for rank, row in enumerate(agent_rows, 1):
+        row["rank"] = rank
+
+    model_rows = []
+    for bucket in model_buckets.values():
+        bucket["n_agents"] = len(bucket.pop("agent_ids"))
+        model_rows.append(_arena_row(bucket))
+    model_rows.sort(
+        key=lambda row: (row["brier"] is None, row["brier"], -row["n_forecasts"], row["label"])
+    )
+    for rank, row in enumerate(model_rows, 1):
+        row["rank"] = rank
+
+    corporation_rows = []
+    for bucket in corporation_buckets.values():
+        bucket["n_models"] = len(bucket.pop("model_ids"))
+        bucket["n_agents"] = len(bucket.pop("agent_ids"))
+        corporation_rows.append(_arena_row(bucket))
+    corporation_rows.sort(
+        key=lambda row: (row["brier"] is None, row["brier"], -row["n_forecasts"], row["label"])
+    )
+    for rank, row in enumerate(corporation_rows, 1):
+        row["rank"] = rank
+
+    run_lookup = {str(run["run_id"]): run for run in runs}
+    swarm_rows: list[dict[str, Any]] = []
+    for run in runs:
+        if not int(run.get("n_votes") or 0) or run.get("primary_brier") is None:
+            continue
+        run_id = str(run["run_id"])
+        brier = float(run["primary_brier"])
+        champion_id = per_run_champions.get(run_id)
+        swarm_rows.append(
+            {
+                "id": run_id,
+                "label": run.get("label") or run_id,
+                "status": run.get("status") or "recorded",
+                "asset": "swarm",
+                "brier": round(brier, 6),
+                "arena_score": round((1.0 - brier) * 100.0, 1),
+                "c_index": run.get("primary_c_index"),
+                "n_agents": int(run.get("n_agents") or 0),
+                "n_questions": int(run.get("n_scored_questions") or run.get("n_questions") or 0),
+                "n_votes": int(run.get("n_votes") or 0),
+                "created_at": run.get("created_at"),
+                "source_type": run.get("source_type") or "all",
+                "has_log": bool(run.get("has_log")),
+                "has_predictions": bool(run.get("has_predictions")),
+                "beats_prior": bool(
+                    run.get("goal_target_brier") is not None
+                    and brier < float(run["goal_target_brier"])
+                ),
+                "champion_agent": agents[champion_id]["label"] if champion_id else None,
+                "composition": run.get("composition") or [],
+            }
+        )
+    swarm_rows.sort(key=lambda row: (row["brier"], -row["n_questions"], row["label"]))
+    for rank, row in enumerate(swarm_rows, 1):
+        row["rank"] = rank
+
+    dates = [str(run.get("created_at")) for run in run_lookup.values() if run.get("created_at")]
+    return {
+        "status": "measured" if agent_rows or swarm_rows else "empty",
+        "updated_at": max(dates) if dates else None,
+        "rules": {
+            "primary_metric": "Brier probability error; lower is better",
+            "arena_score": "100 × (1 − mean Brier); higher is better",
+            "accuracy": "Share of forecasts on the correct side of 50%",
+            "scope": "Saved forecasts with known later ground truth in this epoch",
+        },
+        "summary": {
+            "n_agents": len(agent_rows),
+            "n_swarms": len(swarm_rows),
+            "n_models": len(model_rows),
+            "n_corporations": len(corporation_rows),
+            "n_scored_ballots": scored_ballots,
+        },
+        "agents": agent_rows,
+        "swarms": swarm_rows,
+        "models": model_rows,
+        "corporations": corporation_rows,
     }
 
 
