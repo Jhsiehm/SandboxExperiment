@@ -22,6 +22,79 @@ class SearchClient(Protocol):
     def fetch(self, document_id: str) -> dict: ...
     @property
     def queries(self) -> list[str]: ...
+    @property
+    def n_calls(self) -> int: ...
+
+
+class RetrievalBudgetExceeded(RuntimeError):
+    """A forecast attempted retrieval after its independent allowance expired."""
+
+
+class ForecastSearchClient:
+    """Question/model-scoped accounting over a reusable search transport.
+
+    The wrapped HTTP connection or in-memory index may be shared for efficiency;
+    queries, calls, and the hard allowance never are.
+    """
+
+    def __init__(self, backend: SearchClient, max_calls: int):
+        if max_calls < 0:
+            raise ValueError("max_calls must be non-negative")
+        while isinstance(backend, ForecastSearchClient):
+            backend = backend.backend
+        self.backend = backend
+        self.max_calls = max_calls
+        self._queries: list[str] = []
+        self._n_calls = 0
+
+    @property
+    def n_calls(self) -> int:
+        return self._n_calls
+
+    @property
+    def remaining_calls(self) -> int:
+        return max(0, self.max_calls - self._n_calls)
+
+    @property
+    def queries(self) -> list[str]:
+        return list(self._queries)
+
+    @property
+    def env(self) -> object | None:
+        return getattr(self.backend, "env", None)
+
+    def _reserve(self) -> None:
+        if self._n_calls >= self.max_calls:
+            raise RetrievalBudgetExceeded(
+                "forecast retrieval allowance exhausted; tool call refused"
+            )
+        self._n_calls += 1
+
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        min_prominence: float = 0.0,
+        source_types: list[str] | None = None,
+    ) -> list[SearchHit]:
+        self._reserve()
+        self._queries.append(query)
+        if source_types is None:
+            return self.backend.search(
+                query,
+                k=k,
+                min_prominence=min_prominence,
+            )
+        return self.backend.search(
+            query,
+            k=k,
+            min_prominence=min_prominence,
+            source_types=source_types,
+        )
+
+    def fetch(self, document_id: str) -> dict:
+        self._reserve()
+        return self.backend.fetch(document_id)
 
 
 class LocalSearchClient:

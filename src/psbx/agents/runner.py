@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 
-from psbx.sandbox.client import SearchClient
+from psbx.sandbox.client import RetrievalBudgetExceeded, SearchClient
 from psbx.schemas import Citation, ModelConfig, Question
 
 FINAL_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -223,7 +223,10 @@ def execute_tool(client: SearchClient, name: str, arguments: dict[str, Any]) -> 
         except (TypeError, ValueError):
             return "SEARCH ERROR: k must be an integer"
         k = max(1, min(k, 25))
-        hits = client.search(query, k=k)
+        try:
+            hits = client.search(query, k=k)
+        except RetrievalBudgetExceeded as exc:
+            return f"SEARCH REFUSED: {exc}"
         if not hits:
             return "NO HITS"
         return "\n".join(
@@ -238,6 +241,8 @@ def execute_tool(client: SearchClient, name: str, arguments: dict[str, Any]) -> 
             return "FETCH ERROR: document_id exceeds 256 characters"
         try:
             doc = client.fetch(doc_id)
+        except RetrievalBudgetExceeded as exc:
+            return f"FETCH REFUSED: {exc}"
         except Exception as exc:
             return f"FETCH ERROR: {exc}"
         return (

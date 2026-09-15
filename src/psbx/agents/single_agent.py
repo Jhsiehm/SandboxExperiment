@@ -17,7 +17,7 @@ from psbx.agents.runner import (
     system_prompt,
     user_prompt,
 )
-from psbx.sandbox.client import SearchClient
+from psbx.sandbox.client import ForecastSearchClient, SearchClient
 from psbx.schemas import Epoch, ModelConfig, Prediction, Question
 
 YES_CUES = (
@@ -54,11 +54,18 @@ def run_single_agent(
     max_tool_calls: int = 12,
 ) -> Prediction:
     t0 = time.perf_counter()
+    # The transport may be reused across an entire run, but each forecast owns
+    # independent query history and a fresh hard allowance.
+    forecast_client = ForecastSearchClient(client, max_tool_calls)
     if os.environ.get("PSBX_MOCK_LLM", "0") == "1":
-        pred = _mock_loop(question, model, epoch, run_id, client, max_tool_calls)
+        pred = _mock_loop(
+            question, model, epoch, run_id, forecast_client, max_tool_calls
+        )
         pred.latency_s = time.perf_counter() - t0
         return pred
-    pred = _live_loop(question, model, epoch, run_id, client, max_tool_calls)
+    pred = _live_loop(
+        question, model, epoch, run_id, forecast_client, max_tool_calls
+    )
     pred.latency_s = time.perf_counter() - t0
     return pred
 

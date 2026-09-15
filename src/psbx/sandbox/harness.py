@@ -192,7 +192,8 @@ def run_swarm_set(
         votes = read_jsonl(votes_dest, SwarmVote)
     done = {(p.model_id, p.question_id) for p in existing}
     preds = list(existing)
-    n_fetch = max(1, run.max_tool_calls - 1) if run.max_tool_calls else 3
+    if run.max_tool_calls < 2:
+        raise ValueError("swarm retrieval requires max_tool_calls >= 2")
     for question in chosen:
         key = (SWARM_MEDIAN_ID, question.id)
         if key in done:
@@ -204,7 +205,7 @@ def run_swarm_set(
             run.run_id,
             client,
             roster=roster,
-            max_retrieval=n_fetch,
+            max_retrieval=run.max_tool_calls,
             perspectives_path=run.perspectives,
         )
         pred = validate_citations(result.prediction, index)

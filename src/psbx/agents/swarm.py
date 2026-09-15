@@ -37,7 +37,7 @@ from psbx.agents.runner import (
     system_prompt,
 )
 from psbx.config import load_models, load_swarm
-from psbx.sandbox.client import SearchClient
+from psbx.sandbox.client import ForecastSearchClient, SearchClient
 from psbx.schemas import (
     CONDITIONER_SOURCE_TYPES,
     Citation,
@@ -248,14 +248,16 @@ def build_search_pack(
     before = int(getattr(client, "n_calls", 0))
     hits = client.search(question.text, k=k)
     cond_hits: list[Any] = []
-    try:
-        cond_hits = client.search(
-            question.text,
-            k=3,
-            source_types=sorted(CONDITIONER_SOURCE_TYPES),
-        )
-    except TypeError:
-        cond_hits = []
+    # Keep at least one call available for a citable document fetch.
+    if int(getattr(client, "remaining_calls", 2)) > 1:
+        try:
+            cond_hits = client.search(
+                question.text,
+                k=3,
+                source_types=sorted(CONDITIONER_SOURCE_TYPES),
+            )
+        except TypeError:
+            cond_hits = []
     merged = _merge_hits(hits, cond_hits)
     if not merged:
         raise ParseError("shared retrieval returned no documents")
@@ -279,12 +281,13 @@ def build_search_pack(
     if not sections:
         sections.append("\n".join(_hit_line(h) for h in merged))
     docs: list[dict[str, Any]] = []
-    fetch_ids = [h.document_id for h in merged[: max(1, n_fetch)]]
+    remaining = int(getattr(client, "remaining_calls", n_fetch))
+    fetch_ids = [h.document_id for h in merged[:remaining]]
     for hit in merged:
         if hit.document_id in fetch_ids:
             continue
         kind = getattr(hit, "source_type", None)
-        if kind in CONDITIONER_SOURCE_TYPES and len(fetch_ids) < n_fetch + 2:
+        if kind in CONDITIONER_SOURCE_TYPES and len(fetch_ids) < remaining:
             fetch_ids.append(hit.document_id)
     seen_fetch: set[str] = set()
     for document_id in fetch_ids:
@@ -412,7 +415,8 @@ def run_swarm(
         personas = assign_personas(roster, catalog)
     except FileNotFoundError:
         personas = []
-    pack = build_search_pack(question, client, n_fetch=max_retrieval)
+    forecast_client = ForecastSearchClient(client, max_retrieval)
+    pack = build_search_pack(question, forecast_client, n_fetch=max_retrieval)
     print(
         "activity "
         + json.dumps(
@@ -428,7 +432,7 @@ def run_swarm(
         ),
         flush=True,
     )
-    env = getattr(client, "env", None)
+    env = getattr(forecast_client, "env", None)
     bind = getattr(env, "bind_evidence", None)
     if callable(bind):
         bind(pack)
