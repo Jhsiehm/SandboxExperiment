@@ -169,10 +169,9 @@ def test_society_swarm_mock_writes_workspaces(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr("psbx.society.experiment.resolve_run_dir", isolated_run_dir)
     monkeypatch.setattr("psbx.run_provenance.run_dir", isolated_run_dir)
-    run = load_run("config/run-society-swarm.yaml")
+    run = load_run("config/run-society-swarm-mock.yaml")
     run = run.model_copy(
         update={
-            "allow_mock": True,
             "run_id": "test-society-swarm",
             "n_questions": 1,
             "sandbox_mode": "host",
