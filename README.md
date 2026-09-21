@@ -158,7 +158,10 @@ Not working yet:
   through 2012-06-30) is still fixture work, not a live scrape.
 
 `data/corpus` and `data/runs` are gitignored. After clone, rebuild the index
-before you run. Do not commit `.env`.
+before you run. Do not commit `.env`. To continue with the same downloaded
+sources, generated populations, and experiment history on another machine, use
+the checksum-verified workflow in
+[`docs/WORKSPACE_MIGRATION.md`](docs/WORKSPACE_MIGRATION.md).
 
 ## Quick start
 
@@ -217,6 +220,11 @@ Each model/question/replication unit receives the same call, token, and
 temperature budget under no factual evidence, matched authenticated evidence,
 and a shuffled eligible pack. Assignments, pack hashes, observations, and
 question-cluster bootstrap intervals are persisted under the experiment run ID.
+The manifest also fingerprints the rendered prompts, tool protocol, and execution
+source; a resume refuses protocol drift. Failed attempts are retained in
+`failures.jsonl` and reported separately from completed paired observations.
+The configured random seed controls condition assignment and cluster bootstrap,
+not provider sampling determinism.
 The mock form validates mechanics only; research conclusions require declared
 live models and authenticated corpus material.
 

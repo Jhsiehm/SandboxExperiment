@@ -8,6 +8,7 @@ no factual evidence, matched authenticated evidence, and a shuffled-evidence pla
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import os
 import random
@@ -18,7 +19,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from psbx.agents.runner import skip_reason
+from psbx.agents.runner import (
+    ANTHROPIC_TOOLS,
+    OPENAI_TOOLS,
+    skip_reason,
+    system_prompt,
+    user_prompt,
+)
 from psbx.agents.single_agent import run_single_agent
 from psbx.corpus.index import HybridIndex
 from psbx.io import read_json, read_jsonl, write_json, write_jsonl
@@ -27,6 +34,20 @@ from psbx.schemas import Document, Epoch, ModelConfig, Prediction, Question, Sea
 from psbx.spending import begin_spend_run, preflight_paid_requests
 
 UTC = timezone.utc
+_IMPLEMENTATION_SOURCE_PATHS = frozenset(
+    {
+        Path(__file__).resolve(),
+        Path(inspect.getsourcefile(run_single_agent) or "").resolve(),
+        Path(inspect.getsourcefile(system_prompt) or "").resolve(),
+    }
+)
+_FAILURE_SECRET_ENV_NAMES = (
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "TOGETHER_API_KEY",
+    "VLLM_API_KEY",
+)
 CONDITIONS = (
     "no_evidence",
     "matched_authenticated",
@@ -102,6 +123,22 @@ class EvidenceObservation(BaseModel):
     citation_document_ids: list[str]
     citation_verification_failed: bool
     raw_prediction: dict[str, Any]
+
+
+class EvidenceFailure(BaseModel):
+    """Durable history for a trial attempt that did not produce an observation."""
+
+    trial_id: str
+    unit_id: str
+    question_id: str
+    model_id: str
+    replication: int
+    condition: EvidenceCondition
+    condition_order: int
+    attempt: int
+    failed_at: datetime
+    error_type: str
+    error_message: str
 
 
 class PairedEstimate(BaseModel):
@@ -220,6 +257,12 @@ def run_evidence_experiment(
         if observations_path.is_file() and observations_path.stat().st_size
         else []
     )
+    failures_path = dest / "failures.jsonl"
+    failures = (
+        read_jsonl(failures_path, EvidenceFailure)
+        if failures_path.is_file() and failures_path.stat().st_size
+        else []
+    )
     completed = {observation.trial_id for observation in observations}
     questions_by_id = {question.id: question for question in chosen_questions}
     models_by_id = {model.id: model for model in chosen_models}
@@ -227,14 +270,32 @@ def run_evidence_experiment(
         if assignment.trial_id in completed:
             continue
         trial_docs = _trial_documents(assignment, packs, index, epoch)
-        prediction = run_single_agent(
-            questions_by_id[assignment.question_id],
-            models_by_id[assignment.model_id],
-            epoch,
-            spec.experiment_id,
-            FixedEvidenceClient(trial_docs),
-            max_tool_calls=spec.max_tool_calls,
-        )
+        try:
+            prediction = run_single_agent(
+                questions_by_id[assignment.question_id],
+                models_by_id[assignment.model_id],
+                epoch,
+                spec.experiment_id,
+                FixedEvidenceClient(trial_docs),
+                max_tool_calls=spec.max_tool_calls,
+            )
+        except Exception as exc:
+            failures.append(
+                _failure_record(
+                    assignment,
+                    exc,
+                    attempt=(
+                        1
+                        + sum(
+                            1
+                            for failure in failures
+                            if failure.trial_id == assignment.trial_id
+                        )
+                    ),
+                )
+            )
+            write_jsonl(failures_path, failures)
+            raise
         citation_failed = not _citations_match_pool(prediction, trial_docs)
         truth = questions_by_id[assignment.question_id].ground_truth
         observation = EvidenceObservation(
@@ -258,7 +319,7 @@ def run_evidence_experiment(
         observations.append(observation)
         completed.add(assignment.trial_id)
         write_jsonl(observations_path, observations)
-    report = analyze_evidence_experiment(spec, observations)
+    report = analyze_evidence_experiment(spec, observations, failures=failures)
     report["manifest_fingerprint"] = manifest["fingerprint"]
     write_json(dest / "experiment_results.json", report)
     return report
@@ -267,6 +328,8 @@ def run_evidence_experiment(
 def analyze_evidence_experiment(
     spec: EvidenceExperimentSpec,
     observations: list[EvidenceObservation],
+    *,
+    failures: list[EvidenceFailure] | None = None,
 ) -> dict[str, Any]:
     """Require complete paired cells, then estimate question-cluster uncertainty."""
     cells: dict[str, dict[str, EvidenceObservation]] = defaultdict(dict)
@@ -311,6 +374,9 @@ def analyze_evidence_experiment(
                 1 for row in rows if row.citation_verification_failed
             ),
         }
+    failures = failures or []
+    completed_trials = {observation.trial_id for observation in observations}
+    failed_trials = {failure.trial_id for failure in failures}
     return {
         "experiment_id": spec.experiment_id,
         "status": "complete",
@@ -325,11 +391,21 @@ def analyze_evidence_experiment(
             "max_tokens": spec.max_tokens,
             "temperature": spec.temperature,
         },
+        "random_seed_scope": (
+            "Condition assignment and question-cluster bootstrap only; provider "
+            "sampling is not claimed deterministic."
+        ),
         "n_observations": len(observations),
         "n_paired_units": len(cells),
         "n_question_clusters": len({row.question_id for row in observations}),
         "by_condition": by_condition,
         "paired_contrasts": [contrast.model_dump(mode="json") for contrast in contrasts],
+        "failure_history": {
+            "n_failed_attempts": len(failures),
+            "trials_with_failures": len(failed_trials),
+            "resolved_trial_ids": sorted(failed_trials & completed_trials),
+            "unresolved_trial_ids": sorted(failed_trials - completed_trials),
+        },
     }
 
 
@@ -489,10 +565,20 @@ def _manifest(
     index: HybridIndex,
     assignments: list[EvidenceAssignment],
 ) -> dict[str, Any]:
+    prompt_protocol = {
+        "system_prompt": system_prompt(epoch.cutoff_date),
+        "user_prompts_by_question": {
+            question.id: user_prompt(question) for question in questions
+        },
+        "openai_tools": OPENAI_TOOLS,
+        "anthropic_tools": ANTHROPIC_TOOLS,
+        "implementation_sha256": _implementation_sha256(),
+    }
     contract = {
-        "schema_version": 1,
+        "schema_version": 2,
         "spec": spec.model_dump(mode="json"),
         "epoch": epoch.model_dump(mode="json"),
+        "prompt_protocol": prompt_protocol,
         "questions_sha256": _digest_json(
             [question.model_dump(mode="json") for question in questions]
         ),
@@ -516,11 +602,58 @@ def _ensure_manifest(path: Path, manifest: dict[str, Any]) -> None:
         previous = read_json(path)
         if previous.get("fingerprint") != manifest["fingerprint"]:
             raise RuntimeError(
-                "existing evidence experiment has different inputs or assignments; "
-                "choose a new experiment_id"
+                "existing evidence experiment has different inputs, assignments, or "
+                "execution protocol; choose a new experiment_id"
             )
         return
     write_json(path, manifest)
+
+
+def _failure_record(
+    assignment: EvidenceAssignment,
+    exc: Exception,
+    *,
+    attempt: int,
+) -> EvidenceFailure:
+    message = _safe_failure_message(exc)
+    return EvidenceFailure(
+        trial_id=assignment.trial_id,
+        unit_id=assignment.unit_id,
+        question_id=assignment.question_id,
+        model_id=assignment.model_id,
+        replication=assignment.replication,
+        condition=assignment.condition,
+        condition_order=assignment.condition_order,
+        attempt=attempt,
+        failed_at=datetime.now(UTC),
+        error_type=type(exc).__name__,
+        error_message=message[:500],
+    )
+
+
+def _safe_failure_message(exc: Exception) -> str:
+    message = " ".join(str(exc).split()) or "no error message"
+    for name in _FAILURE_SECRET_ENV_NAMES:
+        secret = os.environ.get(name) or ""
+        if secret:
+            message = message.replace(secret, "[redacted]")
+    lowered = message.lower()
+    if "authorization:" in lowered or "bearer " in lowered:
+        return "provider failure details redacted"
+    return message
+
+
+def _implementation_sha256() -> str:
+    """Fingerprint source that can change execution while prompts stay identical."""
+    digest = hashlib.sha256()
+    for path in sorted(_IMPLEMENTATION_SOURCE_PATHS, key=str):
+        if not path.is_file():
+            raise RuntimeError(f"cannot fingerprint evidence protocol source: {path}")
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def _paired_estimate(

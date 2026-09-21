@@ -4,10 +4,12 @@ import pytest
 
 from psbx.corpus.embed import embed_texts
 from psbx.corpus.index import HybridIndex
+from psbx.experiments import evidence_ablation as evidence_ablation_module
 from psbx.experiments.evidence_ablation import (
     CONDITIONS,
     EvidenceAssignment,
     EvidenceExperimentSpec,
+    EvidenceFailure,
     EvidenceObservation,
     analyze_evidence_experiment,
     run_evidence_experiment,
@@ -136,7 +138,15 @@ def test_bounded_evidence_experiment_persists_complete_paired_design(
         and contrast["uncertainty_method"] == "question-cluster bootstrap"
         for contrast in report["paired_contrasts"]
     )
-    assert read_json(tmp_path / "experiment_manifest.json")["fingerprint"]
+    manifest = read_json(tmp_path / "experiment_manifest.json")
+    assert manifest["fingerprint"]
+    assert manifest["schema_version"] == 2
+    assert manifest["prompt_protocol"]["system_prompt"]
+    assert set(manifest["prompt_protocol"]["user_prompts_by_question"]) == {
+        "alpha-question",
+        "beta-question",
+    }
+    assert len(manifest["prompt_protocol"]["implementation_sha256"]) == 64
     assert read_json(tmp_path / "evidence_packs.json")
 
     resumed = run_evidence_experiment(
@@ -149,6 +159,99 @@ def test_bounded_evidence_experiment_persists_complete_paired_design(
     )
     assert resumed == report
     assert len(read_jsonl(tmp_path / "observations.jsonl", EvidenceObservation)) == 6
+
+    original_system_prompt = evidence_ablation_module.system_prompt
+    monkeypatch.setattr(
+        evidence_ablation_module,
+        "system_prompt",
+        lambda cutoff: original_system_prompt(cutoff) + "\nProtocol revision.",
+    )
+    with pytest.raises(RuntimeError, match="different inputs, assignments, or execution"):
+        run_evidence_experiment(
+            spec,
+            questions,
+            [_model()],
+            epoch,
+            index,
+            destination=tmp_path,
+        )
+
+
+def test_failed_trial_is_audited_and_resolved_on_resume(tmp_path, monkeypatch):
+    monkeypatch.setenv("PSBX_MOCK_LLM", "1")
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "0")
+    monkeypatch.setenv("OPENAI_API_KEY", "secret-fixture-token")
+    questions = [
+        _question("alpha-question", "alpha", True),
+        _question("beta-question", "beta", False),
+    ]
+    documents = [
+        _document("alpha-evidence", "alpha", "widely expected"),
+        _document("beta-evidence", "beta", "not scheduled"),
+    ]
+    epoch = Epoch(
+        id="e2012",
+        cutoff_date=date(2012, 6, 30),
+        resolution_window_end=date(2013, 6, 30),
+        corpus_index_path="unused",
+    )
+    index = HybridIndex(
+        documents,
+        embed_texts([f"{document.title} {document.text}" for document in documents]),
+        epoch.cutoff_date,
+    )
+    spec = EvidenceExperimentSpec(
+        experiment_id="failure-audit",
+        epoch="e2012",
+        models=["fixture-model"],
+        question_set="unused.jsonl",
+        n_questions=2,
+        evidence_documents=1,
+        max_tool_calls=2,
+        max_tokens=128,
+        bootstrap_replicates=100,
+    )
+    original_run_single_agent = evidence_ablation_module.run_single_agent
+
+    def fail_trial(*args, **kwargs):
+        del args, kwargs
+        raise RuntimeError("provider fixture failed: secret-fixture-token")
+
+    monkeypatch.setattr(evidence_ablation_module, "run_single_agent", fail_trial)
+    with pytest.raises(RuntimeError, match="provider fixture failed"):
+        run_evidence_experiment(
+            spec,
+            questions,
+            [_model()],
+            epoch,
+            index,
+            destination=tmp_path,
+        )
+
+    failures = read_jsonl(tmp_path / "failures.jsonl", EvidenceFailure)
+    assert len(failures) == 1
+    assert failures[0].attempt == 1
+    assert failures[0].error_type == "RuntimeError"
+    assert failures[0].error_message == "provider fixture failed: [redacted]"
+
+    monkeypatch.setattr(
+        evidence_ablation_module,
+        "run_single_agent",
+        original_run_single_agent,
+    )
+    report = run_evidence_experiment(
+        spec,
+        questions,
+        [_model()],
+        epoch,
+        index,
+        destination=tmp_path,
+    )
+    assert report["status"] == "complete"
+    assert report["failure_history"]["n_failed_attempts"] == 1
+    assert report["failure_history"]["resolved_trial_ids"] == [failures[0].trial_id]
+    assert report["failure_history"]["unresolved_trial_ids"] == []
+    assert "provider sampling is not claimed deterministic" in report["random_seed_scope"]
 
 
 def test_evidence_experiment_rejects_mixed_design_without_multiple_models():
