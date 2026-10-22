@@ -1,0 +1,9 @@
+test_invalid_target_not_supervised (test_prepare.EvidenceTests.test_invalid_target_not_supervised) ... ok
+test_missing_receipt_rejected (test_prepare.EvidenceTests.test_missing_receipt_rejected) ... ok
+test_only_preceding_observed_messages (test_prepare.EvidenceTests.test_only_preceding_observed_messages) ... ok
+test_unseen_receipt_rejected (test_prepare.EvidenceTests.test_unseen_receipt_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK

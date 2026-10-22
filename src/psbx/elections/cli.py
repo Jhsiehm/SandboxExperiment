@@ -212,7 +212,7 @@ def import_fec_cmd(
     ),
     force: Annotated[bool, typer.Option("--force")] = False,
 ) -> None:
-    """Normalize House and Senate general-election sheets from an official FEC XLSX."""
+    """Normalize reviewed official FEC XLS/XLSX federal general-election sheets."""
     try:
         manifest = import_fec_workbook(
             workbook,

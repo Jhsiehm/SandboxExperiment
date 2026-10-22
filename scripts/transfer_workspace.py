@@ -43,8 +43,12 @@ DEFAULT_ASSET_PATHS = (
 )
 
 EXCLUDED_DIRECTORY_NAMES = {
+    ".git",
     ".sandbox",  # PID files, sockets, and host-specific sidecar state
+    ".venv",
     "__pycache__",
+    "build",
+    "dist",
 }
 EXCLUDED_FILE_NAMES = {
     ".DS_Store",
@@ -56,6 +60,15 @@ FORBIDDEN_RELATIVE_PATHS = {
     "build",
     "dist",
 }
+_EXCLUDED_DIRECTORY_NAMES_FOLDED = frozenset(
+    name.casefold() for name in EXCLUDED_DIRECTORY_NAMES
+)
+_EXCLUDED_FILE_NAMES_FOLDED = frozenset(
+    name.casefold() for name in EXCLUDED_FILE_NAMES
+)
+_FORBIDDEN_RELATIVE_PATHS_FOLDED = frozenset(
+    name.casefold() for name in FORBIDDEN_RELATIVE_PATHS
+)
 
 
 class TransferError(RuntimeError):
@@ -72,8 +85,10 @@ def _normalize_relative_path(value: str | Path) -> Path:
     if pure.is_absolute() or not pure.parts or any(part in {"", ".", ".."} for part in pure.parts):
         raise TransferError(f"asset path must be a safe repository-relative path: {value}")
     normalized = Path(*pure.parts)
-    first = normalized.parts[0]
-    if first in FORBIDDEN_RELATIVE_PATHS or normalized.name == ".env":
+    folded_parts = tuple(part.casefold() for part in normalized.parts)
+    if any(part in _FORBIDDEN_RELATIVE_PATHS_FOLDED for part in folded_parts) or any(
+        part == ".env" or part.startswith(".env.") for part in folded_parts
+    ):
         raise TransferError(f"refusing to transfer sensitive or generated path: {value}")
     return normalized
 
@@ -102,13 +117,18 @@ def _iter_regular_files(root: Path, relative_roots: Iterable[Path]) -> tuple[lis
             continue
         for directory, names, filenames in os.walk(source, followlinks=False):
             directory_path = Path(directory)
-            names[:] = sorted(name for name in names if name not in EXCLUDED_DIRECTORY_NAMES)
+            names[:] = sorted(
+                name
+                for name in names
+                if name.casefold() not in _EXCLUDED_DIRECTORY_NAMES_FOLDED
+            )
             for name in sorted(filenames):
+                folded_name = name.casefold()
                 if (
-                    name in EXCLUDED_FILE_NAMES
-                    or name == ".env"
-                    or name.startswith(".env.")
-                    or name.endswith(".part")
+                    folded_name in _EXCLUDED_FILE_NAMES_FOLDED
+                    or folded_name == ".env"
+                    or folded_name.startswith(".env.")
+                    or folded_name.endswith(".part")
                 ):
                     continue
                 candidate = directory_path / name
@@ -153,12 +173,12 @@ def _safe_remote_url(value: str | None) -> str | None:
     if not value or "://" not in value:
         return value
     parsed = urlsplit(value)
-    if "@" not in parsed.netloc:
-        return value
     hostname = parsed.hostname or ""
     if parsed.port:
         hostname += f":{parsed.port}"
-    return urlunsplit((parsed.scheme, hostname, parsed.path, parsed.query, parsed.fragment))
+    # Git accepts credentials in userinfo and some hosting proxies accept access
+    # tokens in a query string. Neither belongs in a portable bundle manifest.
+    return urlunsplit((parsed.scheme, hostname, parsed.path, "", ""))
 
 
 def git_state(root: Path) -> dict[str, Any]:
@@ -302,10 +322,14 @@ def _load_manifest(bundle: Path) -> dict[str, Any]:
     rows = manifest.get("files")
     if not isinstance(rows, list):
         raise TransferError("bundle manifest files must be a list")
+    seen_paths: set[str] = set()
     for row in rows:
         if not isinstance(row, dict):
             raise TransferError("bundle manifest contains an invalid file record")
-        _normalize_relative_path(str(row.get("path", "")))
+        relative = _normalize_relative_path(str(row.get("path", ""))).as_posix()
+        if relative in seen_paths:
+            raise TransferError(f"bundle manifest contains duplicate path: {relative}")
+        seen_paths.add(relative)
         digest = str(row.get("sha256", "")).casefold()
         if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
             raise TransferError(f"invalid SHA-256 for bundle path {row.get('path')!r}")

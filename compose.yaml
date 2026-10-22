@@ -1,0 +1,46 @@
+services:
+  anes:
+    image: psbx-anes-area:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: none
+    read_only: true
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 4g
+    cpus: 2
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    volumes:
+      - type: bind
+        source: ${ANES_PROFILES:?Run scripts/run_anes_area.py first}
+        target: /input/profiles.jsonl
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ANES_OUTPUT:?Run scripts/run_anes_area.py first}
+        target: /output
+        bind:
+          create_host_path: false
+    command:
+      - psbx
+      - experiment
+      - anes-simulate
+      - --profiles
+      - /input/profiles.jsonl
+      - --output
+      - /output
+      - --seed
+      - "220906899"
+      - --replications
+      - "30"
+      - --max-agents
+      - "100000"
+      - --group-size
+      - "12"
+      - --rounds
+      - "3"

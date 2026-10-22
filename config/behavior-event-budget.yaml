@@ -1,0 +1,24 @@
+schema: experiment-budget-authorization-v1
+authorized_on: '2026-10-22'
+status: authorized_for_next_frozen_experiment
+max_usd: 30
+max_provider_requests: 2000
+scope: One upcoming experiment run; not a separate allowance for each track or credential.
+retries_count_against_caps: true
+credential_switch_resets_budget: false
+resume_resets_budget: false
+historical_run_limits_changed: false
+launch_requires_frozen_scientific_contract: true
+environment_mapping:
+  PSBX_MAX_RUN_USD: '30'
+  PSBX_MAX_PAID_REQUESTS: '2000'
+planning_arithmetic:
+  social_groups: 30
+  people_per_group: 4
+  model_count: 1
+  repetitions: 1
+  calls_per_person: 16
+  planned_provider_requests: 1920
+  remaining_request_allowance: 80
+  dollars_preflight_status: Exact model and token pricing still required.
+  cohort_status: Proposed panel; only 29 of 30 confirmation candidates passed current structural audit.

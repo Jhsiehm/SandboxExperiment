@@ -307,6 +307,66 @@ def test_fec_workbook_adapter_normalizes_house_and_senate(tmp_path: Path):
     assert manifest.states == ["CA", "FL", "IN", "PA"]
 
 
+def test_fec_2012_legacy_adapter_includes_president_house_and_senate(
+    tmp_path: Path, monkeypatch
+):
+    workbook = tmp_path / "federal2012.xls"
+    workbook.write_bytes(b"legacy fixture; reader is patched")
+    combined = [
+        {
+            "_row_number": "2",
+            "state abbreviation": "CA",
+            "state": "California",
+            "district": "12",
+            "fec id": "H1",
+            "candidate name": "House A",
+            "party": "DEM",
+            "general votes": "100",
+            "ge winner indicator": "W",
+        },
+        {
+            "_row_number": "3",
+            "state abbreviation": "PA",
+            "state": "Pennsylvania",
+            "district": "S",
+            "fec id": "S1",
+            "candidate name": "Senate A",
+            "party": "DEM",
+            "general votes": "110",
+            "ge winner indicator": "W",
+        },
+    ]
+    president = [
+        {
+            "_row_number": "2",
+            "state abbreviation": "CA",
+            "state": "California",
+            "fec id": "P1",
+            "candidate name": "President A",
+            "party": "DEM",
+            "general votes": "120",
+            "ge winner indicator": "W",
+        }
+    ]
+
+    def fake_reader(path, name_contains):
+        del path
+        return president if "Pres General" in name_contains else combined
+
+    monkeypatch.setattr("psbx.elections.fec_adapter.read_xls_sheet", fake_reader)
+    frame, _ = normalize_fec_workbook(
+        workbook,
+        year=2012,
+        source_release_date=date(2013, 8, 21),
+    )
+    assert set(frame["office_level"]) == {"president", "us_house", "us_senate"}
+    assert set(frame["contest_id"]) == {
+        "2012-ca-president-general",
+        "2012-ca-us-house-12-general",
+        "2012-pa-us-senate-general",
+    }
+
+
 def test_import_results_fails_closed_on_future_or_uncertified_rows(tmp_path: Path):
     future = tmp_path / "future.csv"
     write_results(future, [result_row(source_release_date="2021-02-01")])

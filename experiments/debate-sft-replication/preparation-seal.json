@@ -1,0 +1,18 @@
+{
+  "image_id": "sha256:05c279f853dfee9dae4e477fc3b48a8e2d2656b405e5b5d1e8e7350597586109",
+  "bindings": {
+    "prepare.py": "a6420df70ea0964eb831dbaa6772392d217f580216b41fdb22f42e01c610bd95",
+    "test_prepare.py": "9872c39e30c4e99f4e4933f92806b25629164279a4e20c2949faa901ebd9ec37",
+    "Dockerfile": "77eb6591b4feefc1d68b67eb04ac3e857227cbad2f53313771fee21b873e88b2",
+    "inputs/manifest.json": "1b8589f64c6a4528bdc3eec109e45c8450c001709e8b798135c7af78a440dc77",
+    "inputs/LICENSE": "39fce5bc9667e2f97539abf2b114a227818454e29dba63edc8ff7801a809463e",
+    "train.jsonl": "cee7ffd1ed9e125a3997853be38333eee02899058d42ed9e43c8986f7c4e5894",
+    "validation.jsonl": "9107d2de66f5bebfd09844914200ca1a2ff7171447a13f6a5baa9a18ad1e0179",
+    "examples-provenance.json": "41362bc3522a1da176217e1c5ccd11c6cd1f89b45218b3eeb787bf99086ca642",
+    "preparation-audit.json": "c4ac0e88a6b0184af323357448c46faf8b3fd9c99807d360768038790e94f6f0",
+    "experiment-plan.json": "292a9b90aba425b16778f4aaad24a27f31cdf4c9200fef5010c11099685b176b",
+    "evaluation-candidates.metadata-only.json": "89ff515db795a295ad4d7f7a9266592bd398d9c61e1961090b8726d509813849",
+    "tests.log": "2f6c5ae88b1879302b44e04e84c09936d4d52ab5be97e0c0e90e0a5c989e3b8a"
+  },
+  "status": "preparation_only_no_model_trained"
+}

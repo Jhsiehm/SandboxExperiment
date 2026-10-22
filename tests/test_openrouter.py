@@ -373,3 +373,48 @@ def test_chat_completion_gives_up_after_two_429_retries(monkeypatch):
             messages=[{"role": "user", "content": "ping"}],
             max_tokens=16,
         )
+
+
+def test_json_output_mode_is_sent_to_provider(monkeypatch):
+    monkeypatch.setenv("PSBX_ENABLE_PAID_MODELS", "1")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-local-only")
+    monkeypatch.setenv("OPENROUTER_MIN_INTERVAL_SEC", "0")
+    reset_gate_for_tests()
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        assert json["response_format"] == {"type": "json_object"}
+        assert json["provider"]["require_parameters"] is True
+        assert "tools" not in json
+        return httpx.Response(200, request=httpx.Request("POST", url), json={
+            "choices": [{"message": {"content": '{"message":"test"}'}}],
+        })
+
+    monkeypatch.setattr("psbx.openrouter.httpx.post", fake_post)
+    result = chat_completion(
+        model="openai/gpt-4.1-mini", messages=[{"role": "user", "content": "Return JSON"}],
+        max_tokens=16, json_output=True,
+    )
+    assert result["choices"][0]["message"]["content"] == '{"message":"test"}'
+
+
+def test_complete_turn_forwards_system_and_json_mode(monkeypatch):
+    from psbx.agents.runner import complete_turn
+    from psbx.config import load_models
+
+    monkeypatch.setenv("PSBX_MOCK_LLM", "0")
+    model = load_models()["openrouter-gpt-4.1-mini"].model_copy(update={"json_output": True})
+
+    def fake_completion(**kwargs):
+        assert kwargs["messages"][0] == {
+            "role": "system", "content": "Today is 2012-11-05. Return JSON only.",
+        }
+        assert kwargs["json_output"] is True
+        assert kwargs["tools"] is None
+        return {"choices": [{"message": {"content": '{"message":"ok"}'}}]}
+
+    monkeypatch.setattr("psbx.openrouter.chat_completion", fake_completion)
+    messages = [{"role": "user", "content": "Reflect privately"}]
+    turn = complete_turn(model, messages, system="Today is 2012-11-05. Return JSON only.",
+                         tools=False)
+    assert turn.text == '{"message":"ok"}'
+    assert len(messages) == 1  # Caller history is not mutated.

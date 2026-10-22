@@ -3,3 +3,7 @@ epochs:
     cutoff_date: 2012-06-30
     resolution_window_end: 2013-06-30
     corpus_index_path: data/corpus/e2012
+  - id: e2012-election-eve
+    cutoff_date: 2012-11-05
+    resolution_window_end: 2013-11-05
+    corpus_index_path: data/corpus/e2012-election-eve

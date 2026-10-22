@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!prepare.py
+!test_prepare.py
+!inputs/
+!inputs/**

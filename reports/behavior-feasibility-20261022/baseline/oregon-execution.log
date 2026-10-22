@@ -1,0 +1,115 @@
+{
+  "status": "historical_development_only",
+  "n_people": 74922,
+  "n_households": 66385,
+  "reference_specification": "OLS treatment + lottery draw dummies + listed household size dummies; unit weights; Stata cluster finite-sample correction",
+  "reference": {
+    "ohp_all_ever_matchn_30sep2009": {
+      "control_mean": 0.14096877217885026,
+      "treatment_coefficient": 0.2558657884576887,
+      "cluster_se": 0.0035091501073758052,
+      "f_statistic": 5316.435501834155
+    },
+    "ohp_all_end_30sep2009": {
+      "control_mean": 0.1057709368346345,
+      "treatment_coefficient": 0.14813923617181063,
+      "cluster_se": 0.0031115199258441957,
+      "f_statistic": 2266.705138030173
+    }
+  },
+  "source_code_sha256": {
+    "OHIE_QJE_Replication_Code/oregon_hie_qje_replication.do": "56ec84ee5b237b7e1f9d9d3f18508d9a4b295ea250670c230c0c4beb3a603348",
+    "OHIE_QJE_Replication_Code/SubPrograms/prepare_data.do": "24041337ded9dd1e0fd8d866c6077ccb19994fa471436b9490ce4e9f5b850807",
+    "OHIE_QJE_Replication_Code/SubPrograms/tables_firststage.do": "dd0318ecd2c0010dc16703766876dbc6d11344da4b6403eb103c4503a7c67d04"
+  },
+  "published_rounding_checks": {
+    "ohp_all_ever_matchn_30sep2009": {
+      "control_mean": {
+        "absolute_difference": 3.122782114972633e-05,
+        "tolerance": 0.0005,
+        "passed": true
+      },
+      "treatment_coefficient": {
+        "absolute_difference": 0.00013421154231130217,
+        "tolerance": 0.0005,
+        "passed": true
+      },
+      "cluster_se": {
+        "absolute_difference": 9.150107375805166e-06,
+        "tolerance": 5e-05,
+        "passed": true
+      }
+    },
+    "ohp_all_end_30sep2009": {
+      "control_mean": {
+        "absolute_difference": 0.00022906316536550064,
+        "tolerance": 0.0005,
+        "passed": true
+      },
+      "treatment_coefficient": {
+        "absolute_difference": 0.00013923617181063608,
+        "tolerance": 0.0005,
+        "passed": true
+      },
+      "cluster_se": {
+        "absolute_difference": 1.151992584419578e-05,
+        "tolerance": 5e-05,
+        "passed": true
+      }
+    }
+  },
+  "reference_targets_sha256": "18e9ba2948b3fb7e317c494bb4ef7ae996cc74489e304c41432548758924a0a6",
+  "prediction_target": "ohp_all_ever_matchn_30sep2009",
+  "prediction_features": [
+    "numhh_list",
+    "draw_lottery",
+    "have_phone_list",
+    "english_list",
+    "female_list",
+    "first_day_list",
+    "last_day_list",
+    "pobox_list",
+    "self_list",
+    "week_list",
+    "zip_msa_list"
+  ],
+  "historical_oof_metrics": {
+    "assignment_only": {
+      "brier": 0.16769607425096048,
+      "log_loss": 0.5112639353034909,
+      "arm_shares": {
+        "0": {
+          "actual": 0.14096877217885026,
+          "predicted": 0.14097276235444528
+        },
+        "1": {
+          "actual": 0.3907286988000268,
+          "predicted": 0.3907255783993268
+        }
+      }
+    },
+    "same_information_logistic": {
+      "brier": 0.16421989719276325,
+      "log_loss": 0.5009774259159702,
+      "arm_shares": {
+        "0": {
+          "actual": 0.14096877217885026,
+          "predicted": 0.1410014422396401
+        },
+        "1": {
+          "actual": 0.3907286988000268,
+          "predicted": 0.3906303372998017
+        }
+      }
+    }
+  },
+  "fresh_holdout_claim": false,
+  "causal_forecast_claim": false,
+  "provider_calls": 0,
+  "inputs_sha256": {
+    "OHIE_Data/oregonhie_descriptive_vars.dta": "bc6167f6afbc26c80a70586d5793e37d0981780eb3e3e3c412f2f9bf305f08e8",
+    "OHIE_Data/oregonhie_stateprograms_vars.dta": "cf0503b6a62358460d7bd3429de21ee7d1abc8b7bc5d659c38cb5cd4145465cf"
+  },
+  "implementation_sha256": "ee091d19ce3471e2ab7678e9a657a983b983c0634d615835011b6df223fbbf94",
+  "baseline_implementation_sha256": "8d535e4f397199d59d105d08f7fce7b76614780f8f839cf8342619fff94d9cf0"
+}

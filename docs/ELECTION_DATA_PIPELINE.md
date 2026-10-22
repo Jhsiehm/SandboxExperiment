@@ -9,8 +9,10 @@ being mistaken for a usable population or a final result.
 2. `psbx elections sync-federal` plans or downloads official FEC source documents.
 3. `psbx elections sync-census` plans or executes ACS 5-year queries for states, counties,
    Census places, congressional districts, and both state-legislative chambers.
-4. `psbx elections import-fec` safely reads the House and Senate result sheets in an official
-   FEC workbook; `import-results` handles already-canonical state/local adapters.
+4. `psbx elections import-fec` safely reads the reviewed result sheets in an official FEC
+   workbook. The 2012 legacy XLS adapter covers President, U.S. Senate, and U.S. House; the
+   2016–2022 XLSX path covers U.S. Senate and U.S. House. `import-results` handles
+   already-canonical state/local adapters.
 5. Both import commands validate canonical aggregate result rows and write a
    checksum-bound dataset manifest. The dashboard receives these manifests as filterable,
    path-free data layers through `/api/data/catalog?epoch=e2012` (also embedded at
@@ -35,10 +37,12 @@ many component tables and maps on older pages. Raw PDFs and workbooks are stored
 `data/elections/raw/`; they are not called normalized until a source adapter produces the
 canonical result schema and the importer validates it.
 
-Normalize a downloaded official 2016–2022 combined FEC workbook without loading macros,
-drawings, or embedded media. Older publications stay pinned as raw evidence until a reviewed
-legacy-XLS or PDF adapter is added. The release date is required because the FEC workbook itself
-does not expose a reliable
+Normalize a downloaded official 2012 or 2016–2022 combined FEC workbook without executing macros
+or loading drawings and embedded media. The reviewed 2012 BIFF adapter imports the presidential,
+House, and Senate general-election sheets, including special House terms and consolidated fusion
+ballot lines. Other pre-2016 publications stay pinned as raw evidence until a cycle-specific
+legacy-XLS or PDF adapter is reviewed. The release date is required because the FEC workbook does
+not expose a reliable
 machine-readable publication timestamp; verify that date independently before relying on a
 historical cutoff.
 
@@ -50,6 +54,15 @@ psbx elections import-fec \
   --cutoff 2026-09-14 \
   --dataset-id fec-federal-2022 \
   --label "Official FEC federal general results · 2022"
+
+# Reviewed legacy 2012 publication (released by the FEC on 2013-08-21).
+psbx elections import-fec \
+  --workbook data/elections/raw/federal/2012/federalelections2012.xls \
+  --year 2012 \
+  --source-release-date 2013-08-21 \
+  --cutoff 2013-08-21 \
+  --dataset-id fec-federal-2012 \
+  --label "Official FEC federal general results · 2012"
 ```
 
 The November 3, 2026 federal general election is a future event as of September 14, 2026. The

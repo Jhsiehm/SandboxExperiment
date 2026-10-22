@@ -1,0 +1,14 @@
+run_id: anes2012-decision-context-20261011
+state_fips: 39
+sample_n: 24
+repetitions: 2
+seed: 20261011
+models: [openrouter-gpt-4.1-mini, openrouter-gpt-4o-mini, openrouter-gemini-flash-lite]
+max_requests: 700
+max_usd: 3
+interaction_n: 12
+interaction_rounds: 2
+interaction_neighbors: 3
+# These are illustrative exposure/participation assumptions, not measured relationships.
+participation_probability_by_interest: {1: 0.85, 2: 0.65, 3: 0.40, 4: 0.20}
+missing_interest_participation_probability: 0.50

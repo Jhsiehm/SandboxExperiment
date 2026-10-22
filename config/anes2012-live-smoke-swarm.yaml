@@ -1,0 +1,56 @@
+# Six-species live ANES smoke-test roster: one body per hosted model family.
+# This keeps the validation run small while exercising the same heterogeneous
+# independent-versus-society path intended for the larger experiment.
+name: anes2012-live-smoke-6
+n_agents: 6
+n_questions_default: 1
+shared_retrieval: supplied cutoff-safe context only; tools disabled
+serialize_openrouter: true
+rate_limit_note: >
+  Keep OpenRouter calls serialized. This roster is for a bounded ANES pipeline
+  validation, not for estimating scientific treatment effects.
+bodies:
+  - model_id: openrouter-gpt-4.1-mini
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: OpenAI GPT-4.1 mini via OpenRouter.
+  - model_id: openrouter-gpt-4o-mini
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: OpenAI GPT-4o mini via OpenRouter.
+  - model_id: openrouter-haiku
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Anthropic Claude 3 Haiku via OpenRouter.
+  - model_id: openrouter-gemini-flash-lite
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Google Gemini Flash-Lite via OpenRouter.
+  - model_id: openrouter-llama-3.1-8b
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Meta Llama 3.1 8B Instruct via OpenRouter.
+  - model_id: openrouter-qwen-2.5-7b
+    count: 1
+    temperature: 0.8
+    json_forecast: true
+    chain_of_thought: false
+    max_tokens: 256
+    notes: Qwen 2.5 7B Instruct via OpenRouter.
+optional_scale_up: []
+local_scale_up: []

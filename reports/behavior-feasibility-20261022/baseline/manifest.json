@@ -1,0 +1,21 @@
+{
+  "status": "historical_reference_reproduced_agent_admission_pending",
+  "human_results": true,
+  "paid_calls": 0,
+  "tests_passed": 18,
+  "fresh_holdout": false,
+  "artifacts": {
+    "README.md": "1ce01c6636b78c743c0ee5f0d6d196d7e04035c68541d555161084e1ad18c3e4",
+    "baseline.py": "8d535e4f397199d59d105d08f7fce7b76614780f8f839cf8342619fff94d9cf0",
+    "ohie_userguide.txt": "23ed0780d19696c628215d3aa58720018780f44006a58d2f95a1844cb6df165a",
+    "oregon-execution.log": "d79b47fe136645bce38baba86b7a4d4d45d20723a39733a6d8e688139ccdb605",
+    "oregon-results.json": "d79b47fe136645bce38baba86b7a4d4d45d20723a39733a6d8e688139ccdb605",
+    "oregon_reference.py": "ee091d19ce3471e2ab7678e9a657a983b983c0634d615835011b6df223fbbf94",
+    "oregonhie_descriptivevars_codebook.txt": "104349f207e7b2d41b3443c01f7f700f4694619b609a2ba88b826d413f15bca4",
+    "oregonhie_stateprograms_codebook.txt": "4638f001081a4e6366fcef04494d9536b56a1b840cdb4b198dacfdefe0183e2f",
+    "reference-targets.json": "18e9ba2948b3fb7e317c494bb4ef7ae996cc74489e304c41432548758924a0a6",
+    "source-contract.unresolved.json": "8d3f601fd6d7e306104e3e4833cb8902b308bccb0e2e2a4dc06409f67a36b236",
+    "test-results.txt": "341d5dca33250b815baddbafb6001e174c20bf1716bb74f3d612e77777db8938",
+    "test_baseline.py": "d17d5ee4b943251ccb2327c5cce4e33943a32408ac77b0b94e7cc546f911b9de"
+  }
+}

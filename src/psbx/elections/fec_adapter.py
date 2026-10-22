@@ -15,6 +15,7 @@ from xml.etree import ElementTree as ET
 from zipfile import BadZipFile, ZipFile
 
 import pandas as pd
+import xlrd
 
 from psbx.population.census_sync import AREAS
 
@@ -25,6 +26,7 @@ MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 DOC_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 MAX_XML_MEMBER_BYTES = 25_000_000
+MAX_XLS_BYTES = 250_000_000
 FEC_RESULTS_INDEX = (
     "https://www.fec.gov/introduction-campaign-finance/"
     "election-results-and-voting-information/"
@@ -151,10 +153,59 @@ def read_xlsx_sheet(path: str | Path, name_contains: str) -> list[dict[str, str]
     ]
 
 
+def read_xls_sheet(path: str | Path, name_contains: str) -> list[dict[str, str]]:
+    """Read one legacy BIFF worksheet with xlrd; workbook formulas/macros are not executed."""
+    source = Path(path)
+    if source.stat().st_size > MAX_XLS_BYTES:
+        raise ValueError("legacy FEC workbook exceeds the size limit")
+    try:
+        workbook = xlrd.open_workbook(source, on_demand=True)
+    except xlrd.XLRDError as exc:
+        raise ValueError("FEC workbook is not a valid legacy XLS file") from exc
+    matches = [
+        name for name in workbook.sheet_names() if name_contains.casefold() in name.casefold()
+    ]
+    if len(matches) != 1:
+        workbook.release_resources()
+        raise ValueError(f"expected one worksheet containing {name_contains!r}, found {matches}")
+    sheet = workbook.sheet_by_name(matches[0])
+
+    def cell_text(value) -> str:
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value).strip()
+
+    header = {
+        column: _header(cell_text(sheet.cell_value(0, column)))
+        for column in range(sheet.ncols)
+        if cell_text(sheet.cell_value(0, column))
+    }
+    rows = []
+    for row_number in range(1, sheet.nrows):
+        rows.append(
+            {
+                "_row_number": str(row_number + 1),
+                **{
+                    header[column]: cell_text(sheet.cell_value(row_number, column))
+                    for column in range(sheet.ncols)
+                    if column in header
+                },
+            }
+        )
+    workbook.release_resources()
+    return rows
+
+
 def _header(value: str) -> str:
     normalized = " ".join(str(value).strip().casefold().split())
     normalized = normalized.replace(" (when applicable)", "")
-    return {"d": "district", "fec id#": "fec id"}.get(normalized, normalized)
+    return {
+        "d": "district",
+        "fec id#": "fec id",
+        "last name, first": "candidate name",
+        "general results": "general votes",
+        "winner indicator": "ge winner indicator",
+    }.get(normalized, normalized)
 
 
 def _votes(value: str) -> tuple[int, str] | None:
@@ -176,6 +227,7 @@ def _ordinal(value: int) -> str:
 def _house_district(value: str) -> tuple[str, str | None] | None:
     """Split FEC values such as ``02-Unexpired Term`` into geography and contest parts."""
     normalized = " ".join(str(value or "").strip().split())
+    normalized = re.sub(r"\s*-\s*", "-", normalized)
     match = re.fullmatch(r"(\d{1,2})(?:-(.+))?", normalized)
     if not match:
         return None
@@ -226,9 +278,9 @@ def normalize_fec_workbook(
     source_release_date: date,
     source_url: str | None = None,
 ) -> tuple[pd.DataFrame, list[str]]:
-    """Create canonical general-election rows for U.S. House and U.S. Senate."""
-    if year % 2 or not 2016 <= year <= 2022:
-        raise ValueError("the combined-workbook FEC adapter supports even cycles from 2016-2022")
+    """Create canonical federal general-election rows from reviewed FEC workbooks."""
+    if year != 2012 and (year % 2 or not 2016 <= year <= 2022):
+        raise ValueError("the FEC adapter supports 2012 and even cycles from 2016-2022")
     workbook = Path(path)
     if not workbook.is_file():
         raise FileNotFoundError(workbook)
@@ -236,15 +288,37 @@ def normalize_fec_workbook(
     election_date = federal_general_election_day(year)
     if source_release_date < election_date:
         raise ValueError("source_release_date cannot precede the election")
-    sheets = (
-        ("US Senate Results by State", "us_senate"),
-        ("US House Results by State", "us_house"),
-    )
+    legacy = workbook.suffix.casefold() == ".xls"
+    if year == 2012 and not legacy:
+        raise ValueError("the reviewed 2012 FEC publication is a legacy .xls workbook")
+    if legacy and year != 2012:
+        raise ValueError("legacy XLS normalization is reviewed only for the 2012 FEC workbook")
+    if legacy:
+        combined_rows = read_xls_sheet(workbook, "US House & Senate Resu")
+        sheets = (
+            ([row for row in combined_rows if row.get("district", "").strip() == "S"], "us_senate"),
+            (
+                [
+                    row
+                    for row in combined_rows
+                    if _house_district(row.get("district", "")) is not None
+                ],
+                "us_house",
+            ),
+        )
+    else:
+        sheets = tuple(
+            (read_xlsx_sheet(workbook, sheet_name), office_level)
+            for sheet_name, office_level in (
+                ("US Senate Results by State", "us_senate"),
+                ("US House Results by State", "us_house"),
+            )
+        )
     canonical = []
     skipped = Counter()
     congress = (year - 1788) // 2 + 1
-    for sheet_name, office_level in sheets:
-        for row in read_xlsx_sheet(workbook, sheet_name):
+    for source_rows, office_level in sheets:
+        for row in source_rows:
             postal = row.get("state abbreviation", "").upper()
             area = _STATE_BY_POSTAL.get(postal)
             if area is None:
@@ -331,6 +405,60 @@ def normalize_fec_workbook(
                         True
                         if vote_status == "unopposed_no_vote_total"
                         or row.get("ge winner indicator", "").strip().upper() == "W"
+                        else None
+                    ),
+                    "certified": True,
+                    "source_url": source_url,
+                    "source_release_date": source_release_date.isoformat(),
+                }
+            )
+    if legacy:
+        for row in read_xls_sheet(workbook, "2012 Pres General Results"):
+            postal = row.get("state abbreviation", "").upper()
+            area = _STATE_BY_POSTAL.get(postal)
+            if area is None:
+                skipped["president_territory_or_unknown_state"] += 1
+                continue
+            candidate = row.get("candidate name", "").strip()
+            vote_result = _votes(row.get("general votes", ""))
+            if not candidate or vote_result is None:
+                skipped["president_non_candidate_or_no_general_votes"] += 1
+                continue
+            votes, vote_status = vote_result
+            fec_id = row.get("fec id", "").strip()
+            canonical.append(
+                {
+                    "source_id": "fec_federal_elections_1982_2022",
+                    "source_record_id": (
+                        f"fec-{year}-president-{postal.casefold()}-{row['_row_number']}"
+                    ),
+                    "_source_row": row["_row_number"],
+                    "election_date": election_date.isoformat(),
+                    "election_year": year,
+                    "stage": "general",
+                    "office_level": "president",
+                    "office_name": "President of the United States",
+                    "contest_id": f"{year}-{postal.casefold()}-president-general",
+                    "geography_level": "state",
+                    "geography_id": f"state:{area.fips}",
+                    "geography_name": area.name,
+                    "geography_vintage": f"{year} state boundaries",
+                    "state_fips": area.fips,
+                    "state_postal": postal,
+                    "district": None,
+                    "county_fips": None,
+                    "county_name": None,
+                    "municipality_name": None,
+                    "precinct": None,
+                    "candidate_id": None if fec_id.casefold() in {"", "n/a"} else fec_id,
+                    "candidate_name": candidate,
+                    "party": row.get("party", "").strip() or None,
+                    "votes": votes,
+                    "vote_status": vote_status,
+                    "total_votes_reported": None,
+                    "winner": (
+                        True
+                        if row.get("ge winner indicator", "").strip().upper() == "W"
                         else None
                     ),
                     "certified": True,

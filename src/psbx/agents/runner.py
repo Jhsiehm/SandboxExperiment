@@ -296,6 +296,8 @@ def complete_turn(
         )
     if model.provider == "anthropic":
         return _anthropic_turn(model, messages, system=system, tools=tools)
+    if system and not any(message.get("role") == "system" for message in messages):
+        messages = [{"role": "system", "content": system}, *messages]
     if model.provider == "openai":
         return _openai_turn(
             model,
@@ -451,6 +453,7 @@ def _openrouter_turn(
         max_tokens=model.max_tokens,
         temperature=model.temperature,
         tools=OPENAI_TOOLS if tools else None,
+        **({"json_output": True} if model.json_output else {}),
     )
     choices = data.get("choices") or []
     if not choices:

@@ -1,0 +1,34 @@
+# Legacy provider-free structural pilot using the paper's ten conditioning fields.
+# It is retained for historical structural validation and must not be used live.
+schema_version: 1
+run_id: anes2012-society-structural-pilot
+design: society_treatment
+information_cutoff: 2012-11-05
+election_date: 2012-11-06
+case_id_field: caseid
+# The paper's public 2012 replication CSV omits ANES weights. Use the official
+# weight_full variable when the registered ANES DTA is supplied instead.
+weight_field: null
+profile_fields:
+  - dem_raceeth_x
+  - gender_respondent_x
+  - dem_age_r_x
+  - libcpre_self
+  - pid_x
+  - paprofile_interestpolit
+  - relig_church
+  - discuss_disc
+  - patriot_flag
+  - sample_stfips
+target_fields:
+  - presvote2012_x
+profile_timing_policy: paper_faithful
+missing_codes_below_zero: true
+profile_collection_timing: mixed_paper_faithful
+source_release_date: 2016-05-24
+treatments: [independent, society]
+replications: 5
+seed: 220906899
+max_agents: 120
+group_size: 12
+interaction_rounds: 3

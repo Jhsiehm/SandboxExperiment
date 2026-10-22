@@ -140,6 +140,13 @@ Working today (aligned 15 September 2026):
   representative-cell compression, separate reasoning budgets, and held-out
   aggregate behavior evaluation. The bundled fixture is synthetic and does not
   select or claim to represent a real place.
+- ANES 2012 silicon-society protocol: full 998-specification pre/post questionnaire inventory,
+  target-vault split, independent-versus-conversation treatment, sealed provider-free pilot, and
+  an explicit audit showing that the older Docker mode isolates retrieval rather than the host-side
+  model process. See [`docs/ANES_2012_SILICON_SOCIETY_PROTOCOL.md`](docs/ANES_2012_SILICON_SOCIETY_PROTOCOL.md).
+- The official FEC 2012 legacy workbook now normalizes 2,033 candidate rows across 524
+  presidential, U.S. Senate, and U.S. House general-election contests. State-legislative and local
+  election coverage still requires jurisdiction-specific adapters and is not claimed complete.
 
 Not working yet:
 
@@ -176,6 +183,14 @@ psbx sandbox up --epoch e2012
 PSBX_MOCK_LLM=1 psbx run --config config/run.yaml
 psbx score --run phase1-e2012-smoke
 psbx viewer --host 127.0.0.1 --port 8765
+
+# Provider-free ANES experiment plumbing (requires local public source files).
+psbx experiment anes-pilot \
+  --config config/anes2012-society.yaml \
+  --input data/survey-microdata/anes/2012/source/full_results_2012_2.csv \
+  --paper-baseline-input \
+    data/survey-microdata/anes/2012/source/full_results_2012_2.csv
+psbx experiment anes-doctor
 ```
 
 Open [http://127.0.0.1:8765](http://127.0.0.1:8765). The page is a local tactical

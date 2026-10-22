@@ -1,0 +1,287 @@
+{
+  "groups": [
+    {
+      "group_id": "01JTGYE0TGE8E600TWCDF7TWPE",
+      "topic": "A democratic system where citizens, not elected officials, vote directly on major national issues to decide what becomes law is a good way of governing the US",
+      "sha256": "de11456706bf4c8c94a1ed0c2fa3358ec1d34e989c2a3ff7d498dca2f38b3883",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K2ZTYVSBP69BBTC4TZ7TG9XV",
+      "topic": "Abortion can be justified",
+      "sha256": "f236fdb371f27107d5f4ec2f8a0d3aea18744a22cc600bec0759c3563cf2c83f",
+      "partition": "validation"
+    },
+    {
+      "group_id": "01K2ZX1RCPYZHDJ2853GHZVT8J",
+      "topic": "Avoiding a fare on public transport can be justified",
+      "sha256": "eee17c591670d72ce0147eb633e89ef00f667ae4f7e30dab385c2297cdfde427",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSQWE82Z2SQHSGB9CB4HGDQ9",
+      "topic": "Being a male is important for getting ahead in life",
+      "sha256": "c11d834090ad7dd527524cdf4a4081cccd505a2e370b97d04af8d4b55f24a3d0",
+      "partition": "validation"
+    },
+    {
+      "group_id": "01K3FBPMMWFW01FPHS0WTQQ5NK",
+      "topic": "China has done a good job in dealing with the coronavirus outbreak",
+      "sha256": "7ef05e81da54343f4cbeda43412ae111b2a788b8efcfc061280e15a8cb2b3d48",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSFK50M2M6PV1PVN4PZG55HY",
+      "topic": "Competition is good",
+      "sha256": "80bee367267bc3c17cea65d167f6db135097c9010008770e888b7681996e2c30",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSQWFXDCJ0WEE0W42AC7JZEE",
+      "topic": "Competition is good",
+      "sha256": "4e4db253fc276ece09e8490ec1c42bda8cc389343204802bb2a4a2c0518c9e51",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K37EG12853NDE8W5D7M6C8GQ",
+      "topic": "Death penalty can be justified",
+      "sha256": "0ad8683a89d1a5278fc93c93e4d002440238dc9bfea50c19783721e5641f618f",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSFKGGDK1VEWDB43495PZ6VP",
+      "topic": "Growing gap between the rich and poor poses the greatest threat to the world",
+      "sha256": "16f45954d5c0f9d97281ab52c31daf2f14c4a173aae56203a68ae754e552319a",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JT3KTGZ5P6R5T5GSF3N77QN4",
+      "topic": "Having experts, not government and elected officials, make decisions according to what they think is best for the US",
+      "sha256": "8433daed7114f1655ce783b6fc3326f9915b9d1c0b94da98f1a5e4cda3535db2",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K37KDAFA9YMACHVEGNTREP3W",
+      "topic": "Homosexuality can be justified",
+      "sha256": "3b8c3ce18c811f8e02ba263cf6e5b1c3211d3e3240fe03e5aa00331c4490374a",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWWW7DHRY9JJHYF28Y2X362",
+      "topic": "I have a lot of confidence in Donald J Trump to do the right thing regarding world affairs",
+      "sha256": "8fb56df4b5cc44bf95ff9f8b78ca3d973be069008d5bc5d3022570e315d7ae0f",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JT27XDNX7YCQAPY88NN6ZAV5",
+      "topic": "Immigrants have positive impacts on the development of the US",
+      "sha256": "5d106ee0b195e05326270b992edea766e298d6ddab9385073e0e2473bc1fabd7",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSN8B2P6F7GMFM8EJS6QC1MQ",
+      "topic": "Incomes should be made more equal",
+      "sha256": "7993dee0325587dd4ab06352c6bc8f820daf5addd046e90260d3dfd7edfe29d6",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSNBM9CZA5JP9Y3JV4SNZXD0",
+      "topic": "Incomes should be made more equal",
+      "sha256": "a0298b0a3556e3df8e524d5f49b3b07162b406dde437617438b29ace48cbfaaa",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSNA0B6F9TTAQ9YMXWGHT65P",
+      "topic": "Incomes should be made more equal",
+      "sha256": "6429426d709e74fbfede04062a324eea1dbb360bd50f6796140857fa9589f2a3",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWS2AAP8YVHJN8116PRJTDR",
+      "topic": "It is a characteristic of democracy for people to choose their leaders in free elections",
+      "sha256": "d1d49457be06d0cc2e338c29fa43363bb9bfd43552cd0be7daf985090edeeec4",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K3EY0JJYNY1S8ZAPB09NN0T9",
+      "topic": "It is a characteristic of democracy for the army to take over when the government is incompetent",
+      "sha256": "8df3c77296f1d2e7891c5e250212650274351b0d23d2b09f6d9dbaf536ce62d1",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSMVHBMDFJKR28H0AG3QM649",
+      "topic": "It is a characteristic of democracy for the state to make people's incomes equal",
+      "sha256": "bf07c06e780f00ba88fe945eab362064aecfa0e0f4ebaff6bf907407c1ad8cb9",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JYESXG7TYA75DR6MV1HEG5V8",
+      "topic": "It is a child's duty to take care of ill parents",
+      "sha256": "4239bbd23f6d189c1034241e2d64003bc94d051a257bed0b9eb871d259e2808f",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JX377XTYVCYT0P0PGVEFVDWY",
+      "topic": "It is an essential characteristic of democracy for religious authorities to interpret the laws",
+      "sha256": "5bb3a5548a962b7a88dbdfc11b9894d73f0ce3b4af8a31b2c20de8c2d3c64669",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K37M73A5KY092PH7G1A1V16A",
+      "topic": "I\u2019m worried about a civil war in the United States",
+      "sha256": "60a41329e2507905414cea45a64a603777f37396b83f8e76ddad8f011c6cf246",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWS1T0J2XY8H5JTW23DAXR1",
+      "topic": "I\u2019m worried about not being able to give children a good education",
+      "sha256": "2e6c22c1e9bdb8f592dc798ef612f9f5f42b41173ed500a1f03321137787e97e",
+      "partition": "validation"
+    },
+    {
+      "group_id": "01JSMV7GFKRPJETK6Q1KD7WQ9W",
+      "topic": "Knowing the right people is important for getting ahead in life",
+      "sha256": "e84ad303c694a3fcdd1879dddd29a0c5400c12f60a8d4d0f4b6c283cc8cf051b",
+      "partition": "validation"
+    },
+    {
+      "group_id": "01JSQ8E1EV0GZQDPDEFJ84YD31",
+      "topic": "Lack of democracy is responsible for Muslim nations\u2019 lack of prosperity",
+      "sha256": "dd6585886c3e42240c88e0200de94189d0c766398197252f7bd0fac87bf4b891",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSFJYZTWT9E5VXDAXS47BPEY",
+      "topic": "Living in a country that is governed democratically is important",
+      "sha256": "e2606cfb50ac82130c4b57b50b400d84358966be94fa590a1af177a873374abc",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K3EY4ERC3ENFDB53BZ5TPWWR",
+      "topic": "Living in a country that is governed democratically is important",
+      "sha256": "1a945ddcc2b73c2b1e76d3632229ee7de287cbef2cc4857a774f08f546c9e9ab",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JX3F2AX30T0DJCRZ6CBDDGRV",
+      "topic": "News organizations are doing good at reporting on the most important news events",
+      "sha256": "cbf882d14d6662b312d14b18c6f8a02ba64c038c784ea7b6e44c7c557f879049",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JYEQ5TJB5N0JMF345PMXQ695",
+      "topic": "One of the bad effects of science is that it breaks down people\u2019s ideas of right and wrong",
+      "sha256": "eb77aff6fb8cf4f3f96856544d7bd913ee332be5ed5afd00eb0fbf36b787dff5",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K3FMMJ32Y7V3ZXXFJDQ3J4C4",
+      "topic": "Over the next 12 months, the economic situation in the United States will improve a lot",
+      "sha256": "0f0bc98b4e079da143c7c08983ee1787cdd334401168600e9bfd63832a631c77",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JWQ9QDGW5V7WP86253THXJKV",
+      "topic": "Public debt is the most important issue for the government to address first",
+      "sha256": "d7575d41cf4e21b86dc8a6bbb1c65162e2e8a063051c9840ffa8fc64c436b882",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWG0DNF93707XX21ZFFQRED",
+      "topic": "Religious and ethnic hatred poses the greatest threat to the world",
+      "sha256": "e3e06a7b6be059777e668211f063325516c5cc30a0a252566fbb79968a586659",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWWPVSD0A36J33E7MRHT6PP",
+      "topic": "Rich people often buy elections",
+      "sha256": "5cbd72e2a1fe4c9f573ee0b6f0e095bc6a6340c81fbf8e4e8cb310f8a51ee5e3",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSQ7TAX8Q8JJE89AZWR1WXKK",
+      "topic": "Sex before marriage can be justified",
+      "sha256": "97131ffabf074a1603ab41c024094e8b10f830528c1285dc3ba84496bd14c7af",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWDM21F52CQAPCBW6R97KV9",
+      "topic": "Spread of nuclear weapons poses the greatest threat to the world",
+      "sha256": "16fe8a135e08d55f27ea843bc94ea11e8d0607d2e1540784728d0c2f034672e5",
+      "partition": "validation"
+    },
+    {
+      "group_id": "01JSQAB7J24PB4EPBJXHRB0ZFW",
+      "topic": "Suicide can be justified",
+      "sha256": "e3d84929a1505f24fb55543c4b6b41871f6e012b8ebd4c111473cf96412c497f",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JTH524J8T8BFVKDWAX0DETKY",
+      "topic": "The US benefits a lot from the World Health Organization",
+      "sha256": "c18340811ae39a6e604f73ddc67972a58810414a736fd9ee969eacba36e173c5",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWDCB82DB23KHZ25Q4881N5",
+      "topic": "The United States is being governed democratically today",
+      "sha256": "cbbc2a9bd9c171525f5e20019d4e12df3083b0a3a6592fdd2fe68613bc62982c",
+      "partition": "train"
+    },
+    {
+      "group_id": "01K3ETVKRQNBF1RRXHAFE17W5S",
+      "topic": "The United States\u2019 involvement in the global economy is a bad thing because it lowers wages and costs jobs in the US",
+      "sha256": "1f6c09812ae40d34334c7c9527d06b290c89e2675dd516a55fe51ee31d0e7c7d",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWS7VFDPG72MXQFFTFEBZ7W",
+      "topic": "The government should take more responsibility to ensure that everyone is provided for, rather than leaving it to individuals",
+      "sha256": "cb942cfe1cf7929590ae5317949d6512a8227e6f6090c9761f98d4aa04733054",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSWWWG03AAYP6EC2X7QFT30Q",
+      "topic": "The government should take more responsibility to ensure that everyone is provided for, rather than leaving it to individuals",
+      "sha256": "831c25f96c48c06e5ab772cbd7571a8e7b55edfd71095f67e5a208a075d71b21",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JT6516P445NGQCM5SE9SJ3W3",
+      "topic": "The lack of employment opportunities is the most important issue for the government to address first",
+      "sha256": "073f83003e425262fab7ee6cc2594105b572c5d172e021ecac8d76427e4db5de",
+      "partition": "validation"
+    },
+    {
+      "group_id": "01JYEPZW1EKWSMJBF1WERWBHBX",
+      "topic": "The world is better off because of science and technology",
+      "sha256": "e59ae59cd3ec04ac628261bfcab07bbcaff91780b691e6d4ae1195e234ec18d0",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JSN7VPATX8B4TZZ13D1WH07K",
+      "topic": "There is abundant corruption in the United States",
+      "sha256": "230b8b30ada49e9827697cab18785cbd293e4ae69fdeb2654e60ef8e051ba911",
+      "partition": "validation"
+    },
+    {
+      "group_id": "01JSWS2688C3T6RAR271T8M9WC",
+      "topic": "Work is a duty towards society",
+      "sha256": "aa8bc15009f4d85b659454eb5e715120a26e691fb6196af8acfc57b0f5030a8b",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JS5W9S94QBMQGQA1DFP8J3K1",
+      "topic": "The United States has the highest federal income tax rate of any Western country",
+      "sha256": "77f38caf3e6c396d3d302861b33c2790cb8753af825eaf96e0a230d1ec325c9a",
+      "partition": "train"
+    },
+    {
+      "group_id": "01JRH95VHB1MXGP96QMB69XKQW",
+      "topic": "The position of the planets at the time of your birth can influence your personality",
+      "sha256": "e82bba0cef6341c52bfe1ece9cbbbb85831559ed4549caba232e65f6f82fb1ad",
+      "partition": "validation"
+    }
+  ],
+  "source_manifest_sha256": "cfff72e240a8cc515142c52724459cc5ea709eba654315f9a22f259d7b5e7cfb"
+}

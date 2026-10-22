@@ -1,5 +1,5 @@
 const ALIASES = { overview: "results", scoring: "results" };
-const VIEWS = ["eras", "activity", "leaderboard", "runs", "architecture", "population", "results", "forecasts", "questions", "corpus", "lab"];
+const VIEWS = ["research", "library", "eras", "activity", "leaderboard", "runs", "architecture", "population", "anes", "results", "forecasts", "questions", "corpus", "lab"];
 const ARCHITECTURE_NODES = [
   {
     id: "sources",
@@ -95,12 +95,14 @@ const state = {
   lastJobStatus: "idle",
   lastJobRunId: null,
   ready: null,
+  launchPending: false,
   swarmOptions: null,
   selectedRun: null,
   runs: [],
   runListKey: "",
   architectureNode: "sandbox",
   population: null,
+  anes: null,
   agentView: "graph",
   geographyView: "map",
   geographyCatalog: null,
@@ -175,18 +177,22 @@ function pct(n) {
 
 function setView(name) {
   name = ALIASES[name] || name;
-  if (!VIEWS.includes(name)) name = "results";
+  if (!VIEWS.includes(name)) name = "research";
+  document.body.dataset.view = name;
   for (const view of VIEWS) {
     const el = $(`#view-${view}`);
     if (el) el.hidden = view !== name;
   }
   const labels = {
+    research: "Study atlas",
+    library: "Data library",
     eras: "Eras",
     activity: "Agents live",
     leaderboard: "Leaderboard",
     runs: "Runs",
     architecture: "Architecture",
     population: "Population",
+    anes: "ANES 2012",
     results: "Results",
     forecasts: "Each answer",
     questions: "The questions",
@@ -203,12 +209,14 @@ function setView(name) {
   const announce = $("#view-announce");
   if (announce) announce.textContent = labels[name] || name;
   if (location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
+  window.dispatchEvent(new CustomEvent("research-view", { detail: { view: name } }));
   if (name === "eras") renderEras();
   if (name === "activity") loadActivity();
   if (name === "leaderboard") loadLeaderboard();
   if (name === "runs") renderRunHistory(state.runs);
   if (name === "architecture") renderArchitecture(state.architectureNode);
   if (name === "population") loadPopulation();
+  if (name === "anes") loadAnesResults();
   syncActivityPolling(name === "activity");
   if (name === "results") loadScores();
   if (name === "forecasts") loadForecasts();
@@ -230,9 +238,9 @@ function syncActivityPolling(active) {
 function applyEraCopy(era) {
   if (!era) return;
   const year = era.year;
-  setText("#mast-lede", `We freeze the world on ${era.cutoff_date}, let a model search only evidence available by then, then grade it on what happened next.`);
-  setText("#tab-corpus", `4. The ${year} library`);
-  setText("#corpus-heading", `The ${year} library`);
+  setText("#mast-lede", `Historical forecasts, individual responses and social-update studies. Inspect the evidence and boundaries of each experiment.`);
+  setText("#tab-corpus", `${year} frozen evidence`);
+  setText("#corpus-heading", `${year} frozen evidence`);
   setText("#questions-caption", `The frozen ${year} question set`);
   setText("#corpus-caption", `Documents in the cutoff-locked ${year} index`);
   document.querySelectorAll(".era-prior-label").forEach((el) => {
@@ -241,6 +249,11 @@ function applyEraCopy(era) {
   const command = $("#era-build-command");
   if (command) {
     command.innerHTML = `Grow the ${year} library with <code>psbx corpus build --epoch ${escapeHtml(era.id)} --live --max-docs 400</code>. Its cutoff remains ${escapeHtml(era.cutoff_date)}.`;
+  }
+  const prepare = $("#era-prepare-command");
+  if (prepare) {
+    const epoch = escapeHtml(era.id);
+    prepare.innerHTML = `<strong>Prepare and seal</strong> the selected era with <code>psbx practice prepare --epoch ${epoch}</code> and <code>psbx sandbox up --epoch ${epoch}</code>. Run controls enable after prerequisite checks pass.`;
   }
 }
 
@@ -349,6 +362,7 @@ function bindTablist() {
   tabs.forEach((btn, i) => {
     btn.addEventListener("click", () => setView(btn.dataset.view));
     btn.addEventListener("keydown", (ev) => {
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
       let next = null;
       if (ev.key === "ArrowRight" || ev.key === "ArrowDown") next = tabs[(i + 1) % tabs.length];
       if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") next = tabs[(i - 1 + tabs.length) % tabs.length];
@@ -600,7 +614,7 @@ function updateSwarmEstimate() {
   const eraRunnable = Boolean(state.ready && state.ready.run_epoch === state.selectedEra);
   const practiceOk = Boolean(state.ready && state.ready.practice_ready && eraRunnable);
   if (launch) {
-    launch.disabled = invalid || state.lastJobStatus === "running" || !liveOk || !practiceOk;
+    launch.disabled = invalid || (state.lastJobStatus === "running" || state.launchPending) || !liveOk || !practiceOk;
     launch.title = !eraRunnable
       ? `No swarm run config targets ${state.selectedEra || "this era"} yet`
       : !practiceOk
@@ -1016,10 +1030,6 @@ function renderLab() {
     ...(data.errors || []),
   ];
   $("#overview-errors").textContent = extra.filter(Boolean).join(" · ");
-  const swarm = $("#overview-swarm");
-  if (swarm && state.ready && state.ready.swarm_note) {
-    swarm.textContent = state.ready.swarm_note;
-  }
 }
 
 function formatBytes(bytes) {
@@ -1813,6 +1823,216 @@ async function loadPopulation() {
   }
 }
 
+function anesPercent(value, digits = 1) {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return `${(Number(value) * 100).toFixed(digits)}%`;
+}
+
+function anesSigned(value, digits = 3, percentagePoints = false) {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  const scaled = Number(value) * (percentagePoints ? 100 : 1);
+  const sign = scaled > 0 ? "+" : "";
+  return `${sign}${scaled.toFixed(digits)}${percentagePoints ? " pp" : ""}`;
+}
+
+function renderAnesResults(data) {
+  state.anes = data;
+  const status = $("#anes-status");
+  if (!data.available) {
+    status.dataset.status = "missing";
+    setText("#anes-status-title", "ANES result bundle is not built in this workspace.");
+    setText("#anes-status-detail", data.message || "Build the official structural run, then refresh this view.");
+    return;
+  }
+
+  const experiment = data.experiment || {};
+  const dataset = data.dataset || {};
+  const questions = (data.question_bank || {}).counts || {};
+  const structural = data.structural_run || {};
+  const federal = data.federal_elections || {};
+  const boundary = data.boundary || {};
+  const paper = data.paper_study2 || {};
+
+  status.dataset.status = experiment.scientific_result ? "scientific" : "structural";
+  setText(
+    "#anes-status-title",
+    experiment.scientific_result
+      ? "Scientific model result"
+      : "Structural validation complete — not a scientific human-emulation result"
+  );
+  setText("#anes-status-detail", experiment.warning || "The sealed evaluation bundle loaded successfully.");
+  setText("#anes-respondents", Number(dataset.respondents || 0).toLocaleString());
+  setText("#anes-targets", Number(dataset.valid_two_party_outcomes || 0).toLocaleString());
+  setText("#anes-questions", Number(questions.total || 0).toLocaleString());
+  setText("#anes-predictions", Number(structural.prediction_count || 0).toLocaleString());
+  setText("#anes-contests", Number(federal.contests || 0).toLocaleString());
+  setText("#anes-cutoff", boundary.information_cutoff || "—");
+  setText("#anes-weight-source", String(dataset.weight_source || "evaluation vault").replaceAll("_", " ").toUpperCase());
+  setText("#anes-engine", `ENGINE ${String(experiment.engine || "unknown").replaceAll("_", " ").toUpperCase()}`);
+
+  const arms = data.arms || [];
+  const independent = arms.find((row) => row.treatment === "independent") || {};
+  const society = arms.find((row) => row.treatment === "society") || {};
+  const shareRows = [
+    {
+      label: "Official weighted ANES target",
+      detail: `${Number(dataset.valid_two_party_outcomes || 0).toLocaleString()} valid two-party outcomes`,
+      value: dataset.weighted_observed_republican_share,
+      kind: "target",
+    },
+    {
+      label: "Published Study 2 output",
+      detail: "unweighted mean probability · two-party subset",
+      value: paper.two_party_mean_p_romney,
+      kind: "paper",
+    },
+    {
+      label: "Independent structural arm",
+      detail: "mean predicted share · five replications",
+      value: independent.mean_predicted_republican_share,
+      kind: "independent",
+    },
+    {
+      label: "Society structural arm",
+      detail: "mean predicted share · five replications",
+      value: society.mean_predicted_republican_share,
+      kind: "society",
+    },
+  ];
+  const chart = $("#anes-share-chart");
+  chart.setAttribute(
+    "aria-label",
+    shareRows.map((row) => `${row.label}: ${anesPercent(row.value, 2)}`).join("; ")
+  );
+  chart.innerHTML = shareRows.map((row) => {
+    const share = Math.max(0, Math.min(1, Number(row.value || 0)));
+    return `<div class="anes-share-row" data-kind="${escapeHtml(row.kind)}">
+      <div><strong>${escapeHtml(row.label)}</strong><small>${escapeHtml(row.detail)}</small></div>
+      <div class="anes-share-track"><i style="--share:${share}"></i><span aria-hidden="true"></span></div>
+      <b>${anesPercent(row.value, 2)}</b>
+    </div>`;
+  }).join("");
+
+  $("#anes-arms-body").innerHTML = arms.length
+    ? arms.map((row) => `<tr>
+        <th scope="row">${escapeHtml(row.treatment)}</th>
+        <td class="num">${Number(row.replications || 0)}</td>
+        <td class="num">${fmt(row.mean_brier, 4)}</td>
+        <td class="num">${anesPercent(row.mean_agreement, 2)}</td>
+        <td class="num">${fmt(row.mean_cohen_kappa, 4)}</td>
+        <td class="num">${anesPercent(row.mean_predicted_republican_share, 2)}</td>
+        <td class="num">${anesPercent(row.mean_observed_republican_share, 2)}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="7">No treatment summary was saved.</td></tr>`;
+
+  const deltas = data.deltas_society_minus_independent || {};
+  $("#anes-delta").innerHTML = `<strong>Society minus independent</strong>
+    <p>Brier ${anesSigned(deltas.brier, 4)} · agreement ${anesSigned(deltas.agreement, 2, true)} · Cohen’s κ ${anesSigned(deltas.cohen_kappa, 4)} · predicted Romney share ${anesSigned(deltas.predicted_republican_share, 2, true)}.</p>
+    <small>In this mock, interaction lowered predicted Republican share and worsened the error metrics. Because the engine is deterministic and provider-free, that direction cannot be interpreted as an effect of real AI social interaction.</small>`;
+
+  const paperFacts = [
+    ["Rows", Number(paper.n_all_rows || 0).toLocaleString()],
+    ["Two-party comparison", Number(paper.n_two_party_comparison || 0).toLocaleString()],
+    ["Mean p(Romney)", anesPercent(paper.two_party_mean_p_romney, 2)],
+    ["Observed Romney", anesPercent(paper.observed_two_party_romney_share, 2)],
+    ["Brier", fmt(paper.brier, 4)],
+    ["Agreement", anesPercent(paper.agreement, 2)],
+    ["Cohen’s κ", fmt(paper.cohen_kappa, 4)],
+    ["Weighting", paper.weighting || "—"],
+  ];
+  $("#anes-paper-facts").innerHTML = paperFacts.map(([key, value]) =>
+    `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value)}</dd></div>`
+  ).join("");
+
+  const boundaryFacts = [
+    ["Cutoff", boundary.information_cutoff || "—"],
+    ["Election", boundary.election_date || "—"],
+    ["ANES release", boundary.source_release_date || "—"],
+    ["Public by cutoff", boundary.source_was_public_at_cutoff ? "yes" : "no"],
+    ["Runtime profile", `${Number(dataset.profile_field_count || 0)} published Study 2 fields`],
+    ["Weights", `${dataset.weighting_status || "—"}; applied in evaluation only`],
+    ["Container network", structural.network_access_required ? "required" : "not required"],
+    ["Target isolation", boundary.guardrail || "—"],
+  ];
+  $("#anes-boundary-facts").innerHTML = boundaryFacts.map(([key, value]) =>
+    `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value)}</dd></div>`
+  ).join("");
+
+  const replications = data.per_replication || [];
+  $("#anes-replications-body").innerHTML = replications.length
+    ? replications.map((row) => `<tr>
+        <th scope="row">${escapeHtml(row.treatment)}</th>
+        <td class="num">${Number(row.replication) + 1}</td>
+        <td class="num">${Number(row.n || 0)}</td>
+        <td class="num">${fmt(row.brier, 4)}</td>
+        <td class="num">${anesPercent(row.agreement, 2)}</td>
+        <td class="num">${fmt(row.cohen_kappa, 4)}</td>
+        <td class="num">${anesPercent(row.predicted_republican_share, 2)}</td>
+        <td class="num">${anesPercent(row.observed_republican_share, 2)}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="8">No replication ledger was saved.</td></tr>`;
+
+  const sealLabels = {
+    source_dta_sha256: "Official DTA",
+    runtime_profiles_sha256: "Runtime profiles",
+    evaluation_targets_sha256: "Evaluation targets",
+    split_seal_sha256: "Split seal",
+    prediction_seal_sha256: "Prediction seal",
+    predictions_sha256: "Predictions",
+  };
+  $("#anes-hashes").innerHTML = Object.entries(data.seals || {}).map(([key, value]) =>
+    `<div><dt>${escapeHtml(sealLabels[key] || key)}</dt><dd><code title="${escapeHtml(value || "")}">${escapeHtml(value || "—")}</code></dd></div>`
+  ).join("");
+  $("#anes-limitations-list").innerHTML = (data.limitations || []).map(
+    (item) => `<li>${escapeHtml(item)}</li>`
+  ).join("");
+}
+
+async function loadIndividualDevelopment() {
+  const button = $("#individual-refresh");
+  button.disabled = true;
+  setText("#individual-status", "Loading development status…");
+  try {
+    const data = await getJSON("/api/anes/individual-development");
+    const labels = {not_prepared: "Not prepared", prepared: "Prepared", running: "Running", in_progress: "Responses saved; evaluation pending", complete: "Complete", integrity_error: "Integrity check failed"};
+    const reserve = data.reserved_respondents_used == null
+      ? "Reserve exclusion has not yet been verified in a report."
+      : `${data.reserved_respondents_used} reserved respondents used.`;
+    setText("#individual-status", `${labels[data.status] || "Unknown status"} · ${data.people ?? "—"} development respondents · ${data.completed_calls ?? 0}/${data.planned_calls ?? "—"} calls. ${reserve}`);
+    setText("#individual-scope", [data.run_id, data.scope].filter(Boolean).join(" · "));
+    const metrics = data.status === "integrity_error" ? [] : (data.metrics || []);
+    $("#individual-metrics").innerHTML = metrics.length ? metrics.map((row) => `<tr>
+      <td>${escapeHtml(row.arm || "—")}</td><td>${escapeHtml(row.variant || "—")}</td><td>${escapeHtml(row.task || "—")}</td>
+      <td class="num">${fmt(row.brier, 4)}</td><td class="num">${fmt(row.total_variation, 4)}</td><td class="num">${fmt(row.answer_share_mae, 4)}</td>
+      <td class="num">${anesPercent(row.accuracy)}</td><td class="num">${escapeHtml(String(row.n ?? "—"))}</td><td class="num">${fmt(row.effective_n, 1)}</td><td class="num">${anesPercent(row.repeat_agreement)}</td>
+    </tr>`).join("") : '<tr><td colspan="10">No scored development metrics available.</td></tr>';
+    $("#individual-limitations").innerHTML = (data.limitations || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  } catch (err) {
+    setText("#individual-status", `Development results could not be loaded. Use Refresh development results to retry. ${String(err)}`);
+    setText("#individual-scope", "");
+    $("#individual-metrics").innerHTML = '<tr><td colspan="10">Metrics unavailable.</td></tr>';
+    $("#individual-limitations").innerHTML = "";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function loadAnesResults() {
+  void loadIndividualDevelopment();
+  if (state.anes) {
+    renderAnesResults(state.anes);
+    return;
+  }
+  try {
+    renderAnesResults(await getJSON("/api/anes/results"));
+  } catch (err) {
+    const status = $("#anes-status");
+    status.dataset.status = "missing";
+    setText("#anes-status-title", "ANES results could not be loaded.");
+    setText("#anes-status-detail", `Refresh the page or inspect /api/anes/results: ${String(err)}`);
+  }
+}
+
 async function loadQuestions() {
   const cat = $("#q-category").value;
   const reveal = $("#reveal-truth").checked;
@@ -2451,15 +2671,15 @@ function renderJob(job) {
   const liveBtn = $("#run-live-btn");
   const swarmBtn = $("#run-swarm-btn");
   const launchBtn = $("#swarm-launch");
-  const busy = status === "running";
+  const busy = status === "running" || state.launchPending;
   const kind = jobKind(job);
   const liveOk = state.ready && state.ready.live_ready;
   const eraRunnable = state.ready && state.ready.run_epoch === state.selectedEra;
   const practiceOk = Boolean(state.ready && state.ready.practice_ready && eraRunnable);
   mockBtn.disabled = busy || !practiceOk;
-  mockBtn.textContent = busy && kind === "mock" ? "Running…" : "Run practice";
+  mockBtn.textContent = busy && kind === "mock" ? "Running…" : "Run forecast practice";
   liveBtn.disabled = busy || !liveOk || !practiceOk;
-  liveBtn.textContent = busy && kind === "live" ? "Running…" : "Run live mix";
+  liveBtn.textContent = busy && kind === "live" ? "Running…" : "Run paid forecast mix";
   mockBtn.title = !eraRunnable
     ? `No practice run config targets ${state.selectedEra || "this era"} yet`
     : practiceOk
@@ -2468,21 +2688,21 @@ function renderJob(job) {
   liveBtn.title = !eraRunnable
     ? `No live run config targets ${state.selectedEra || "this era"} yet`
     : liveOk
-    ? "Score each of the six OpenRouter species once on 1 question (not the 12-agent swarm)"
+    ? "Launch the configured paid historical forecasting mix for the selected epoch"
     : state.ready.live_blocking_reason || "Live research prerequisites are incomplete";
   if (swarmBtn) {
     swarmBtn.disabled = busy || !liveOk || !practiceOk;
-    swarmBtn.textContent = busy && kind === "swarm" ? "Running…" : "Run configured swarm";
+    swarmBtn.textContent = busy && kind === "swarm" ? "Running…" : "Run paid forecast swarm";
     swarmBtn.title = !eraRunnable
       ? `No swarm run config targets ${state.selectedEra || "this era"} yet`
       : liveOk
-      ? "Launch the roster and question count configured in the Runs tab"
+      ? "Launch the roster and question count configured in Run builder"
       : state.ready.live_blocking_reason || "Live research prerequisites are incomplete";
   }
   if (launchBtn) {
     const estimate = updateSwarmEstimate();
     launchBtn.disabled = busy || !liveOk || !practiceOk || estimate.invalid;
-    launchBtn.textContent = busy && kind === "swarm" ? "Swarm running…" : "Run this swarm";
+    launchBtn.textContent = busy && kind === "swarm" ? "Swarm running…" : "Launch paid forecast swarm";
   }
   const log = (job.log || []).join("\n");
   const band = $("#run-log-band");
@@ -2513,8 +2733,10 @@ async function pollJob() {
     state.lastJobStatus = job.status;
     state.lastJobRunId = job.run_id;
   } catch (err) {
-    $("#run-state-label").textContent = "error";
-    $("#run-state").dataset.status = "error";
+    $("#run-state-label").textContent = "Connection lost · run status unknown";
+    $("#run-state").dataset.status = "unknown";
+    $("#run-log-band").hidden = false;
+    $("#run-log").textContent = `Could not refresh the forecasting job: ${err.message || err}. A disconnected viewer does not stop a server job.`;
   }
 }
 
@@ -2527,87 +2749,103 @@ async function refreshAfterJob(runId) {
   if (location.hash === "#leaderboard") await loadLeaderboard();
 }
 
-async function startSimulation(kind) {
-  const mockBtn = $("#run-btn");
-  const liveBtn = $("#run-live-btn");
-  const swarmBtn = $("#run-swarm-btn");
-  if (!state.ready || !state.ready.practice_ready) {
-    $("#run-log-band").hidden = false;
-    $("#run-log").textContent = state.ready?.practice_blocking_reason
-      || "Practice prerequisites are incomplete. Prepare the corpus and seal the sidecar first.";
-    applyReady(state.ready);
-    return;
+function launchBlocker(kind) {
+  if (state.switchingEra) return "Wait for the selected epoch to finish loading.";
+  if (!state.ready) return "Readiness is unavailable. Check the local server and retry.";
+  if (state.ready.run_epoch !== state.selectedEra) {
+    return `No forecasting launch configuration targets ${state.selectedEra || "the selected epoch"}. Choose a prepared epoch in Eras.`;
   }
-  mockBtn.disabled = true;
-  liveBtn.disabled = true;
-  if (swarmBtn) swarmBtn.disabled = true;
-  const custom = kind === "swarm" ? updateSwarmEstimate() : null;
-  if (custom && custom.invalid) {
-    setView("runs");
-    return;
+  if (!state.ready.practice_ready) {
+    return state.ready.practice_blocking_reason || "Prepare the selected corpus and verify its sealed search sidecar in Setup.";
   }
-  const starting = {
-    mock: "Starting practice (keyword lookup)…",
-    live: "Starting live mix (6 species × 1 question)…",
-    swarm: state.populationSelection
-      ? `Starting ${state.populationSelection.label} swarm (${custom ? custom.agents : 12} weighted personas × ${custom ? custom.questions : 1} questions)…`
-      : `Starting swarm (${custom ? custom.agents : 12} sequential votes × ${custom ? custom.questions : 1} questions)…`,
-  };
-  if (kind === "mock") mockBtn.textContent = "Running…";
-  else if (kind === "swarm" && swarmBtn) swarmBtn.textContent = "Running…";
-  else liveBtn.textContent = "Running…";
-  $("#run-log-band").hidden = false;
-  $("#run-log").textContent = starting[kind] || "Starting…";
-  const res = await fetch("/api/jobs/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-PSBX-CSRF": "1" },
-    body: JSON.stringify({
-      kind,
-      mock: kind === "mock",
-      epoch_id: state.selectedEra,
-      isolated_retrieval: true,
-      source_type:
-        state.activity && state.activity.access && state.activity.access.selection !== "all"
-          ? state.activity.access.selection
-          : null,
-      label: kind === "swarm" ? ($("#swarm-label").value || null) : null,
-      n_questions: kind === "swarm" ? custom.questions : null,
-      swarm_bodies: kind === "swarm" ? custom.bodies : null,
-      population_selection: kind === "swarm" ? state.populationSelection : null,
-      dataset_selection: kind === "swarm" ? currentDatasetSelection() : null,
-    }),
-  });
-  if (res.status === 409) {
-    await pollJob();
-    return;
+  if (kind !== "mock" && !state.ready.live_ready) {
+    return state.ready.live_blocking_reason || "Paid forecasting requires eligible evidence, provider configuration and passing spend checks. Inspect Setup.";
   }
-  if (res.status === 412 || !res.ok) {
-    let detail = await res.text();
-    try {
-      detail = JSON.parse(detail).detail || detail;
-    } catch (_err) {
-      // Keep a plain-text server response as-is.
-    }
-    $("#run-state").dataset.status = "error";
-    $("#run-state-label").textContent = "error";
-    $("#run-log").textContent = `Start failed ${res.status}: ${detail}`;
-    mockBtn.disabled = false;
-    mockBtn.textContent = "Run practice";
-    liveBtn.textContent = "Run live mix";
-    if (swarmBtn) swarmBtn.textContent = "Run configured swarm";
-    applyReady(state.ready);
-    return;
-  }
-  const started = await res.json();
-  state.selectedRun = started.run_id || state.selectedRun;
-  state.activityQuestion = null;
-  renderJob(started);
-  state.lastJobStatus = "running";
-  setView("activity");
-  await pollJob();
+  return "";
 }
 
-function applyReady(ready) {
+async function startSimulation(kind) {
+  if (state.launchPending || state.lastJobStatus === "running") return;
+  if (!["mock", "live", "swarm"].includes(kind)) return;
+  const requestedEpoch = state.selectedEra;
+  const requestedScope = state.activity?.access?.selection || "all";
+  // Keep the edited roster stable throughout the readiness check.
+  const custom = kind === "swarm" ? updateSwarmEstimate() : null;
+  if (custom?.invalid) {
+    setView("runs");
+    $("#swarm-builder-error")?.setAttribute("role", "alert");
+    $("#swarm-questions")?.focus();
+    return;
+  }
+  state.launchPending = true;
+  ["#run-btn", "#run-live-btn", "#run-swarm-btn", "#swarm-launch"].forEach((selector) => {
+    if ($(selector)) $(selector).disabled = true;
+  });
+  $("#run-log-band").hidden = false;
+  $("#run-log").textContent = `Checking ${requestedEpoch} / ${requestedScope} before starting a new forecasting run…`;
+  let submitted = false;
+  try {
+    // Read fresh prerequisites so an old enabled button cannot bypass scope changes.
+    await loadReady({ refreshBuilder: false });
+    if (requestedEpoch !== state.selectedEra || requestedScope !== (state.activity?.access?.selection || "all")) {
+      throw new Error("The epoch or source selection changed during preflight. Review the current scope and launch again.");
+    }
+    const blocked = launchBlocker(kind);
+    if (blocked) throw new Error(blocked);
+    $("#run-log").textContent = kind === "mock"
+      ? `Starting provider-free forecast practice for ${requestedEpoch} / ${requestedScope}…`
+      : `Starting paid ${kind === "swarm" ? `${custom.agents}-agent, ${custom.questions}-question swarm` : "configured forecast mix"} for ${requestedEpoch} / ${requestedScope}…`;
+    submitted = true;
+    const res = await fetch("/api/jobs/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-PSBX-CSRF": "1" },
+      body: JSON.stringify({
+        kind, mock: kind === "mock", epoch_id: requestedEpoch, isolated_retrieval: true,
+        source_type: ["all", "unknown"].includes(requestedScope) ? null : requestedScope,
+        label: kind === "swarm" ? ($("#swarm-label").value || null) : null,
+        n_questions: custom?.questions ?? null,
+        swarm_bodies: custom?.bodies ?? null,
+        population_selection: kind === "swarm" ? state.populationSelection : null,
+        dataset_selection: kind === "swarm" ? currentDatasetSelection() : null,
+      }),
+    });
+    if (res.status === 409) {
+      state.lastJobStatus = "running";
+      if (!state.jobTimer) state.jobTimer = setInterval(pollJob, 1000);
+      $("#run-log").textContent = "A forecasting job is already active. Showing its status; no second run was started.";
+      await pollJob();
+      return;
+    }
+    if (!res.ok) {
+      submitted = false;
+      let detail = await res.text();
+      try { detail = JSON.parse(detail).detail || detail; } catch (_err) { /* Plain text response. */ }
+      throw new Error(`Launch blocked (${res.status}): ${typeof detail === "string" ? detail : JSON.stringify(detail)}`);
+    }
+    const started = await res.json();
+    state.selectedRun = started.run_id || state.selectedRun;
+    state.activityQuestion = null;
+    state.lastJobStatus = started.status || "running";
+    renderJob(started);
+    setView("activity");
+    await pollJob();
+  } catch (err) {
+    $("#run-state").dataset.status = "error";
+    $("#run-state-label").textContent = submitted ? "Launch status unconfirmed" : "Launch blocked";
+    $("#run-log").textContent = `${err.message || err}${submitted ? "\nThe request may have reached the server. Check Run activity before retrying; do not assume no run was started." : "\nNo new forecasting run was launched. Review the prerequisite message and Setup."}`;
+    if (submitted) {
+      // Keep launch locked until the server confirms whether the request started a job.
+      state.lastJobStatus = "running";
+      if (!state.jobTimer) state.jobTimer = setInterval(pollJob, 1000);
+      await pollJob();
+    }
+  } finally {
+    state.launchPending = false;
+    applyReady(state.ready, { refreshBuilder: false });
+  }
+}
+
+function applyReady(ready, { refreshBuilder = true } = {}) {
   state.ready = ready || state.ready;
   const mockBtn = $("#run-btn");
   const liveBtn = $("#run-live-btn");
@@ -2615,39 +2853,49 @@ function applyReady(ready) {
   const ok = state.ready && state.ready.live_ready;
   const eraRunnable = state.ready && state.ready.run_epoch === state.selectedEra;
   const practiceOk = Boolean(state.ready && state.ready.practice_ready && eraRunnable);
-  if (state.ready && state.ready.swarm_options) {
+  if (refreshBuilder && state.ready && state.ready.swarm_options) {
     renderSwarmBuilder(state.ready.swarm_options);
   }
-  if (state.lastJobStatus !== "running") {
+  if (state.lastJobStatus !== "running" && !state.launchPending) {
     if (mockBtn) mockBtn.disabled = !practiceOk;
     if (liveBtn) liveBtn.disabled = !ok || !practiceOk;
     if (swarmBtn) swarmBtn.disabled = !ok || !practiceOk;
   }
   const prerequisite = $("#run-prerequisite");
   if (prerequisite) {
-    prerequisite.dataset.status = practiceOk ? "ready" : "blocked";
-    prerequisite.textContent = practiceOk
-      ? `Ready: ${state.selectedEra}/${state.ready.requested_source_type || "all"} corpus and sealed sidecar verified.`
-      : state.ready?.practice_blocking_reason
-        || "Run prerequisites are unavailable; inspect Setup before launching.";
+    const scope = `${state.selectedEra || "no epoch"} / ${state.ready?.requested_source_type || "all"}`;
+    const blocked = launchBlocker("mock");
+    prerequisite.dataset.status = state.launchPending ? "checking" : blocked ? "blocked" : "ready";
+    prerequisite.textContent = state.launchPending
+      ? `Checking launch prerequisites for ${scope}…`
+      : blocked
+        ? `${scope}: ${blocked}`
+        : `Forecast practice ready for ${scope}. ${ok ? "Paid forecasting readiness checks pass; the server enforces spend limits at launch." : `Paid forecasting blocked: ${launchBlocker("live")}`} Each launch creates a new run; the archive selection only changes the results you view.`;
   }
   updateSwarmEstimate();
 }
 
-async function loadReady() {
+async function loadReady(options = {}) {
   const params = new URLSearchParams();
   if (state.selectedEra) params.set("epoch", state.selectedEra);
   const scope = state.activity?.access?.selection;
   if (scope && scope !== "all" && scope !== "unknown") {
     params.set("source_type", scope);
   }
-  state.ready = await getJSON(`/api/jobs/ready?${params}`);
-  applyReady(state.ready);
-  return state.ready;
+  try {
+    state.ready = await getJSON(`/api/jobs/ready?${params}`);
+    applyReady(state.ready, options);
+    return state.ready;
+  } catch (err) {
+    state.ready = null;
+    applyReady(null, { refreshBuilder: false });
+    throw err;
+  }
 }
 
 function bind() {
   bindTablist();
+  $("#individual-refresh").addEventListener("click", loadIndividualDevelopment);
   document.querySelectorAll("[data-chain-question]").forEach((select) => {
     select.addEventListener("change", () => {
       state.activityQuestion = select.value || null;
@@ -2841,8 +3089,8 @@ async function boot() {
   const preferredHas = (state.runs || []).some(
     (r) => r.run_id === preferred && r.n_predictions > 0
   );
-  if (preferredHas && !hash) setView("eras");
-  else setView(hash || "eras");
+  if (preferredHas && !hash) setView("research");
+  else setView(hash || "research");
   pollJob();
 }
 

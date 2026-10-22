@@ -1,0 +1,8 @@
+{
+  "source": "../oregon-data/qje-table-iii.txt; Table III full sample columns 1 and 2",
+  "n_people": 74922,
+  "ohp_all_ever_matchn_30sep2009": {"control_mean": 0.141, "treatment_coefficient": 0.256, "cluster_se": 0.0035},
+  "ohp_all_end_30sep2009": {"control_mean": 0.106, "treatment_coefficient": 0.148, "cluster_se": 0.0031},
+  "absolute_tolerance_from_published_rounding": {"control_mean": 0.0005, "treatment_coefficient": 0.0005, "cluster_se": 0.00005},
+  "frozen_before_numeric_reproduction": true
+}

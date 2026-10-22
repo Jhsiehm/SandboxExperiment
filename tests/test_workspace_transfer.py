@@ -6,6 +6,7 @@ import pytest
 from scripts.transfer_workspace import (
     MANIFEST_NAME,
     TransferError,
+    _safe_remote_url,
     export_assets,
     import_assets,
     inventory,
@@ -25,6 +26,12 @@ def _source_workspace(root: Path) -> None:
     (root / "data/runs/completed/.env.local").write_text(
         "TOKEN=secret\n", encoding="utf-8"
     )
+    (root / "data/runs/completed/.Git").mkdir()
+    (root / "data/runs/completed/.Git/config").write_text(
+        "credential=secret\n", encoding="utf-8"
+    )
+    (root / "data/runs/completed/build").mkdir()
+    (root / "data/runs/completed/build/output.bin").write_bytes(b"generated")
     (root / "data/runs/.sandbox").mkdir(parents=True)
     (root / "data/runs/.sandbox/host.pid").write_text("123\n", encoding="utf-8")
     (root / ".env").write_text("OPENAI_API_KEY=secret\n", encoding="utf-8")
@@ -126,3 +133,58 @@ def test_bundle_manifest_rejects_paths_outside_repository(tmp_path):
 
     with pytest.raises(TransferError, match="safe repository-relative path"):
         verify_bundle(bundle)
+
+
+@pytest.mark.parametrize(
+    "unsafe_path",
+    [
+        "data/runs/.git/config",
+        "data/runs/.venv/token",
+        "data/runs/.env.local",
+        "data/runs/build/output.bin",
+    ],
+)
+def test_bundle_manifest_rejects_nested_sensitive_paths(tmp_path, unsafe_path):
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / MANIFEST_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "files": [
+                    {
+                        "path": unsafe_path,
+                        "bytes": 0,
+                        "sha256": "0" * 64,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TransferError, match="sensitive or generated path"):
+        verify_bundle(bundle)
+
+
+def test_bundle_manifest_rejects_duplicate_paths(tmp_path):
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    record = {
+        "path": "data/corpus/e2012/documents.jsonl",
+        "bytes": 0,
+        "sha256": "0" * 64,
+    }
+    (bundle / MANIFEST_NAME).write_text(
+        json.dumps({"schema_version": 1, "files": [record, record]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TransferError, match="duplicate path"):
+        verify_bundle(bundle)
+
+
+def test_remote_url_manifest_value_strips_all_credential_channels():
+    assert _safe_remote_url(
+        "https://user:secret@example.com/org/repo.git?access_token=secret#fragment"
+    ) == "https://example.com/org/repo.git"

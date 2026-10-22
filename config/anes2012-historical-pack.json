@@ -1,0 +1,29 @@
+{
+  "cutoff": "2012-08-03",
+  "scope": "Small economy-focused background pack, not a reconstruction of individual media exposure or a balanced campaign archive.",
+  "exposure_status": "experimentally supplied; actual respondent exposure unknown",
+  "documents": [
+    {
+      "id": "bls-july-2012-initial-release",
+      "published_at": "2012-08-03",
+      "url": "https://www.bls.gov/news.release/archives/empsit_08032012.htm",
+      "title": "BLS Employment Situation — July 2012",
+      "date_evidence": "Release header: until 8:30 a.m. (EDT) Friday, August 3, 2012",
+      "provenance": "Official archived release, excerpt verified through web retrieval 2026-10-11; no independent contemporaneous capture claim.",
+      "verified_excerpt": "Total nonfarm payroll employment rose by 163,000 in July, and the unemployment rate was essentially unchanged at 8.3 percent",
+      "text": "On August 3, 2012, the U.S. Bureau of Labor Statistics initially reported that July payroll employment increased by 163,000 and unemployment was 8.3 percent. These are the figures released then, not subsequently revised estimates."
+    },
+    {
+      "id": "fomc-2012-08-01",
+      "published_at": "2012-08-01",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20120801a.htm",
+      "title": "Federal Reserve FOMC statement",
+      "date_evidence": "Release and Last Update: August 01, 2012",
+      "provenance": "Official dated archival release retrieved 2026-10-11; local source bytes retained; no independent contemporaneous capture claim.",
+      "verified_excerpt": "economic activity decelerated somewhat over the first half of this year",
+      "source_snapshot": "data/corpus-cache/anes2012-context-20261011/fomc-august.html",
+      "source_snapshot_sha256": "8048cbdce70a8d9da5248b8ebee91b764cd1d96a5283c02a860091e1c7f5dc53",
+      "text": "On August 1, 2012, the Federal Reserve described slowing economic activity, slow employment growth, and elevated unemployment. It kept the federal funds target at 0 to 0.25 percent and anticipated exceptionally low rates at least through late 2014. That was its stated expectation in 2012, not a claim about what later occurred."
+    }
+  ]
+}

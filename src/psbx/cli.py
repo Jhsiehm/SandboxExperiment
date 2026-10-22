@@ -280,9 +280,7 @@ def agenda_cmd(epoch: Annotated[str, typer.Option("--epoch")] = "e2012") -> None
 
 @experiment_app.command("evidence")
 def evidence_experiment_cmd(
-    config: Annotated[Path, typer.Option("--config")] = Path(
-        "config/evidence-experiment.yaml"
-    ),
+    config: Annotated[Path, typer.Option("--config")] = Path("config/evidence-experiment.yaml"),
     limit: Annotated[int | None, typer.Option("--limit")] = None,
 ) -> None:
     """Run the paired no/matched/shuffled authenticated-evidence experiment."""
@@ -313,6 +311,255 @@ def evidence_experiment_cmd(
         load_index(epoch),
     )
     typer.echo(json.dumps(report, indent=2))
+
+
+@experiment_app.command("anes-question-bank")
+def anes_question_bank_cmd(
+    pre: Annotated[Path, typer.Option("--pre")] = Path(
+        "data/survey-microdata/anes/2012/source/anes_timeseries_2012_qnaire_pre.pdf"
+    ),
+    post: Annotated[Path, typer.Option("--post")] = Path(
+        "data/survey-microdata/anes/2012/source/anes_timeseries_2012_qnaire_post.pdf"
+    ),
+    output: Annotated[Path, typer.Option("--output")] = Path(
+        "data/survey-microdata/anes/2012/derived/question_bank.jsonl"
+    ),
+) -> None:
+    """Inventory every named ANES 2012 pre/post questionnaire specification."""
+    from psbx.experiments.anes_society import write_question_bank
+
+    typer.echo(json.dumps(write_question_bank(pre, post, output), indent=2))
+
+
+@experiment_app.command("anes-prepare")
+def anes_prepare_cmd(
+    input_path: Annotated[Path, typer.Option("--input")],
+    config: Annotated[Path, typer.Option("--config")] = Path("config/anes2012-society.yaml"),
+    output_root: Annotated[Path | None, typer.Option("--output-root")] = None,
+) -> None:
+    """Split ANES-style rows into runtime profiles and a held-out evaluation vault."""
+    from psbx.config import load_yaml
+    from psbx.experiments.anes_society import AnesSocietySpec, prepare_anes_split
+
+    spec = AnesSocietySpec.model_validate(load_yaml(config))
+    destination = output_root or (run_dir(spec.run_id) / "anes-society")
+    result = prepare_anes_split(input_path, spec, destination)
+    typer.echo(result.model_dump_json(indent=2))
+
+
+@experiment_app.command("anes-simulate")
+def anes_simulate_cmd(
+    profiles: Annotated[Path, typer.Option("--profiles")],
+    output: Annotated[Path, typer.Option("--output")],
+    seed: Annotated[int, typer.Option("--seed")] = 220906899,
+    replications: Annotated[int, typer.Option("--replications")] = 5,
+    max_agents: Annotated[int, typer.Option("--max-agents")] = 120,
+    group_size: Annotated[int, typer.Option("--group-size")] = 12,
+    rounds: Annotated[int, typer.Option("--rounds")] = 3,
+) -> None:
+    """Run the no-provider independent/society structural validation arms."""
+    from psbx.experiments.anes_society import run_provider_free_society
+
+    result = run_provider_free_society(
+        profiles,
+        output,
+        seed=seed,
+        replications=replications,
+        max_agents=max_agents,
+        group_size=group_size,
+        rounds=rounds,
+    )
+    typer.echo(json.dumps(result, indent=2))
+
+
+@experiment_app.command("anes-evaluate")
+def anes_evaluate_cmd(
+    predictions: Annotated[Path, typer.Option("--predictions")],
+    targets: Annotated[Path, typer.Option("--targets")],
+    output: Annotated[Path, typer.Option("--output")],
+    target_field: Annotated[str, typer.Option("--target-field")] = "presvote2012_x",
+) -> None:
+    """Score a sealed prediction artifact by opening the target vault afterward."""
+    from psbx.experiments.anes_society import evaluate_vote_predictions
+
+    report = evaluate_vote_predictions(
+        predictions,
+        targets,
+        output,
+        target_field=target_field,
+    )
+    typer.echo(json.dumps(report, indent=2))
+
+
+@experiment_app.command("anes-paper-baseline")
+def anes_paper_baseline_cmd(
+    input_path: Annotated[Path, typer.Option("--input")],
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Recompute the public paper's 2012 Study 2 comparison metrics."""
+    from psbx.experiments.anes_society import evaluate_paper_study2_replication
+
+    report = evaluate_paper_study2_replication(input_path, output)
+    typer.echo(json.dumps(report, indent=2))
+
+
+@experiment_app.command("anes-statistical-baselines")
+def anes_statistical_baselines_cmd(
+    strict_profiles: Annotated[Path, typer.Option("--strict-profiles")],
+    paper_profiles: Annotated[Path, typer.Option("--paper-profiles")],
+    targets: Annotated[Path, typer.Option("--targets")],
+    output: Annotated[Path, typer.Option("--output")],
+    folds: Annotated[int, typer.Option("--folds")] = 5,
+    seed: Annotated[int, typer.Option("--seed")] = 220906899,
+) -> None:
+    """Cross-fit full-sample party, logistic, and Naive Bayes comparators."""
+    from psbx.experiments.anes_baselines import evaluate_anes_statistical_baselines
+
+    report = evaluate_anes_statistical_baselines(
+        strict_profiles,
+        paper_profiles,
+        targets,
+        output,
+        folds=folds,
+        seed=seed,
+    )
+    typer.echo(json.dumps(report, indent=2))
+
+
+@experiment_app.command("anes-doctor")
+def anes_doctor_cmd() -> None:
+    """Report which temporal and container-isolation claims are actually supported."""
+    from psbx.experiments.anes_society import sandbox_doctor
+
+    report = sandbox_doctor()
+    typer.echo(json.dumps(report, indent=2))
+    if not report["docker_daemon_available"]:
+        raise typer.Exit(code=2)
+
+
+@experiment_app.command("anes-container-plan")
+def anes_container_plan_cmd(
+    profiles: Annotated[Path, typer.Option("--profiles")],
+    output: Annotated[Path, typer.Option("--output")],
+    image: Annotated[str, typer.Option("--image")] = "psbx-anes-society:local",
+    seed: Annotated[int, typer.Option("--seed")] = 220906899,
+    replications: Annotated[int, typer.Option("--replications")] = 5,
+    max_agents: Annotated[int, typer.Option("--max-agents")] = 120,
+    group_size: Annotated[int, typer.Option("--group-size")] = 12,
+    rounds: Annotated[int, typer.Option("--rounds")] = 3,
+) -> None:
+    """Print the fail-closed Docker invocation without executing it."""
+    import shlex
+
+    from psbx.experiments.anes_society import sealed_container_command
+
+    command = sealed_container_command(
+        profiles,
+        output,
+        image=image,
+        seed=seed,
+        replications=replications,
+        max_agents=max_agents,
+        group_size=group_size,
+        rounds=rounds,
+    )
+    typer.echo(shlex.join(command))
+
+
+@experiment_app.command("anes-live-vote")
+def anes_live_vote_cmd(
+    profiles: Annotated[Path, typer.Option("--profiles")],
+    output: Annotated[Path, typer.Option("--output")],
+    run_id: Annotated[str, typer.Option("--run-id")] = "anes2012-live-vote-probe",
+    roster: Annotated[Path, typer.Option("--roster")] = Path("config/swarm.yaml"),
+    world_context: Annotated[Path | None, typer.Option("--world-context")] = None,
+    seed: Annotated[int, typer.Option("--seed")] = 220906899,
+    replications: Annotated[int, typer.Option("--replications")] = 1,
+    max_agents: Annotated[int, typer.Option("--max-agents")] = 12,
+    group_size: Annotated[int, typer.Option("--group-size")] = 12,
+    rounds: Annotated[int, typer.Option("--rounds")] = 2,
+) -> None:
+    """Run paid matched independent/conversational vote arms with tools disabled."""
+    from datetime import date
+
+    from psbx.experiments.anes_society import run_live_llm_vote_society
+
+    result = run_live_llm_vote_society(
+        profiles,
+        output,
+        run_id=run_id,
+        cutoff=date(2012, 11, 5),
+        roster_path=roster,
+        world_context_path=world_context,
+        seed=seed,
+        replications=replications,
+        max_agents=max_agents,
+        group_size=group_size,
+        rounds=rounds,
+    )
+    typer.echo(json.dumps(result, indent=2))
+
+
+@experiment_app.command("anes-pilot")
+def anes_pilot_cmd(
+    input_path: Annotated[Path, typer.Option("--input")],
+    paper_baseline_input: Annotated[Path | None, typer.Option("--paper-baseline-input")] = None,
+    config: Annotated[Path, typer.Option("--config")] = Path("config/anes2012-society.yaml"),
+    pre: Annotated[Path, typer.Option("--pre")] = Path(
+        "data/survey-microdata/anes/2012/source/anes_timeseries_2012_qnaire_pre.pdf"
+    ),
+    post: Annotated[Path, typer.Option("--post")] = Path(
+        "data/survey-microdata/anes/2012/source/anes_timeseries_2012_qnaire_post.pdf"
+    ),
+) -> None:
+    """Build the bank, split data, simulate both arms, seal, and then evaluate."""
+    from psbx.config import load_yaml
+    from psbx.experiments.anes_society import (
+        AnesSocietySpec,
+        evaluate_paper_study2_replication,
+        evaluate_vote_predictions,
+        prepare_anes_split,
+        run_provider_free_society,
+        write_question_bank,
+    )
+
+    spec = AnesSocietySpec.model_validate(load_yaml(config))
+    root = run_dir(spec.run_id) / "anes-society"
+    bank = write_question_bank(pre, post, root / "question_bank.jsonl")
+    prepared = prepare_anes_split(input_path, spec, root)
+    simulated = run_provider_free_society(
+        prepared.runtime_profiles,
+        root / "sealed-runtime-output",
+        seed=spec.seed,
+        replications=spec.replications,
+        max_agents=spec.max_agents,
+        group_size=spec.group_size,
+        rounds=spec.interaction_rounds,
+    )
+    evaluation = evaluate_vote_predictions(
+        simulated["predictions"],
+        prepared.evaluation_targets,
+        root / "evaluation.json",
+        target_field=spec.target_fields[0],
+    )
+    paper_baseline = None
+    if paper_baseline_input is not None:
+        paper_baseline = evaluate_paper_study2_replication(
+            paper_baseline_input,
+            root / "paper-study2-replication.json",
+        )
+    typer.echo(
+        json.dumps(
+            {
+                "question_bank": bank,
+                "prepared": prepared.model_dump(mode="json"),
+                "simulated": simulated,
+                "paper_study2_replication": paper_baseline,
+                "evaluation": evaluation["summary"],
+            },
+            indent=2,
+        )
+    )
 
 
 @app.command("leaderboard")

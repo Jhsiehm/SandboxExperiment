@@ -1,0 +1,42 @@
+{
+  "admission_status": "unresolved_access_and_codebook",
+  "source_sha256": null,
+  "outcome_definition": null,
+  "prediction_cutoff": null,
+  "sample_definition": null,
+  "weight_definition": null,
+  "household_definition": null,
+  "split_salt": "oregon-behavior-20261022-v1",
+  "folds": 5,
+  "features": [],
+  "field_provenance": {},
+  "source_mapping": {
+    "person_id": null,
+    "household_id": null,
+    "assignment": null,
+    "outcome": null,
+    "weight": null,
+    "lottery_draw": null,
+    "listed_household_size": null
+  },
+  "reference_reproduction": {
+    "paper_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3535298/",
+    "candidate_table": "Table III; verify against downloaded replication code",
+    "analysis_sample": null,
+    "coefficient_expected": null,
+    "standard_error_expected": null,
+    "sample_size_expected": null,
+    "numerical_tolerance": null,
+    "status": "NOT_REPRODUCED"
+  },
+  "normalization_rules": [
+    "Do not infer source variable names from labels or literature summaries.",
+    "Freeze household partition from IDs before joining outcomes.",
+    "Export only development households to normalized JSONL; do not export reserve outcomes.",
+    "Reject uncertain timing and post-lottery survey attitudes as pretreatment covariates.",
+    "Document exclusions and weights from source code before approving contract.",
+    "If the full published sample is analyzed for reproduction, label it historical development; do not claim that sample contains a pristine confirmation holdout."
+  ],
+  "normalized_input_sha256": null,
+  "cutoff_scope": null
+}

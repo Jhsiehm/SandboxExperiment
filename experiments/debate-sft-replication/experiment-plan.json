@@ -1,0 +1,60 @@
+{
+  "status": "prepared_data_training_blocked",
+  "primary_question": "Does human-response SFT improve held-out human fidelity, and does interaction add value after SFT?",
+  "base_model": "meta-llama/Llama-3.1-8B-Instruct",
+  "trained_model": null,
+  "training_backend": null,
+  "research_only": true,
+  "training_data": "train.jsonl",
+  "development_validation_data": "validation.jsonl",
+  "reported_paper_hyperparameters": {
+    "epochs": 3,
+    "learning_rate": 5e-05,
+    "per_device_batch_size": 4,
+    "gradient_accumulation": 4,
+    "loss": "completion_only"
+  },
+  "unresolved_recipe": [
+    "official checkpoint and split provenance unavailable",
+    "optimizer, context length, precision and exact public/private prompt reproduction require resolution",
+    "current corpus supervises private chat only; adaptation, not exact published replication"
+  ],
+  "comparison_arms": [
+    "base_direct",
+    "base_swarm",
+    "sft_direct",
+    "sft_swarm",
+    "persistence",
+    "development_fitted_transition"
+  ],
+  "exploratory_primary_metric": "RPS on private final belief",
+  "secondary_metrics": [
+    "no_change_calibration",
+    "answer_share_error",
+    "individual_change_error",
+    "group_pairwise_stance_distance",
+    "message_length",
+    "repeatability"
+  ],
+  "proposed_new_cohort_groups": 20,
+  "proposed_people": 80,
+  "proposed_provider_requests_at_previous_compressed_schedule": 1280,
+  "repetitions": 1,
+  "full_protocol_request_budget": "must be recalculated; 1280 applies only to prior compressed protocol",
+  "existing_budget": {
+    "scope": "previous run; no automatic new allowance",
+    "used_requests": 1856,
+    "remaining_requests": 144,
+    "provider_reported_usd": 0.5863428
+  },
+  "paid_calls_this_preparation": 0,
+  "evaluation_release_requires": [
+    "pinned base and trained checkpoint hashes",
+    "verified training/evaluation group and topic disjointness",
+    "model license and dataset research restrictions",
+    "budget reconciliation for training and inference",
+    "frozen protocol and prompt contract",
+    "isolated immutable runner and workers",
+    "development-only format smoke test before consuming final reserve"
+  ]
+}

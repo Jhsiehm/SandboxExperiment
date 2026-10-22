@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#080d0b">
-  <title>Prediction Sandbox // World Model</title>
-  <link rel="stylesheet" href="/static/app.css?v=45">
+  <title>Prediction Sandbox // Research lab</title>
+  <link rel="stylesheet" href="/static/app.css?v=48">
+  <link rel="stylesheet" href="/static/research.css?v=1">
   <script type="importmap">
     {"imports":{"three":"/static/vendor/three/three.module.min.js"}}
   </script>
@@ -27,9 +28,9 @@
 
   <header class="top" role="banner">
     <div class="brand">
-      <p class="system-id">PSBX // WORLD MODEL</p>
+      <p class="system-id">PSBX // RESEARCH LAB</p>
       <h1>Prediction Sandbox</h1>
-      <p class="lede" id="mast-lede">Enter a sealed historical world. Observe the evidence chain, the agents, and the outcome without crossing its time boundary.</p>
+      <p class="lede" id="mast-lede">Historical forecasts, individual responses and social-update studies. Inspect the evidence and boundaries of each experiment.</p>
     </div>
     <dl class="chips" id="mast-meta">
       <div>
@@ -46,21 +47,24 @@
       </div>
     </dl>
     <div class="run-box" id="run-box" role="region" aria-labelledby="run-heading">
-      <h2 class="sr-only" id="run-heading">Run the experiment</h2>
+      <h2 id="run-heading">Forecast controls</h2>
       <label class="field" for="run-select">
-        <span>Which run to look at</span>
+        <span>Selected forecast run</span>
         <select id="run-select"></select>
       </label>
-      <div class="run-acts" role="group" aria-label="Start a run">
+      <div class="run-acts" role="group" aria-label="Start a historical forecast run">
         <button type="button" class="act ghost" id="run-btn" aria-describedby="run-help-practice">Run practice</button>
         <button type="button" class="act" id="run-live-btn" aria-describedby="run-help-live">Run live mix</button>
         <button type="button" class="act" id="run-swarm-btn" aria-describedby="run-help-swarm">Run configured swarm</button>
       </div>
+      <details class="run-guidance"><summary>Run types and study boundaries</summary>
+      <p class="run-help">These controls launch historical forecasts. <a href="#runs">Configure a swarm</a> · <a href="#lab">Check setup</a>. <a href="#research">Study atlas</a> shows the separate research studies and their readiness. ANES, DEBATE and Oregon use their own contract-driven CLI workflows.</p>
       <p class="run-help" id="run-help">
         <span id="run-help-practice">Practice is a keyword lookup with no API keys.</span>
         <span id="run-help-live">Live mix scores six cheap models once on one question.</span>
-        <span id="run-help-swarm">Swarm size and model counts are configured in Runs.</span>
+        <span id="run-help-swarm">Choose models, agent counts and question count in Run builder.</span>
       </p>
+      </details>
       <p class="run-prerequisite" id="run-prerequisite" data-status="checking" aria-live="polite">
         Checking generated corpus and sealed-sidecar prerequisites…
       </p>
@@ -76,26 +80,70 @@
     <pre id="run-log" tabindex="0"></pre>
   </section>
 
-  <nav class="tabs" role="tablist" aria-label="Read the experiment in order">
-    <button type="button" role="tab" id="tab-eras" data-view="eras" aria-controls="view-eras" aria-selected="false" tabindex="-1">Eras</button>
-    <button type="button" role="tab" id="tab-activity" data-view="activity" aria-controls="view-activity" aria-selected="false" tabindex="-1">Agents live</button>
-    <button type="button" role="tab" id="tab-leaderboard" data-view="leaderboard" aria-controls="view-leaderboard" aria-selected="false" tabindex="-1">Leaderboard</button>
-    <button type="button" role="tab" id="tab-runs" data-view="runs" aria-controls="view-runs" aria-selected="false" tabindex="-1">Runs</button>
-    <button type="button" role="tab" id="tab-architecture" data-view="architecture" aria-controls="view-architecture" aria-selected="false" tabindex="-1">Architecture</button>
-    <button type="button" role="tab" id="tab-population" data-view="population" aria-controls="view-population" aria-selected="false" tabindex="-1">World model</button>
-    <button type="button" role="tab" id="tab-results" data-view="results" aria-controls="view-results" aria-selected="true" tabindex="0">1. Results</button>
-    <button type="button" role="tab" id="tab-forecasts" data-view="forecasts" aria-controls="view-forecasts" aria-selected="false" tabindex="-1">2. Each answer</button>
-    <button type="button" role="tab" id="tab-questions" data-view="questions" aria-controls="view-questions" aria-selected="false" tabindex="-1">3. The questions</button>
-    <button type="button" role="tab" id="tab-corpus" data-view="corpus" aria-controls="view-corpus" aria-selected="false" tabindex="-1">4. The frozen library</button>
-    <button type="button" role="tab" id="tab-lab" data-view="lab" aria-controls="view-lab" aria-selected="false" tabindex="-1">5. Setup</button>
+  <nav class="tabs" role="tablist" aria-label="Research workspace">
+    <button type="button" role="tab" id="tab-research" data-view="research" aria-controls="view-research" aria-selected="false" tabindex="-1">Study atlas</button>
+    <button type="button" role="tab" id="tab-library" data-view="library" aria-controls="view-library" aria-selected="false" tabindex="-1">Data library</button>
+    <button type="button" role="tab" id="tab-eras" data-view="eras" aria-controls="view-eras" aria-selected="false" tabindex="-1">Forecast eras</button>
+    <button type="button" role="tab" id="tab-activity" data-view="activity" aria-controls="view-activity" aria-selected="false" tabindex="-1">Execution log</button>
+    <button type="button" role="tab" id="tab-leaderboard" data-view="leaderboard" aria-controls="view-leaderboard" aria-selected="false" tabindex="-1">Forecast rankings</button>
+    <button type="button" role="tab" id="tab-runs" data-view="runs" aria-controls="view-runs" aria-selected="false" tabindex="-1">Run builder</button>
+    <button type="button" role="tab" id="tab-architecture" data-view="architecture" aria-controls="view-architecture" aria-selected="false" tabindex="-1">How it works</button>
+    <button type="button" role="tab" id="tab-population" data-view="population" aria-controls="view-population" aria-selected="false" tabindex="-1">Population map</button>
+    <button type="button" role="tab" id="tab-anes" data-view="anes" aria-controls="view-anes" aria-selected="false" tabindex="-1">ANES analysis</button>
+    <button type="button" role="tab" id="tab-results" data-view="results" aria-controls="view-results" aria-selected="true" tabindex="0">Forecast results</button>
+    <button type="button" role="tab" id="tab-forecasts" data-view="forecasts" aria-controls="view-forecasts" aria-selected="false" tabindex="-1">Forecast answers</button>
+    <button type="button" role="tab" id="tab-questions" data-view="questions" aria-controls="view-questions" aria-selected="false" tabindex="-1">Question bank</button>
+    <button type="button" role="tab" id="tab-corpus" data-view="corpus" aria-controls="view-corpus" aria-selected="false" tabindex="-1">Frozen evidence</button>
+    <button type="button" role="tab" id="tab-lab" data-view="lab" aria-controls="view-lab" aria-selected="false" tabindex="-1">Setup</button>
+  </nav>
+
+  <nav class="forecast-workflow" aria-label="Forecast workflow">
+    <span>Run a forecast</span>
+    <a href="#lab">Check setup</a> <span aria-hidden="true">→</span>
+    <a href="#eras">Choose era</a> <span aria-hidden="true">→</span>
+    <a href="#runs">Configure run</a> <span aria-hidden="true">→</span>
+    <a href="#activity">Monitor</a> <span aria-hidden="true">→</span>
+    <a href="#results">Review results</a>
   </nav>
 
   <main id="main">
     <p class="sr-only" id="view-announce" aria-live="polite"></p>
+    <section id="view-research" class="view research-view" role="tabpanel" aria-labelledby="tab-research" hidden>
+      <header class="research-heading"><div><h2>A world of experiments.</h2><p>Explore the studies, inspect their evidence, and follow the work as it develops.</p></div><button class="act ghost" id="research-refresh" type="button">Refresh evidence</button></header>
+      <div class="research-statusbar"><p id="research-status" role="status">Reading the local research archive…</p><span>Repository-wide · study-specific boundaries</span></div>
+      <div class="research-workspace">
+        <div class="research-world">
+          <div class="research-world-tools"><h3 id="research-stage-title">Agents at work</h3><div role="group" aria-label="Study display"><button type="button" class="act ghost" id="research-watch-toggle" aria-pressed="true">Watch study</button><button type="button" class="act ghost" id="research-atlas-toggle" aria-pressed="false">Atlas</button><button type="button" class="act ghost" id="research-scene-toggle" aria-pressed="true">3D view</button><button type="button" class="act ghost" id="research-reset">Reset camera</button></div></div>
+          <div id="research-theater" class="research-scene research-theater" role="region" aria-label="Pixel-art experiment stage" aria-describedby="research-action-disclosure"></div>
+          <div id="research-scene" hidden class="research-scene" role="region" aria-label="Interactive voxel study atlas" aria-describedby="research-scene-key"></div>
+          <section id="research-playback" class="research-playback" aria-label="Recorded action playback">
+            <div class="research-playback-head"><span id="research-feed-mode" class="research-state">Loading activity</span><p id="research-feed-status" role="status">Reading the selected study’s event record…</p></div>
+            <label class="research-session-label" for="research-session">Study run<select id="research-session"><option>Loading runs…</option></select></label>
+            <div class="research-transport"><button type="button" class="act ghost" id="research-play" disabled>Play recording</button><button type="button" class="act ghost" id="research-step" disabled>Next action</button><button type="button" class="act ghost" id="research-follow" disabled>Follow live</button><button type="button" class="act ghost" id="research-rewind" disabled>From beginning</button><label for="research-speed">Playback speed<select id="research-speed"><option value="2400">Slow</option><option value="1200" selected>Normal</option><option value="400">Fast</option></select></label></div>
+            <label class="research-scrubber-label" for="research-scrubber">Recorded action <span id="research-event-position">0 / 0</span><input type="range" id="research-scrubber" min="0" max="0" value="0" disabled></label>
+            <p id="research-action-disclosure">Scenes illustrate logged computation, not observed human behavior or private model reasoning. Historical records may contain only saved checkpoints. Playback compresses time.</p>
+            <div id="research-current-event" class="research-current-event" aria-live="polite"><strong>No action selected</strong><span>Choose a study to inspect its record.</span></div>
+            <details class="research-event-details"><summary>Recorded actions <span id="research-event-count"></span></summary><ol id="research-event-list"></ol><button type="button" class="act ghost" id="research-more-events" hidden>Load more actions</button></details>
+          </section>
+          <p id="research-scene-key" class="research-scene-key">Select an island or a study below. Tower height shows the recorded fraction, not scientific quality. Buildings and researchers are illustrative; motion requires observed running activity.</p>
+          <div id="research-study-list" class="research-study-list" aria-label="Select a study"></div>
+        </div>
+        <aside id="research-inspector" class="research-inspector" aria-label="Selected study evidence"><h3>Inspect a study</h3><p>Its question, evidence and limits will appear here.</p></aside>
+      </div>
+      <p id="research-plan" class="research-plan"></p>
+      <section class="research-analysis" aria-labelledby="research-analysis-title"><header><h3 id="research-analysis-title">Evidence, at its actual scale.</h3><p>Different studies measure different things. These figures are not a cross-study ranking.</p></header><div class="research-table-wrap"><table><caption class="sr-only">Recorded study measures</caption><thead><tr><th scope="col">Study</th><th scope="col">Evidence state</th><th scope="col">Recorded scope</th><th scope="col">Primary measure</th></tr></thead><tbody id="research-measures"></tbody></table></div></section>
+      <details class="research-provenance"><summary>How this workspace reads the evidence</summary><ul id="research-caveats"></ul><p>The atlas refreshes local summaries every 15 seconds while visible. Saved checkpoints do not establish a running process. Forecast job activity is reported separately.</p></details>
+    </section>
+    <section id="view-library" class="view research-view" role="tabpanel" aria-labelledby="tab-library" hidden>
+      <header class="research-heading"><div><h2>The research library.</h2><p>Study inputs, frozen evidence, comparison layers and evaluation artifacts—with their boundaries intact.</p></div><a class="act ghost" href="#corpus">Search frozen evidence</a></header>
+      <div class="research-library-toolbar"><label for="research-library-query">Find a source<input type="search" id="research-library-query" placeholder="Search ANES, Oregon, corpus…"></label><label for="research-library-filter">Availability<select id="research-library-filter"><option value="all">All sources</option><option value="available">Available locally</option><option value="missing">Not materialized</option></select></label><p id="research-library-count" role="status">Reading local sources…</p></div>
+      <div id="research-library-list" class="research-library-list"><p class="empty">Loading the local source inventory…</p></div>
+      <p class="research-library-boundary">A locally available file is not automatically available to an agent. Each study controls its own inputs; target vaults and comparison layers remain outside runtime context.</p>
+    </section>
     <section id="view-eras" class="view" role="tabpanel" aria-labelledby="tab-eras" hidden>
       <header class="view-head era-head">
-        <h2>Choose a sealed era</h2>
-        <p>Every era is its own time capsule: a dated question set, cutoff-locked corpus, and isolated runs. Switching here changes the data used everywhere else in the dashboard.</p>
+        <h2>Choose a forecast era</h2>
+        <p>Choose the question set, evidence cutoff and run archive for the historical forecast tools. The Study atlas, Data library and ANES analysis retain their own study-specific boundaries.</p>
       </header>
       <dl class="era-current" aria-label="Selected era">
         <div>
@@ -140,8 +188,9 @@
 
     <section id="view-activity" class="view" role="tabpanel" aria-labelledby="tab-activity" hidden>
       <header class="view-head activity-head">
-        <h2>Agents at work</h2>
-        <p id="activity-objective">Loading the experiment contract and current agent states…</p>
+        <h2>Forecast execution log</h2>
+        <p id="activity-objective">Loading the selected forecast contract and agent states…</p>
+        <p>Inspect saved steps and observed activity for the selected forecast run. Follow research-study progress in the <a href="#research">Study atlas</a>.</p>
       </header>
 
       <div class="experiment-truth" role="note" aria-label="What this experiment measures">
@@ -236,8 +285,8 @@
     <section id="view-leaderboard" class="view arena-view" role="tabpanel" aria-labelledby="tab-leaderboard" hidden>
       <header class="arena-head">
         <div>
-          <h2>Arena standings</h2>
-          <p>Every rank is calculated from saved forecast ballots and later ground truth. Switch the board to compare individual agents, whole swarms, model families, or corporations.</p>
+          <h2>Historical forecast rankings</h2>
+          <p>Compare saved forecast ballots against later outcomes by agent, swarm, model family or corporation. Read question coverage alongside each score; ANES and DEBATE study measures are reported in the Study atlas.</p>
         </div>
         <div class="arena-season" aria-live="polite">
           <span class="arena-signal" aria-hidden="true"></span>
@@ -309,7 +358,7 @@
       <section class="goal-progress" aria-labelledby="goal-progress-heading">
         <header class="goal-head">
           <div>
-            <h2 id="goal-progress-heading">How close are we?</h2>
+            <h2 id="goal-progress-heading">Forecast benchmark progress</h2>
             <p id="goal-description">Measuring forecast quality and full-benchmark coverage against the frozen public prior.</p>
           </div>
           <span class="goal-state" id="goal-state">Loading progress…</span>
@@ -339,8 +388,8 @@
       </section>
 
       <header class="view-head">
-        <h2>Build and compare swarms</h2>
-        <p>Choose exactly how many bodies use each model. Every launch receives a unique folder with its configuration, roster, event log, votes, scores, and graphs.</p>
+        <h2>Configure a forecast run</h2>
+        <p>Choose models, agent counts and questions for the selected forecast era. Check <a href="#lab">Setup</a> before launching. Each launch saves its configuration, roster, event log, votes and results; research-study contracts are managed separately.</p>
       </header>
 
       <form id="swarm-builder" class="swarm-builder">
@@ -412,8 +461,8 @@
 
     <section id="view-architecture" class="view" role="tabpanel" aria-labelledby="tab-architecture" hidden>
       <header class="view-head architecture-head">
-        <h2>The repository architecture</h2>
-        <p>This is the full path from outside source material to a scored result on this screen. Select any block to see the folders and contracts behind it.</p>
+        <h2>How the forecast pipeline works</h2>
+        <p>Follow source material through frozen retrieval, agent calls and scoring. Select a block for its files and contracts. The <a href="#research">Study atlas</a> describes the separate respondent, social-update and observed-behavior designs.</p>
       </header>
 
       <section class="architecture-map" aria-labelledby="architecture-flow-heading">
@@ -483,13 +532,14 @@
       <header class="view-head population-head world-head">
         <div>
           <span class="system-id">WORLD // US // E2012</span>
-          <h2>United States world model</h2>
+          <h2>Population and comparison map</h2>
         </div>
         <p id="population-intro">Checking the historical Census input pack and offline population build…</p>
       </header>
 
+      <p class="note">Explore constructed population weights and comparison layers. Matching source marginals validates construction; it does not establish human behavioral accuracy. Inspect admissible study inputs in the <a href="#library">Data library</a>.</p>
       <details class="foundation-audit">
-        <summary><span>Population build audit</span><strong>Open provenance, validation, and coverage evidence</strong></summary>
+        <summary><span>Population construction audit</span><strong>Open provenance, validation, and coverage evidence</strong></summary>
       <section class="population-verdict" id="population-verdict" data-status="loading" aria-live="polite" aria-busy="true">
         <div>
           <span class="population-status-label">Track B status</span>
@@ -710,19 +760,183 @@
       </section>
     </section>
 
+    <section id="view-anes" class="view anes-view" role="tabpanel" aria-labelledby="tab-anes" hidden>
+      <header class="view-head anes-head">
+        <div>
+          <p class="system-id">OFFICIAL MICRODATA // SEALED TARGET</p>
+          <h2>ANES development analysis</h2>
+        </div>
+        <p>Inspect the latest individual profile ablation, then the earlier structural pipeline check. These are development results. Use the <a href="#research">Study atlas</a> for the wider program and readiness of upcoming studies.</p>
+      </header>
+
+      <section class="anes-section individual-panel" aria-labelledby="individual-heading">
+        <header class="anes-section-head">
+          <div>
+            <h3 id="individual-heading">Individual profile ablation</h3>
+            <p>Compare profile arms and statistical baselines across vote, health-law and gun-policy outcomes. Lower half-multiclass Brier, total variation and answer-share error are better. The strongest baseline remains part of the comparison.</p>
+          </div>
+          <button type="button" class="act ghost" id="individual-refresh">Refresh development results</button>
+        </header>
+        <p id="individual-status" role="status" aria-live="polite">Loading development status…</p>
+        <p id="individual-scope" class="note"></p>
+        <details>
+          <summary>Metrics by profile, predictor, and outcome</summary>
+          <div class="sheet-wrap">
+            <table class="sheet">
+              <caption class="sr-only">Independent development metrics, not a fresh-cohort validation</caption>
+              <thead><tr><th scope="col">Profile</th><th scope="col">Predictor</th><th scope="col">Outcome</th><th scope="col">Brier</th><th scope="col">Total variation</th><th scope="col">Share MAE</th><th scope="col">Accuracy</th><th scope="col">N</th><th scope="col">Effective N</th><th scope="col">Repeat agreement</th></tr></thead>
+              <tbody id="individual-metrics"><tr><td colspan="10">No metrics loaded.</td></tr></tbody>
+            </table>
+          </div>
+        </details>
+        <ul id="individual-limitations" class="plain"></ul>
+      </section>
+
+      <h3>Archive: provider-free structural check</h3>
+      <p class="note">These deterministic mock results test the pipeline. Read them as execution evidence; they do not measure a live conversation effect.</p>
+
+      <div class="anes-status" id="anes-status" data-status="loading" role="status" aria-live="polite">
+        <span class="anes-status-mark" aria-hidden="true"></span>
+        <div>
+          <strong id="anes-status-title">Loading sealed result bundle…</strong>
+          <p id="anes-status-detail">Reading the official ANES manifests, evaluation vault summary, and prediction seal.</p>
+        </div>
+      </div>
+
+      <dl class="anes-stat-grid" aria-label="ANES experiment inventory">
+        <div><dt>Respondents</dt><dd id="anes-respondents">—</dd><small>official ANES profiles</small></div>
+        <div><dt>Two-party targets</dt><dd id="anes-targets">—</dd><small>held out for scoring</small></div>
+        <div><dt>Question specs</dt><dd id="anes-questions">—</dd><small>pre + post inventory</small></div>
+        <div><dt>Predictions</dt><dd id="anes-predictions">—</dd><small>two arms, five replications</small></div>
+        <div><dt>Federal contests</dt><dd id="anes-contests">—</dd><small>President, House, Senate</small></div>
+        <div><dt>Election-eve cutoff</dt><dd id="anes-cutoff">—</dd><small>outcome inaccessible at runtime</small></div>
+      </dl>
+
+      <section class="anes-section" aria-labelledby="anes-share-heading">
+        <header class="anes-section-head">
+          <div>
+            <h3 id="anes-share-heading">Republican / Romney share comparison</h3>
+            <p>The official ANES target is weighted. The published paper replication is unweighted. Structural-arm values are means across sampled replications and are shown only to verify the experimental plumbing.</p>
+          </div>
+          <span class="anes-seal-label" id="anes-weight-source">EVALUATION VAULT</span>
+        </header>
+        <div class="anes-share-chart" id="anes-share-chart" role="img" aria-label="Republican share comparison"></div>
+      </section>
+
+      <section class="anes-section" aria-labelledby="anes-arms-heading">
+        <header class="anes-section-head">
+          <div>
+            <h3 id="anes-arms-heading">Independent versus society arms</h3>
+            <p>Brier is lower-is-better; agreement and Cohen’s κ are higher-is-better. These figures come from the deterministic provider-free structural engine.</p>
+          </div>
+          <span class="anes-seal-label" id="anes-engine">ENGINE —</span>
+        </header>
+        <div class="sheet-wrap">
+          <table class="sheet anes-arm-table">
+            <caption class="sr-only">Mean metrics for independent and society treatments</caption>
+            <thead>
+              <tr>
+                <th scope="col">Treatment</th>
+                <th scope="col">Replications</th>
+                <th scope="col">Brier ↓</th>
+                <th scope="col">Agreement ↑</th>
+                <th scope="col">Cohen κ ↑</th>
+                <th scope="col">Predicted Romney</th>
+                <th scope="col">Observed sample</th>
+              </tr>
+            </thead>
+            <tbody id="anes-arms-body"><tr><td colspan="7">Loading experiment arms…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="anes-delta" id="anes-delta">
+          <strong>Society effect in this structural run</strong>
+          <p>Waiting for both treatment summaries.</p>
+        </div>
+      </section>
+
+      <div class="anes-two-column">
+        <section class="anes-section anes-paper" aria-labelledby="anes-paper-heading">
+          <header class="anes-section-head">
+            <div>
+              <h3 id="anes-paper-heading">Published Study 2 comparator</h3>
+              <p>Recomputed from the public <em>Out of One, Many</em> Study 2 output. This is a separate, unweighted baseline—not a third arm of our structural run.</p>
+            </div>
+          </header>
+          <dl class="anes-facts" id="anes-paper-facts"></dl>
+        </section>
+
+        <section class="anes-section anes-boundary" aria-labelledby="anes-boundary-heading">
+          <header class="anes-section-head">
+            <div>
+              <h3 id="anes-boundary-heading">Information boundary</h3>
+              <p>The experiment distinguishes what an agent may know from what evaluation may inspect after predictions are sealed.</p>
+            </div>
+          </header>
+          <dl class="anes-facts" id="anes-boundary-facts"></dl>
+        </section>
+      </div>
+
+      <details class="anes-section anes-replications">
+        <summary>
+          <span>Replication ledger</span>
+          <strong>All ten treatment × replication rows</strong>
+        </summary>
+        <div class="sheet-wrap">
+          <table class="sheet">
+            <caption class="sr-only">Metrics for each ANES structural replication</caption>
+            <thead>
+              <tr>
+                <th scope="col">Arm</th>
+                <th scope="col">Rep</th>
+                <th scope="col">Valid n</th>
+                <th scope="col">Brier</th>
+                <th scope="col">Agreement</th>
+                <th scope="col">Cohen κ</th>
+                <th scope="col">Predicted Romney</th>
+                <th scope="col">Observed sample</th>
+              </tr>
+            </thead>
+            <tbody id="anes-replications-body"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <div class="anes-two-column anes-audit-row">
+        <section class="anes-section" aria-labelledby="anes-audit-heading">
+          <header class="anes-section-head">
+            <div>
+              <h3 id="anes-audit-heading">Seal and provenance</h3>
+              <p>Hashes make the source split, runtime profiles, held-out targets, and prediction artifact independently checkable.</p>
+            </div>
+          </header>
+          <dl class="anes-hashes" id="anes-hashes"></dl>
+        </section>
+        <section class="anes-section anes-limitations" aria-labelledby="anes-limitations-heading">
+          <header class="anes-section-head">
+            <div>
+              <h3 id="anes-limitations-heading">What remains before a scientific claim</h3>
+              <p>The experiment is reproducible now; the model-powered human-emulation test is not complete.</p>
+            </div>
+          </header>
+          <ul id="anes-limitations-list"></ul>
+        </section>
+      </div>
+    </section>
+
     <section id="view-results" class="view" role="tabpanel" aria-labelledby="tab-results">
+      <p class="note">Scores below belong to the selected historical forecast run. For respondent and social-update studies, open the <a href="#research">Study atlas</a> or <a href="#anes">ANES analysis</a>.</p>
       <ol class="ladder">
         <li class="rung">
           <p class="rung-num" aria-hidden="true">1</p>
           <div>
-            <h2>What this is</h2>
+            <h2>Selected forecast run</h2>
             <ol class="story" id="story"></ol>
           </div>
         </li>
         <li class="rung">
           <p class="rung-num" aria-hidden="true">2</p>
           <div>
-            <h2>The bottom line</h2>
+            <h2>Forecast result</h2>
             <p class="verdict" id="verdict" data-tone="empty">
               <strong id="verdict-h">Loading scores…</strong>
               <span id="verdict-d"></span>
@@ -732,7 +946,7 @@
               <header>
                 <div>
                   <h3 id="result-chain-heading">How this swarm reached the result</h3>
-                  <p id="result-chain-note">Read left to right: one frozen pack, independent persona-conditioned votes, one median. Select an agent to open its saved rationale in Agents live.</p>
+                  <p id="result-chain-note">Read left to right: one frozen pack, independent persona-conditioned votes, one median. Select an agent to open its saved rationale in Execution log.</p>
                 </div>
                 <div class="result-chain-tools">
                   <label class="chain-question-picker" hidden>
@@ -819,9 +1033,8 @@
 
     <section id="view-forecasts" class="view" role="tabpanel" aria-labelledby="tab-forecasts" hidden>
       <header class="view-head">
-        <p class="rung-kicker">Step 2 of 5</p>
-        <h2>Each answer</h2>
-        <p>One row is one model answering one question, using only documents from on or before the freeze date.</p>
+        <h2>Forecast answers</h2>
+        <p>Inspect each model’s probability, evidence and saved answer for the selected run. Supplied documents respect the era cutoff; the model’s pretrained knowledge is not time-isolated.</p>
       </header>
       <div class="toolbar">
         <label class="field" for="f-model">
@@ -835,7 +1048,7 @@
         <p class="count" id="f-count"></p>
       </div>
       <div id="forecasts-empty" class="empty" hidden>
-        <p>No answers on disk for this run. Use <strong>Run practice</strong> for a keyword lookup, <strong>Run live mix</strong> for six species once, or configure a 1–100-agent median swarm in <strong>Runs</strong>.</p>
+        <p>No answers on disk for this run. Use <strong>Run practice</strong> for a keyword lookup, <strong>Run live mix</strong> for six species once, or configure a 1–100-agent median swarm in <strong>Run builder</strong>.</p>
       </div>
       <div class="sheet-wrap">
       <table class="sheet" id="pred-table">
@@ -858,8 +1071,7 @@
 
     <section id="view-questions" class="view" role="tabpanel" aria-labelledby="tab-questions" hidden>
       <header class="view-head">
-        <p class="rung-kicker">Step 3 of 5</p>
-        <h2>The questions</h2>
+        <h2>Forecast question bank</h2>
         <p id="questions-intro">Each one is a yes-or-no about something that would or would not happen after the selected freeze date. The true answer stays hidden unless you reveal it. That is the agent’s view at the time.</p>
       </header>
       <div class="toolbar">
@@ -895,9 +1107,9 @@
 
     <section id="view-corpus" class="view" role="tabpanel" aria-labelledby="tab-corpus" hidden>
       <header class="view-head">
-        <p class="rung-kicker">Step 4 of 5</p>
-        <h2 id="corpus-heading">The frozen library</h2>
+        <h2 id="corpus-heading">Frozen forecast evidence</h2>
         <p id="corpus-assertion" class="stamp-line">Only documents published on or before the selected freeze date can appear.</p>
+        <p>Search the forecast retrieval index here. Find study datasets, evaluation artifacts and comparison layers in the <a href="#library">Data library</a>.</p>
       </header>
       <form id="search-form" class="search-bar" role="search">
         <label class="field grow" for="search-q">
@@ -941,9 +1153,8 @@
 
     <section id="view-lab" class="view" role="tabpanel" aria-labelledby="tab-lab" hidden>
       <header class="view-head">
-        <p class="rung-kicker">Step 5 of 5</p>
         <h2>Setup</h2>
-        <p>What is wired, which models are registered, and how practice, live mix, and swarm differ.</p>
+        <p>Check the selected era’s data readiness and registered forecast models, then open the <a href="#runs">Run builder</a>. Study-specific inputs and readiness appear in the <a href="#research">Study atlas</a>.</p>
       </header>
       <div class="layout">
         <article>
@@ -958,24 +1169,25 @@
             <tbody></tbody>
           </table>
           </div>
-          <p class="note" id="overview-swarm">Three HUD buttons: Run practice (keyword lookup, no keys), Run live mix (each of GPT-4.1 mini, GPT-4o mini, Claude 3 Haiku, Gemini Flash-Lite, Llama 3.1 8B, Qwen 2.5 7B once on 1 question), Run swarm (2 of each species, 12 sequential votes, shared retrieval, median p; not a stub). Results draws seaborn charts of votes vs later truth. That is the planned cheap mix, not the full OpenRouter catalog. A full 12×50 pass is hours at 2s/req. local-* Llama/Qwen stay vLLM-only. Native Claude+GPT still needs both Anthropic and OpenAI keys.</p>
+          <p class="note" id="overview-swarm">Practice uses a keyword baseline. Live mix queries the configured models. A configured swarm combines individual votes; its size, model counts, and question count are selected in Run builder. Paid requests remain subject to configured spending limits.</p>
         </article>
         <aside>
           <header class="block-head">
-            <h3>Is it plugged in?</h3>
+            <h3>Data readiness</h3>
           </header>
           <ul class="status-list" id="overview-connected"></ul>
-          <p class="note" id="overview-errors"></p>
+          <details class="setup-sources">
+            <summary>Source paths and diagnostics</summary>
+            <p class="note" id="overview-errors"></p>
+          </details>
           <header class="block-head">
-            <h3>How to run</h3>
+            <h3>Launch a historical forecast</h3>
           </header>
           <ol class="plain numbered">
             <li id="era-build-command">Grow the selected frozen library with <code>psbx corpus build --epoch &lt;epoch&gt; --live --max-docs 400</code>.</li>
-            <li><strong>Prepare practice</strong> with <code>psbx practice prepare --epoch e2012</code>, then seal the sidecar. The HUD stays disabled until both are verified.</li>
-            <li><strong>Run practice</strong> writes a keyword-lookup baseline. No API keys or provider calls. Folder <code>phase1-e2012-smoke</code>.</li>
-            <li><strong>Run live mix</strong> scores each of the six OpenRouter species once on 1 question (<code>phase2-e2012-openrouter</code>). Needs <code>OPENROUTER_API_KEY</code>. It does not fire 12 bodies. Native Claude+GPT (<code>run-phase2.yaml</code>) still needs both Anthropic and OpenAI keys; the HUD only uses that path if OpenRouter is missing.</li>
-            <li><strong>Run swarm</strong> is real: 12 sequential OpenRouter votes (2 × each species), shared retrieval, median probability (<code>phase2-e2012-swarm-probe-container</code>). Same key. Keep it at 1 question unless you mean to wait hours (12×50 at 2s/req).</li>
-            <li>Results draws seaborn charts (vote swarm, Brier bars, signed error). Brier + C-index both score. This page never overwrites a different run folder.</li>
+            <li id="era-prepare-command"><strong>Prepare and seal</strong> the selected era with <code>psbx practice prepare --epoch e2012</code> and <code>psbx sandbox up --epoch e2012</code>. Run controls enable after prerequisite checks pass.</li>
+            <li><strong>Choose a run type.</strong> Practice makes no provider calls. Live mix requires configured provider credentials. Configure the swarm’s models, agents, and questions in <a href="#runs">Run builder</a>.</li>
+            <li><strong>Inspect the saved evidence.</strong> Open <a href="#results">Forecast results</a> for scores and <a href="#activity">Execution log</a> for execution details. Forecast scores alone do not establish human-behavior fidelity.</li>
           </ol>
         </aside>
       </div>
@@ -983,10 +1195,12 @@
   </main>
 
   <footer class="colophon">
-    <p>Search on this page is the same search the agent gets. Nothing published after the freeze date can appear.</p>
+    <p>Frozen-corpus search respects its selected cutoff. Study inputs, evaluation targets and comparison data follow their own declared access boundaries.</p>
   </footer>
   </div>
   <script type="module" src="/static/geography-map.js?v=3"></script>
-  <script src="/static/app.js?v=44"></script>
+  <script src="/static/app.js?v=47"></script>
+  <script type="module" src="/static/research.js?v=2"></script>
+  <script type="module" src="/static/research-live.js?v=1"></script>
 </body>
 </html>

@@ -1,0 +1,17 @@
+# Study-inspired state pilot: eight strictly pre-election fields, not exact Study 2.
+state: Ohio
+state_fips: 39
+profiles: data/runs/anes2012-ohio-20261004/anes-society/runtime/profiles.jsonl
+targets: data/evaluation-vault/anes2012-ohio-20261004/targets.csv
+seed: 220906900
+replications: 3
+max_agents: 12
+group_size: 12
+rounds: 2
+max_paid_requests: 432
+max_run_usd: 2
+models:
+  - openrouter-gpt-4.1-mini
+  - openrouter-gpt-4o-mini
+  - openrouter-gemini-flash-lite
+copies_per_model: 4

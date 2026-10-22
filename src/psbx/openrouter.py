@@ -199,6 +199,7 @@ def chat_completion(
     temperature: float = 0.2,
     tools: list[dict[str, Any]] | None = None,
     timeout: float = 120.0,
+    json_output: bool = False,
 ) -> dict[str, Any]:
     """POST /chat/completions. Rate-limited. Raises after two 429 retries."""
     load_dotenv()
@@ -211,6 +212,8 @@ def chat_completion(
         "max_tokens": capped_max_tokens(max_tokens),
         "temperature": temperature,
     }
+    if json_output:
+        payload["response_format"] = {"type": "json_object"}
     if tools:
         payload["tools"] = tools
     pricing = model_config or _model_config_for_slug(model)

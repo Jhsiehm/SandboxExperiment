@@ -1,0 +1,5 @@
+# Reuse a successfully built dependency image; record the resulting immutable ID.
+ARG BASE_IMAGE=psbx-anes-validation-deps:20261012
+FROM ${BASE_IMAGE}
+COPY src /workspace/src
+ENV PYTHONPATH=/workspace/src

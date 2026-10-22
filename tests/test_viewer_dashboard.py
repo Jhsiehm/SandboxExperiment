@@ -164,6 +164,10 @@ def test_dashboard_html_a11y_landmarks():
     assert 'id="view-architecture"' in html
     assert 'id="tab-population"' in html
     assert 'id="view-population"' in html
+    assert 'id="tab-anes"' in html
+    assert 'id="view-anes"' in html
+    assert 'id="anes-share-chart"' in html
+    assert 'id="anes-replications-body"' in html
     assert 'id="population-states"' in html
     assert 'id="arch-flow"' in html
     assert 'id="arch-inspector"' in html
@@ -171,8 +175,8 @@ def test_dashboard_html_a11y_landmarks():
     assert "they do not independently browse" in html
     assert "Run live mix" in html
     assert "Run live AI" not in html
-    assert "app.js?v=44" in html
-    assert "app.css?v=45" in html
+    assert "app.js?v=47" in html
+    assert "app.css?v=48" in html
     assert "geography-map.js?v=3" in html
     assert "enchant.css" not in html
     assert "fonts.googleapis.com" not in html
@@ -225,6 +229,21 @@ def test_viewer_era_api_routes_selected_epoch():
     assert len(population_data["census"]["tables"]) == 10
     assert "local_path" not in population.text
     assert "synthetic_people" not in population.text
+
+    anes = client.get("/api/anes/results")
+    assert anes.status_code == 200
+    anes_data = anes.json()
+    assert "available" in anes_data
+    assert "local_path" not in anes.text
+    assert "artifact" not in anes.text
+    if anes_data["available"]:
+        assert anes_data["experiment"]["scientific_result"] is False
+        assert anes_data["dataset"]["respondents"] == 5914
+        assert anes_data["dataset"]["valid_two_party_outcomes"] == 4188
+        assert anes_data["question_bank"]["counts"]["total"] == 998
+        assert len(anes_data["per_replication"]) == 10
+    else:
+        assert anes_data["status"] == "not_built"
 
     catalog = client.get("/api/data/catalog", params={"epoch": "e2012"})
     assert catalog.status_code == 200

@@ -11,8 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from leaderboard.activity import build_activity_payload, reseal_sandbox, sandbox_snapshot
+from leaderboard.anes import build_anes_results_payload
 from leaderboard.explain import run_label
 from leaderboard.geography import geography_catalog, geography_payload
+from leaderboard.individual import build_individual_payload
 from leaderboard.jobs import (
     EraNotRunnable,
     InvalidSwarm,
@@ -26,6 +28,8 @@ from leaderboard.jobs import (
     swarm_options,
 )
 from leaderboard.population import population_dashboard_payload
+from leaderboard.research import build_research_overview
+from leaderboard.research_activity import build_research_activity
 from leaderboard.security import require_local_mutation, require_local_request_host
 from leaderboard.store import (
     ViewerState,
@@ -135,6 +139,20 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get("/api/research/overview")
+    def research_overview() -> dict[str, Any]:
+        return build_research_overview()
+
+    @app.get("/api/research/activity")
+    def research_activity(
+        study_id: str, after: int = Query(default=0, ge=0),
+        run_id: str | None = None, tail: bool = False,
+    ) -> dict[str, Any]:
+        try:
+            return build_research_activity(study_id, after=after, run_id=run_id, tail=tail)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/eras")
     def eras() -> dict[str, Any]:
         rows = era_catalog()
@@ -184,6 +202,14 @@ def create_viewer(state: ViewerState | None = None) -> FastAPI:
     @app.get("/api/population")
     def population(epoch: str = "e2012") -> dict[str, Any]:
         return population_dashboard_payload(epoch)
+
+    @app.get("/api/anes/results")
+    def anes_results() -> dict[str, Any]:
+        return build_anes_results_payload()
+
+    @app.get("/api/anes/individual-development")
+    def individual_development() -> dict[str, Any]:
+        return build_individual_payload()
 
     @app.get("/api/geography/catalog")
     def geography_layers(epoch: str = "e2012") -> dict[str, Any]:

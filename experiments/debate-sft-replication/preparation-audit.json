@@ -1,0 +1,229 @@
+{
+  "training_examples": 831,
+  "validation_examples": 133,
+  "training_groups": 29,
+  "validation_groups": 4,
+  "per_group": {
+    "01JTGYE0TGE8E600TWCDF7TWPE": 26,
+    "01K2ZTYVSBP69BBTC4TZ7TG9XV": 30,
+    "01K2ZX1RCPYZHDJ2853GHZVT8J": 37,
+    "01K3FBPMMWFW01FPHS0WTQQ5NK": 27,
+    "01JSFK50M2M6PV1PVN4PZG55HY": 44,
+    "01JSQWFXDCJ0WEE0W42AC7JZEE": 34,
+    "01K37EG12853NDE8W5D7M6C8GQ": 29,
+    "01JSFKGGDK1VEWDB43495PZ6VP": 27,
+    "01K37KDAFA9YMACHVEGNTREP3W": 25,
+    "01JSWWW7DHRY9JJHYF28Y2X362": 28,
+    "01JT27XDNX7YCQAPY88NN6ZAV5": 33,
+    "01JSN8B2P6F7GMFM8EJS6QC1MQ": 18,
+    "01JSNBM9CZA5JP9Y3JV4SNZXD0": 19,
+    "01JSWS2AAP8YVHJN8116PRJTDR": 30,
+    "01K3EY0JJYNY1S8ZAPB09NN0T9": 36,
+    "01JSMVHBMDFJKR28H0AG3QM649": 24,
+    "01JYESXG7TYA75DR6MV1HEG5V8": 20,
+    "01JX377XTYVCYT0P0PGVEFVDWY": 21,
+    "01K37M73A5KY092PH7G1A1V16A": 31,
+    "01JSWS1T0J2XY8H5JTW23DAXR1": 32,
+    "01JSFJYZTWT9E5VXDAXS47BPEY": 18,
+    "01K3EY4ERC3ENFDB53BZ5TPWWR": 41,
+    "01JX3F2AX30T0DJCRZ6CBDDGRV": 23,
+    "01K3FMMJ32Y7V3ZXXFJDQ3J4C4": 37,
+    "01JSWG0DNF93707XX21ZFFQRED": 23,
+    "01JSWWPVSD0A36J33E7MRHT6PP": 38,
+    "01JSWDM21F52CQAPCBW6R97KV9": 33,
+    "01JSQAB7J24PB4EPBJXHRB0ZFW": 19,
+    "01JTH524J8T8BFVKDWAX0DETKY": 34,
+    "01JSWDCB82DB23KHZ25Q4881N5": 28,
+    "01K3ETVKRQNBF1RRXHAFE17W5S": 37,
+    "01JSN7VPATX8B4TZZ13D1WH07K": 38,
+    "01JSWS2688C3T6RAR271T8M9WC": 24
+  },
+  "rejected_groups": {
+    "01JSQWE82Z2SQHSGB9CB4HGDQ9": "Receipt without preceding matching send",
+    "01JT3KTGZ5P6R5T5GSF3N77QN4": "Receipt without preceding matching send",
+    "01JSNA0B6F9TTAQ9YMXWGHT65P": "Receipt without preceding matching send",
+    "01JSMV7GFKRPJETK6Q1KD7WQ9W": "Receipt without preceding matching send",
+    "01JSQ8E1EV0GZQDPDEFJ84YD31": "Receipt without preceding matching send",
+    "01JYEQ5TJB5N0JMF345PMXQ695": "Receipt without preceding matching send",
+    "01JWQ9QDGW5V7WP86253THXJKV": "Receipt without preceding matching send",
+    "01JSQ7TAX8Q8JJE89AZWR1WXKK": "Receipt without preceding matching send",
+    "01JSWS7VFDPG72MXQFFTFEBZ7W": "Receipt without preceding matching send",
+    "01JSWWWG03AAYP6EC2X7QFT30Q": "Receipt without preceding matching send",
+    "01JT6516P445NGQCM5SE9SJ3W3": "Receipt without preceding matching send",
+    "01JYEPZW1EKWSMJBF1WERWBHBX": "Receipt without preceding matching send",
+    "01JS5W9S94QBMQGQA1DFP8J3K1": "Receipt without preceding matching send",
+    "01JRH95VHB1MXGP96QMB69XKQW": "Receipt without preceding matching send"
+  },
+  "replacements": false,
+  "exclusions": {
+    "01JTGYE0TGE8E600TWCDF7TWPE": {
+      "invalid_targets": 0,
+      "empty_events": 4,
+      "unaddressed_tweets": 0
+    },
+    "01K2ZTYVSBP69BBTC4TZ7TG9XV": {
+      "invalid_targets": 0,
+      "empty_events": 10,
+      "unaddressed_tweets": 0
+    },
+    "01K2ZX1RCPYZHDJ2853GHZVT8J": {
+      "invalid_targets": 0,
+      "empty_events": 2,
+      "unaddressed_tweets": 0
+    },
+    "01K3FBPMMWFW01FPHS0WTQQ5NK": {
+      "invalid_targets": 0,
+      "empty_events": 6,
+      "unaddressed_tweets": 0
+    },
+    "01JSFK50M2M6PV1PVN4PZG55HY": {
+      "invalid_targets": 0,
+      "empty_events": 30,
+      "unaddressed_tweets": 0
+    },
+    "01JSQWFXDCJ0WEE0W42AC7JZEE": {
+      "invalid_targets": 0,
+      "empty_events": 26,
+      "unaddressed_tweets": 0
+    },
+    "01K37EG12853NDE8W5D7M6C8GQ": {
+      "invalid_targets": 0,
+      "empty_events": 26,
+      "unaddressed_tweets": 0
+    },
+    "01JSFKGGDK1VEWDB43495PZ6VP": {
+      "invalid_targets": 2,
+      "empty_events": 4,
+      "unaddressed_tweets": 0
+    },
+    "01K37KDAFA9YMACHVEGNTREP3W": {
+      "invalid_targets": 1,
+      "empty_events": 16,
+      "unaddressed_tweets": 0
+    },
+    "01JSWWW7DHRY9JJHYF28Y2X362": {
+      "invalid_targets": 0,
+      "empty_events": 20,
+      "unaddressed_tweets": 0
+    },
+    "01JT27XDNX7YCQAPY88NN6ZAV5": {
+      "invalid_targets": 0,
+      "empty_events": 6,
+      "unaddressed_tweets": 0
+    },
+    "01JSN8B2P6F7GMFM8EJS6QC1MQ": {
+      "invalid_targets": 0,
+      "empty_events": 6,
+      "unaddressed_tweets": 0
+    },
+    "01JSNBM9CZA5JP9Y3JV4SNZXD0": {
+      "invalid_targets": 0,
+      "empty_events": 8,
+      "unaddressed_tweets": 0
+    },
+    "01JSWS2AAP8YVHJN8116PRJTDR": {
+      "invalid_targets": 0,
+      "empty_events": 18,
+      "unaddressed_tweets": 0
+    },
+    "01K3EY0JJYNY1S8ZAPB09NN0T9": {
+      "invalid_targets": 0,
+      "empty_events": 22,
+      "unaddressed_tweets": 0
+    },
+    "01JSMVHBMDFJKR28H0AG3QM649": {
+      "invalid_targets": 0,
+      "empty_events": 12,
+      "unaddressed_tweets": 0
+    },
+    "01JYESXG7TYA75DR6MV1HEG5V8": {
+      "invalid_targets": 0,
+      "empty_events": 22,
+      "unaddressed_tweets": 0
+    },
+    "01JX377XTYVCYT0P0PGVEFVDWY": {
+      "invalid_targets": 0,
+      "empty_events": 6,
+      "unaddressed_tweets": 0
+    },
+    "01K37M73A5KY092PH7G1A1V16A": {
+      "invalid_targets": 0,
+      "empty_events": 22,
+      "unaddressed_tweets": 0
+    },
+    "01JSWS1T0J2XY8H5JTW23DAXR1": {
+      "invalid_targets": 0,
+      "empty_events": 20,
+      "unaddressed_tweets": 0
+    },
+    "01JSFJYZTWT9E5VXDAXS47BPEY": {
+      "invalid_targets": 0,
+      "empty_events": 6,
+      "unaddressed_tweets": 0
+    },
+    "01K3EY4ERC3ENFDB53BZ5TPWWR": {
+      "invalid_targets": 0,
+      "empty_events": 22,
+      "unaddressed_tweets": 0
+    },
+    "01JX3F2AX30T0DJCRZ6CBDDGRV": {
+      "invalid_targets": 0,
+      "empty_events": 2,
+      "unaddressed_tweets": 0
+    },
+    "01K3FMMJ32Y7V3ZXXFJDQ3J4C4": {
+      "invalid_targets": 0,
+      "empty_events": 20,
+      "unaddressed_tweets": 0
+    },
+    "01JSWG0DNF93707XX21ZFFQRED": {
+      "invalid_targets": 0,
+      "empty_events": 2,
+      "unaddressed_tweets": 0
+    },
+    "01JSWWPVSD0A36J33E7MRHT6PP": {
+      "invalid_targets": 0,
+      "empty_events": 46,
+      "unaddressed_tweets": 0
+    },
+    "01JSWDM21F52CQAPCBW6R97KV9": {
+      "invalid_targets": 0,
+      "empty_events": 22,
+      "unaddressed_tweets": 0
+    },
+    "01JSQAB7J24PB4EPBJXHRB0ZFW": {
+      "invalid_targets": 0,
+      "empty_events": 8,
+      "unaddressed_tweets": 0
+    },
+    "01JTH524J8T8BFVKDWAX0DETKY": {
+      "invalid_targets": 1,
+      "empty_events": 18,
+      "unaddressed_tweets": 0
+    },
+    "01JSWDCB82DB23KHZ25Q4881N5": {
+      "invalid_targets": 0,
+      "empty_events": 10,
+      "unaddressed_tweets": 0
+    },
+    "01K3ETVKRQNBF1RRXHAFE17W5S": {
+      "invalid_targets": 0,
+      "empty_events": 24,
+      "unaddressed_tweets": 0
+    },
+    "01JSN7VPATX8B4TZZ13D1WH07K": {
+      "invalid_targets": 0,
+      "empty_events": 28,
+      "unaddressed_tweets": 0
+    },
+    "01JSWS2688C3T6RAR271T8M9WC": {
+      "invalid_targets": 0,
+      "empty_events": 4,
+      "unaddressed_tweets": 0
+    }
+  },
+  "topic_overlap": 0,
+  "future_events_in_context": 0,
+  "reserve_files_loaded": 0,
+  "adaptation": "Private next-chat-message targets only; directed tweets retained as context. Not an exact paper replication."
+}

@@ -5,7 +5,17 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 data/runs/
+data/corpus/
 data/corpus-cache/
+data/population/
+data/population-input/
+data/survey-microdata/
+data/evaluation-vault/
+data/elections/
 *.egg-info/
 .agentsociety/
 .env
+
+.env.*
+reports/
+third_party/

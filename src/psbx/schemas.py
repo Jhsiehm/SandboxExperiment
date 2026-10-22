@@ -215,6 +215,7 @@ class ModelConfig(BaseModel):
     cost_per_1k_output: float = Field(default=0.0, ge=0)
     label: str = ""
     notes: str = ""
+    json_output: bool = False
     needs_endpoint: bool = False
     openrouter_fallback: str | None = None
 

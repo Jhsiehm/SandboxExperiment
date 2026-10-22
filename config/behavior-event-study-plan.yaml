@@ -1,0 +1,153 @@
+schema: planning-document-v1
+status: draft_not_executable
+created: '2026-10-21'
+purpose: >-
+  Test whether observed-person agents and social interactions improve predictions
+  of human decisions and collective outcomes beyond statistical alternatives
+  with the same available information.
+execution:
+  paid_calls_started: false
+  automatic_launch: false
+  reason: Data admissibility, sample feasibility, model IDs and acceptance margins remain unresolved.
+  proposed_pilot_usd_cap: 30
+  proposed_pilot_request_cap: 2000
+  budget_authorized_on: '2026-10-22'
+  budget_scope: One upcoming experiment run, shared across credentials and including retries.
+  retries_count_against_caps: true
+  stop_on: [budget_exhaustion, unresolved_provider_usage, input_leakage, isolation_failure]
+existing_evidence:
+  anes:
+    report: docs/ANES_PROFILE_ABLATION_RESULTS.md
+    use: Individual attitude reconstruction development benchmark.
+    finding: No demonstrated advantage over the party-based statistical baseline.
+    protected_reserve_people: 50
+    reserve_policy: No reading, fitting, tuning, or scoring during this planning and development phase.
+  debate:
+    report: docs/DEBATE_ISOLATED_PILOT_RESULTS.md
+    inspected_groups: 8
+    inspected_people: 32
+    finding: Conversation improved RPS over reflection; advantage over persistence remained uncertain.
+    known_gaps: [missing_direct_control, weak_transition_baseline, short_artificial_dialogue, limited_clusters]
+    restriction: Research-only dataset; do not assume commercial reuse permission.
+research_questions:
+  - Does model capability improve prediction with profiles held constant?
+  - Does additional measured evidence help with model and protocol held constant?
+  - Does interaction improve predictions beyond independent and statistical models?
+  - Can predicted individual actions recover aggregate outcomes at observed times?
+tracks:
+  individual:
+    dataset: Existing ANES development respondents
+    design: Cross model family with existing versus targeted measured evidence.
+    models: [current_inexpensive_model, stronger_model_id_to_verify]
+    baselines: [party_baseline, regularized_regression_on_same_features]
+    primary_metric: Existing weighted half-multiclass Brier, same task aggregation as frozen report.
+    split: Respondent-grouped outer evaluation and inner calibration folds.
+    caveat: Previously inspected people remain development evidence even under cross-validation.
+  social_update:
+    dataset: Existing DEBATE source, subject to group and topic availability audit.
+    development: Previously inspected eight groups; additional development allocation frozen before fitting.
+    proposed_confirmation_groups: 30
+    sample_size_status: Feasibility target only; assess power at group level before freezing.
+    holdout_unit: Whole conversation group; hold out whole topics separately where feasible.
+    primary_contrast: Generated conversation versus development-fitted ordinal transition baseline.
+    primary_metric: Ranked probability score of final human rating.
+    conditions:
+      - Initial-opinion persistence, zero provider calls.
+      - Empirical probabilistic transition baseline fitted on development groups.
+      - Independent direct agent using initial profile, without repeated reflection.
+      - Private reflection matched to generated-conversation inference budget.
+      - Generated conversation with recorded or explicitly modeled contact schedule.
+      - Actual incoming human-message replay as conditional diagnostic, not a forecast at time zero.
+    deferred_control: Length/topic-matched shuffled messages if affordable after core comparison.
+    protocol_rule: Freeze dialogue rounds, message limits and exposure rules before confirmation.
+    uncertainty: Paired group resampling; repetitions are not additional human observations.
+  behavior_event:
+    preferred_candidate: Oregon Health Insurance Experiment public-use replication data.
+    decision_status: Candidate selected for feasibility audit, not yet admitted or downloaded.
+    sources:
+      - https://www.nber.org/research/data/oregon-health-insurance-experiment-data
+      - https://doi.org/10.7910/DVN/SJG1ED
+      - https://www.icpsr.umich.edu/web/HMCA/studies/34314
+    access_status: Catalog evidence located; direct NBER and DOI opens failed in browser tool.
+    target_population: Actual lottery-list participants meeting the source study's analysis criteria.
+    proposed_primary_outcome: Recorded insurance enrollment at one documented follow-up window.
+    outcome_field: null
+    followup_window: null
+    prediction_time: After assignment/opportunity is known, before subsequent application or enrollment.
+    input_policy: Pre-assignment measured characteristics plus known assignment and applicable rules only.
+    treatment: Lottery selection or documented offer; do not substitute eventual enrollment as treatment.
+    estimand: Intent-to-treat difference in enrollment between randomized assignment arms.
+    design_requirement: Follow documented household selection, randomization strata and analysis rules.
+    baseline_models: [assignment_only_rate, regularized_logistic_regression]
+    agent_models: [current_inexpensive_model, stronger_model_id_to_verify]
+    calibration: Development households only; all members of a household share a split.
+    proposed_llm_pilot_people: 200
+    proposed_repetitions: 2
+    pilot_purpose: Development diagnosis and cost measurement, not definitive effectiveness evidence.
+    sample_rule: Freeze sampling without outcome-based selection; retain both assignment arms.
+    survey_rule: Audit response selection and source weights before choosing an analysis population.
+    primary_metric: Brier score on each person's observed assigned-arm outcome.
+    secondary_metrics:
+      - Enrollment share error by assignment arm.
+      - Error in randomized intent-to-treat contrast, with design-appropriate uncertainty.
+      - Calibration, log loss, prespecified subgroup errors and cost.
+    causal_limit: Individual counterfactual outcomes are not observed; do not score them as ground truth.
+    dynamics_limit: If only one follow-up is available, score an endpoint rather than inventing a trajectory.
+    social_limit: No generated network or interaction claims without recorded network/exposure evidence.
+    contamination_limit: Famous historical results may be in model training; this is retrospective validation.
+    external_validation: Separate later event or prospective study is required for event generalization.
+    admission_checks:
+      - Retrieve codebook, source methods, data terms and files; record versions and checksums.
+      - Verify pre-treatment covariates, outcome timing, household IDs and randomization structure.
+      - Check whether application, enrollment and repeated follow-up are actually distinguishable.
+      - Reproduce the documented reference estimate using its prescribed analysis sample.
+      - Keep outcome-bearing files and published numerical results out of agent inputs.
+      - Reject as an agent benchmark if baseline evidence is too sparse to test person-specific value.
+state_model:
+  observed_fields: [source_id, measurement_time, availability_time, value, missingness, provenance]
+  conceptual_stages: [opportunity, exposure, interpretation, intention, action, social_feedback]
+  rule: Only score observed stages; unobserved mediators remain hypotheses or marginalized uncertainty.
+  forbidden_assumptions:
+    - Available public information automatically became personal knowledge.
+    - A generated explanation verifies the person's actual reasoning.
+    - Cheap inference corresponds to human intuitive thinking.
+    - Repeated agent samples increase the number of independently observed humans.
+evaluation_gates:
+  before_any_run:
+    - Finalize outcome and cutoff fields from codebook.
+    - Freeze sample/split manifest, prompt, model IDs, source/image hashes and budget.
+    - Register primary contrast and practical improvement margin using development evidence only.
+    - Register acceptable calibration, aggregate-error and heterogeneity deterioration margins.
+  practical_improvement_margin: null
+  guardrail_margins: null
+  promotion_rule: >-
+    Paired confidence interval must support the preregistered meaningful improvement
+    over the strongest admissible baseline, without violating registered guardrails.
+    Refitting uncertainty must be included where feasible or explicitly reported as absent.
+  failure_rule: Report inconclusive or negative results; do not retune against held-out outcomes.
+  multiple_comparisons: One primary contrast per track; remaining comparisons exploratory.
+isolation:
+  reuse: Existing fresh non-root Docker prompt-worker pattern.
+  required: [no_network, read_only_root, no_credentials, no_mounts, dropped_capabilities, resource_limits]
+  boundary: Host broker and remote inference remain outside Docker.
+  sealing: Separate allowed inputs, predictions, scoring outcomes, and audit records.
+  portability: Validate clean-environment replay separately from isolation.
+work_order:
+  - stage: 1
+    task: Inventory unused DEBATE groups/topics and audit Oregon access, terms and codebook.
+    deliverable: Data feasibility manifest with accepted and rejected fields, no paid calls.
+  - stage: 2
+    task: Implement source adapter and baseline reproduction; inspect development data only.
+    deliverable: Verified outcome definition, grouped splits and statistical reference scores.
+  - stage: 3
+    task: Freeze model/profile comparison and pilot parameters within caps.
+    deliverable: Executable run contract; this planning file is not a runner configuration.
+  - stage: 4
+    task: Run bounded independent-agent development pilot and analyze failure modes.
+    deliverable: Paired human-level and aggregate scores, uncertainty and cost ledger.
+  - stage: 5
+    task: Confirm social-update model on unseen groups if sample and budget gates pass.
+    deliverable: Incremental interaction test, separate from Oregon behavior outcomes.
+  - stage: 6
+    task: Evaluate frozen model on another event or prospectively collected human outcomes.
+    deliverable: Evidence about event generalization before society-scale claims.
