@@ -1,0 +1,36 @@
+{
+  "baseline": {
+    "categories": 6,
+    "fit_groups": 23,
+    "fit_people": 92,
+    "method": "Laplace-one initial-to-final transition table",
+    "path": "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-classifier-v1-20261023/baseline.json",
+    "sha256": "ffc4ecc705c209841dfe51bcab5b40f68159c91cb914ef4e362c4abdda46b245"
+  },
+  "baseline_refitted": false,
+  "bindings": {
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-classifier-v1-20261023/baseline.json": "ffc4ecc705c209841dfe51bcab5b40f68159c91cb914ef4e362c4abdda46b245",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-classifier-v1-20261023/internal-evaluation.json": "23200e0cdc111ef8772a0e4c6d59f065e075fc92abc2f682dcb466433a257e6a",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-classifier-v1-20261023/internal-prediction-seal.json": "0c8a0274a6b26f6887b64f67443164131911d6a1ff79b4cacdbc719eeb3a871f",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-sft-v1-data/manifest.json": "517ee01abc054a64e5fcd0686f0e5a00e6e6f7ff13af6b0236d7f07fdbcfaeed",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-sft-v1-data/training-cases.json": "95e19f785efa9770b4acff9f3c55447e82ef82e3ed9be787a73da3842d700d0a",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-sft-v1-data/training-targets.json": "0d44c1c524a12fd1fa8e32fabca740953345e7fdc5f13c16b4ba16582d50be6e",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/residual-calibration-v1-20261023/decision.json": "be55212f429793bf2dc9f14ecffc09424f39ded0191e1de930cd8680ffc21736",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/residual-calibration-v1-20261023/oof-evaluation.json": "b70c911b5f5c22cc6a1e4f48f1f36ad4ecf3455ae354fed4ba7d68bd206a90ea",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/scripts/freeze_statistical_reference.py": "0953a0f84f9a476369ea110574a9128246e7fad987d7165f533a2058ad640e70"
+  },
+  "created_utc": "2026-10-23T09:12:24.269806+00:00",
+  "data_quality": {
+    "path": "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/reports/statistical-reference-20261023/data-quality.json",
+    "sha256": "c18819275b125325020b1a9540da87a34ae65685eba8c357271feb73c509f648"
+  },
+  "failed_candidates": {
+    "outcome_classifier_v1": "internal_nonworsening_gate_failed",
+    "residual_calibration_v1": "oof_gate_failed"
+  },
+  "new_candidate_created": false,
+  "schema_version": 1,
+  "scope": "DEBATE six-category development reference; not deployment validation or a seven-category ANES model.",
+  "status": "frozen_statistical_reference_development_only",
+  "weights_retrained": false
+}

@@ -58,6 +58,189 @@ def _measure(label, value):
     return {"label": label, "value": _num(value)}
 
 
+LOCAL_COMPARISON = "data/local-mlx-pilot/matched-comparison-20261023"
+RESIDUAL_CALIBRATION = "data/local-mlx-pilot/residual-calibration-v1-20261023"
+
+
+def _saved_score_count(path):
+    # Count complete records only. Never deserialize row-level scores or identities.
+    try:
+        if path.is_symlink() or path.stat().st_size > MAX_BYTES:
+            return None
+        return path.read_bytes().count(b"\n")
+    except OSError:
+        return None
+
+
+def panel_development_progress(base):
+    reference = _read(base, "reports/statistical-reference-20261023/manifest.json")
+    quality = _read(base, "reports/statistical-reference-20261023/data-quality.json")
+    readiness = _read(base, "reports/anes-panel-readiness-20261023/readiness.json")
+    if not reference and not readiness:
+        return None
+    def count(value):
+        return value if type(value) is int and value >= 0 else None
+    retained = reference.get("status") == "frozen_statistical_reference_development_only"
+    return {
+        "reference_retained": retained,
+        "quality": {key: count(quality.get(key)) if retained else None for key in
+                    ("unique_people", "unique_groups", "changed_count", "unchanged_count")},
+        "status": "blocked_on_source_metadata" if readiness.get("status") == "blocked_on_source_metadata" else "unverified",
+        "development_export_tool_ready": readiness.get("development_export_tool_ready") is True,
+        "source_blocker_count": count(readiness.get("source_blocker_count")),
+        "real_panel_records_audited": count(readiness.get("real_panel_records_audited")),
+        "model_training_enabled": readiness.get("model_training_enabled") if type(readiness.get("model_training_enabled")) is bool else None,
+        "later_wave_readout_enabled": readiness.get("later_wave_readout_enabled") if type(readiness.get("later_wave_readout_enabled")) is bool else None,
+        "ready_for_development_ingestion": readiness.get("ready_for_development_ingestion") is True,
+    }
+
+
+def residual_calibration_progress(base):
+    """Expose only whitelisted aggregates; do not open row prediction files."""
+    if not _read(base, RESIDUAL_CALIBRATION + "/contract.json"):
+        return None
+    summary = _read(base, RESIDUAL_CALIBRATION + "/base-fit/summary.json")
+    watchdog = _read(base, RESIDUAL_CALIBRATION + "/watchdog-base-fit/summary.json")
+    oof = _read(base, RESIDUAL_CALIBRATION + "/oof-evaluation.json")
+    internal = _read(base, RESIDUAL_CALIBRATION + "/internal-calibration-evaluation.json")
+    decision = _read(base, RESIDUAL_CALIBRATION + "/decision.json")
+    failure = _read(base, RESIDUAL_CALIBRATION + "/calibration-failure.json")
+    count = summary.get("completed")
+    count = count if type(count) is int and 0 <= count <= 92 else None
+    exit_code = _num(watchdog.get("exit_code"))
+    verified = (summary.get("status") == "completed" and count == 92 and
+                type(watchdog.get("exit_code")) is int and watchdog["exit_code"] == 0 and
+                type(watchdog.get("child_returncode")) is int and watchdog["child_returncode"] == 0 and
+                watchdog.get("stop_reason") is None and watchdog.get("error") is None)
+    gate = _obj(oof.get("gate"))
+    passed = gate.get("passed") if type(gate.get("passed")) is bool else None
+    safe_oof = None
+    if oof.get("status") == "completed":
+        means = {name: _num(_obj(gate.get("mean_rps")).get(name)) for name in ("transition", "control", "extension")}
+        means = {name: value if value is not None and 0 <= value <= 1 else None for name, value in means.items()}
+        gains = {name: _num(_obj(gate.get("extension_gain")).get(name)) for name in ("transition", "control")}
+        gains = {name: value if value is not None and -1 <= value <= 1 else None for name, value in gains.items()}
+        safe_oof = dict(mean_rps=means, extension_gain=gains, passed=passed)
+    safe_internal = None
+    if verified and safe_oof is not None and passed is True and internal.get("status") == "completed":
+        means = {name: _num(_obj(internal.get("mean_rps")).get(name)) for name in ("transition", "control", "extension")}
+        safe_internal = dict(mean_rps={name: value if value is not None and 0 <= value <= 1 else None for name, value in means.items()},
+                             direction_retained=internal.get("direction_retained") if type(internal.get("direction_retained")) is bool else None)
+    if (exit_code is not None and exit_code != 0) or summary.get("status") == "failed":
+        status = "forward_stopped"
+    elif failure.get("status") == "failed":
+        status = "calibration_failed"
+    elif safe_oof is not None and not verified:
+        status = "results_saved_unverified"
+    elif safe_oof is not None and passed is False:
+        status = "oof_gate_failed"
+    elif safe_internal is not None and safe_internal["direction_retained"] is False:
+        status = "internal_direction_failed"
+    elif safe_internal is not None and safe_internal["direction_retained"] is True:
+        status = "gates_passed_review_required"
+    elif safe_oof is not None and passed is True:
+        status = "oof_passed_internal_pending"
+    elif verified:
+        status = "forwards_completed"
+    elif summary:
+        status = "summary_saved_unverified"
+    else:
+        status = "prepared_or_running_unverified"
+    decision_status = decision.get("status")
+    return dict(source=RESIDUAL_CALIBRATION, status=status, completed=count, total=92,
+                forward_completed=verified, elapsed_seconds=_num(summary.get("elapsed_seconds")),
+                peak_allocated_bytes=_num(summary.get("peak_allocated_bytes")), exit_code=exit_code,
+                oof=safe_oof, internal=safe_internal,
+                decision_status=decision_status if decision_status in ("oof_gate_failed", "gates_passed", "internal_direction_failed") else None,
+                internal_readout=decision.get("internal_readout") if type(decision.get("internal_readout")) is bool else None,
+                outer_validation=decision.get("outer_validation") if type(decision.get("outer_validation")) is bool else None)
+
+
+def local_comparison_progress(base):
+    protocol = _read(base, LOCAL_COMPARISON + "/protocol.json")
+    calibration = residual_calibration_progress(base)
+    panel_development = panel_development_progress(base)
+    if not protocol and calibration is None and panel_development is None:
+        return None
+    stage = next((row for row in _rows(protocol.get("stages"))
+                  if row.get("id") == "A_observed_history_message_loss"), {})
+    total = _num(stage.get("examples"))
+    arms = []
+    for arm, label, watchdog in [
+        ("base", "Base model", "watchdog-nll-base"),
+        ("pilot_adapter", "Pilot adapter", "watchdog-nll-adapter"),
+    ]:
+        summary = _read(base, f"{LOCAL_COMPARISON}/{arm}/summary.json")
+        supervisor = _read(base, f"{LOCAL_COMPARISON}/{watchdog}/summary.json")
+        count = _saved_score_count(base / LOCAL_COMPARISON / arm / "scores.jsonl")
+        completed = _num(summary.get("examples")) if summary else count
+        exit_code = _num(supervisor.get("exit_code"))
+        if exit_code is not None and exit_code != 0:
+            status = "stopped"
+        elif summary.get("status") == "completed" and exit_code == 0 and completed == total and total is not None:
+            status = "completed"
+        elif summary:
+            status = "summary_saved_unverified"
+        elif count is not None:
+            status = "progress_saved_unverified"
+        else:
+            status = "not_recorded"
+        arms.append(dict(id=arm, label=label, status=status, completed=completed,
+                         total=total, elapsed_seconds=_num(summary.get("elapsed_seconds")),
+                         token_weighted_nll=_num(summary.get("token_weighted_nll")),
+                         exit_code=exit_code))
+    decision = _read(base, LOCAL_COMPARISON + "/stage-decision.json")
+    safe_decision = None
+    if decision:
+        # Never pass through free text, model outputs, row lists or unknown fields.
+        safe_decision = {
+            "status": decision.get("status") if decision.get("status") in ("stopped", "completed", "deferred") else "unknown",
+            "stage": decision.get("stage") if decision.get("stage") in ("A_observed_history_message_loss", "B1_direct_belief_transfer", "B2_private_and_swarm_diagnostic") else "unknown",
+            "reason": "pilot_adapter_first_prediction_invalid_json" if decision.get("reason") == "pilot_adapter_first_prediction_invalid_json" else "unspecified",
+            "B2": "not_started_format_gate_failed" if decision.get("B2") == "not_started_format_gate_failed" else "unknown",
+            "outcome_scoring_performed": decision.get("outcome_scoring_performed") if type(decision.get("outcome_scoring_performed")) is bool else None,
+        }
+        for field in ("base_valid", "base_planned", "adapter_attempted", "adapter_valid", "adapter_planned", "retries", "repairs", "new_paid_calls"):
+            value = decision.get(field)
+            safe_decision[field] = value if type(value) is int and value >= 0 else None
+    format_result = _read(base, "data/local-mlx-pilot/format-smoke-v1-20261023/format-evaluation.json")
+    format_summary = None
+    if format_result.get("status") == "completed":
+        counts = {}
+        for model in ("base", "pilot_adapter"):
+            counts[model] = {}
+            for condition in ("original", "assistant_prefill"):
+                row = _obj(_obj(_obj(format_result.get("results")).get(model)).get(condition))
+                value = row.get("valid")
+                counts[model][condition] = value if type(value) is int and 0 <= value <= 4 else None
+        format_summary = dict(counts=counts,
+            passed=format_result.get("prefill_all_models_all_cases_valid") is True)
+    classifier_path = "data/local-mlx-pilot/outcome-classifier-v1-20261023"
+    classifier = None
+    if _read(base, classifier_path + "/contract.json"):
+        train = _read(base, classifier_path + "/training/summary.json")
+        watchdog = _read(base, classifier_path + "/watchdog-train/summary.json")
+        evaluation = _read(base, classifier_path + "/internal-evaluation.json")
+        classifier = dict(training_completed=train.get("status") == "completed" and watchdog.get("exit_code") == 0,
+                          steps=_saved_score_count(base / classifier_path / "training/metrics.jsonl"),
+                          internal_completed=evaluation.get("status") == "completed")
+        if classifier["internal_completed"]:
+            classifier.update(base_rps=_num(_obj(_obj(evaluation.get("arms")).get("base")).get("rps")),
+                candidate_rps=_num(_obj(_obj(evaluation.get("arms")).get("pilot_classifier")).get("rps")),
+                persistence_rps=_num(_obj(_obj(evaluation.get("arms")).get("persistence")).get("rps")),
+                transition_rps=_num(_obj(_obj(evaluation.get("arms")).get("transition")).get("rps")),
+                gate_passed=evaluation.get("numerical_nonworsening_gate") is True)
+    investigation = _read(base, classifier_path + "/investigation-summary.json")
+    safe_investigation = None
+    if investigation.get("status") == "completed":
+        safe_investigation = {key: _num(investigation.get(key)) for key in (
+            "candidate_category4_count", "people", "unchanged_count", "unchanged_gap_fraction",
+            "reconstructed_exposed_rows", "fit_rows", "sampled_baseline_rps")}
+    return dict(source=LOCAL_COMPARISON, arms=arms, stage_decision=safe_decision, format_smoke=format_summary, classifier=classifier, investigation=safe_investigation, residual_calibration=calibration, panel_development=panel_development,
+                description="Local research experiments · development only" if calibration else "Local observed-history message scoring · development only",
+                limitation="Saved progress is not proof of a running process. Message likelihood does not establish belief accuracy. This job has no social-action replay.")
+
+
 def build_research_overview(root: Path | None = None):
     base = root or repo_root()
     plan = _read(base, PLAN)
@@ -473,6 +656,7 @@ def build_research_overview(root: Path | None = None):
         schema_version=1,
         generated_at=datetime.now(timezone.utc).isoformat(),
         studies=studies,
+        local_comparison=local_comparison_progress(base),
         library=library,
         plan=dict(
             summary=plan.get("purpose"),

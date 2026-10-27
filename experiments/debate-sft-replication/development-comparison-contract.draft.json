@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "status": "draft_not_executable_until_runner_and_integrity_gates_pass",
+  "created_date": "2026-10-23",
+  "purpose": "Small local development adaptation diagnostic; no confirmation, population, causal, or paper-replication claim",
+  "authorization": {
+    "paid_calls": 0,
+    "remote_inference": false,
+    "reserve_access": false,
+    "new_training_in_this_protocol": false
+  },
+  "evidence_bindings_sha256": {
+    "data/local-mlx-pilot/preflight.json": "1c746c0f0be1c49082e47558d99519a745b8f166ece696d7adf15652721139b5",
+    "data/local-mlx-pilot/requirements.lock": "977a35c665d4af5cdfea350cafcedacaba8a4cf238df6236af1798f3063b9427",
+    "data/local-mlx-pilot/train.jsonl": "cee7ffd1ed9e125a3997853be38333eee02899058d42ed9e43c8986f7c4e5894",
+    "data/local-mlx-pilot/valid.jsonl": "9107d2de66f5bebfd09844914200ca1a2ff7171447a13f6a5baa9a18ad1e0179",
+    "data/local-mlx-pilot/pilot-20261023-030458/adapters/adapter_config.json": "06753aa83d4b5320261156124f825ae038cf2b7e346b39e6503d734609496d5e",
+    "data/local-mlx-pilot/pilot-20261023-030458/adapters/adapters.safetensors": "0ff604a8aa8b9edba4edd3e6030bab3d2e6379bd5cfe69f787ce248102283740",
+    "/Users/joshua/.cache/huggingface/hub/models--mlx-community--Meta-Llama-3.1-8B-Instruct-4bit/snapshots/241a666dad6cb93c8ff213d39a7f34a36bf26db4/config.json": "e809729d4bc2d0fa9a920c91165dfbf79875821c1b357df2aaf51bff07df382e",
+    "/Users/joshua/.cache/huggingface/hub/models--mlx-community--Meta-Llama-3.1-8B-Instruct-4bit/snapshots/241a666dad6cb93c8ff213d39a7f34a36bf26db4/tokenizer.json": "bbc1904d35169c542dffbe1f7589a5994ec7426d9e5b609d07bab876f32e97ab",
+    "/Users/joshua/.cache/huggingface/hub/models--mlx-community--Meta-Llama-3.1-8B-Instruct-4bit/snapshots/241a666dad6cb93c8ff213d39a7f34a36bf26db4/tokenizer_config.json": "0514fcf4017bff6ac7bba1cd68247b841060f3d942c2d428d929d5a932477085",
+    "data/local-mlx-pilot/participant-audit.json": "373a6d4e8ae998b9babde27b42309fb213e536668281532ac4da6717de72c238"
+  },
+  "model": {
+    "repo": "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
+    "revision": "241a666dad6cb93c8ff213d39a7f34a36bf26db4",
+    "nominal_base": "meta-llama/Llama-3.1-8B-Instruct",
+    "quantization": {
+      "bits": 4,
+      "group_size": 64
+    },
+    "adapter": "data/local-mlx-pilot/pilot-20261023-030458/adapters",
+    "adapter_sha256": "0ff604a8aa8b9edba4edd3e6030bab3d2e6379bd5cfe69f787ce248102283740",
+    "selection_rule": "Use existing final 52-microstep adapter only, chosen for availability before this comparison; no checkpoint search or best-of-result substitution. Abort if its hashes differ.",
+    "training_exposure": {
+      "microsteps": 52,
+      "gradient_accumulation": 4,
+      "optimizer_updates": 13,
+      "batch_size": 1,
+      "elapsed_seconds": 223.98846358299488,
+      "interpretation": "Hardware pilot, substantially less than one epoch; not a full-trained model."
+    },
+    "matched_properties": [
+      "exact local weight bytes",
+      "tokenizer and chat-template bytes",
+      "4-bit quantization",
+      "inference precision and MLX package lock",
+      "prompt bytes within each arm and evidence condition",
+      "greedy decoding and token limits",
+      "case order and scoring code"
+    ],
+    "adapter_application": "Fresh sequential processes: base without adapter, same model with adapter; no fused/requantized replacement."
+  },
+  "data": {
+    "training_examples": 831,
+    "development_validation_examples": 133,
+    "validation_group_ids": [
+      "01K2ZTYVSBP69BBTC4TZ7TG9XV",
+      "01JSWS1T0J2XY8H5JTW23DAXR1",
+      "01JSWDM21F52CQAPCBW6R97KV9",
+      "01JSN7VPATX8B4TZZ13D1WH07K"
+    ],
+    "expected_people_records": 16,
+    "unique_people": "Audit coordinator reports 116 distinct supplied worker IDs in train and 16 in validation, with zero cross-split supplied-ID/group/topic overlap. Supplied IDs do not prove unique real-world identities.",
+    "selection_rule": "All four successfully prepared validation groups; no outcome-based selection or replacement.",
+    "split_gate": "Verify bound participant-audit.json before execution. No supplied-ID/group/topic overlap; supplied IDs do not establish unique real-world identities and development is not confirmation.",
+    "reserve_policy": "Never enumerate, read, or admit evaluation-reserve payloads. Use prepared development manifest and admitted input files only.",
+    "researcher_exposure": "Pilot already evaluated eight validation batches at iterations 1 and 52. All validation permanently remains development; prior OpenRouter four-person diagnostic selected a training group and is excluded here."
+  },
+  "stages": [
+    {
+      "id": "A_observed_history_message_loss",
+      "order": 1,
+      "models": [
+        "base",
+        "pilot_adapter"
+      ],
+      "examples": 133,
+      "forward_scoring_examples": 266,
+      "generations": 0,
+      "input": "Exact preflight-valid.jsonl messages; observed human history preceding each message only.",
+      "endpoint": "Completion-only negative log likelihood in nats/token using verified prompt-prefix mask including existing EOS convention.",
+      "aggregation": [
+        "overall token-weighted NLL with numerator and supervised token denominator",
+        "mean per-message NLL",
+        "equal-group mean of within-group per-message means",
+        "paired per-group adapter minus base differences"
+      ],
+      "selection": "No subset and no checkpoint tuning; record all 133 paired scores.",
+      "meaning": "Measures transfer on the trained message task; improvement cannot establish private-belief improvement.",
+      "primary_endpoint": "Overall token-weighted completion-only NLL, paired adapter minus base, across all133 messages.",
+      "secondary_endpoint": "Equal-group mean of per-message token-mean NLL, plus all four paired group effects."
+    },
+    {
+      "id": "B1_direct_belief_transfer",
+      "order": 2,
+      "enabled_when": "Integrity gates, local inference runner, immutable prompts, final-target isolation, probability parser smoke, and resource checks pass.",
+      "models": [
+        "base",
+        "pilot_adapter"
+      ],
+      "arms": [
+        "direct"
+      ],
+      "people_records": 16,
+      "generations_per_model": 16,
+      "planned_generations_total": 32,
+      "repetitions": 1,
+      "schedule": {
+        "final_calls_per_person": 1,
+        "history": "Initial profile only; no later observed or generated messages."
+      },
+      "arms_definition": {
+        "direct": "Initial profile only; one final belief probability vector."
+      },
+      "budget_matching": "One final call per model/person with identical prompt and limits.",
+      "prediction_policy": "Seal all32 direct predictions before target scoring. Compare paired adapter-minus-base normalized RPS and record every group outcome. No prompt/checkpoint tuning on these groups."
+    },
+    {
+      "id": "B2_private_and_swarm_diagnostic",
+      "order": 3,
+      "enabled_when": "B1 completes at full coverage and adapter_direct minus base_direct RPS <=0.02; review all per-group effects and integrity records before execution without tuning on these groups. NLL improvement alone does not permit progression or behavioral claims.",
+      "models": [
+        "base",
+        "pilot_adapter"
+      ],
+      "arms": [
+        "private",
+        "swarm"
+      ],
+      "people_records": 16,
+      "generations_per_model": 224,
+      "planned_generations_total": 448,
+      "repetitions": 1,
+      "schedule": {
+        "rounds": 3,
+        "passes_per_round": 2,
+        "message_calls_per_person_private_or_swarm": 6,
+        "final_calls_per_person_per_arm": 1,
+        "delivery": "Synchronous per pass; all outgoing messages complete before peer delivery.",
+        "contact_graph": "Recorded round partners, explicitly treated as known metadata; no actual later human messages.",
+        "label": "Compressed autonomous-message schedule, not full human conversation replay."
+      },
+      "arms_definition": {
+        "private": "Six private reflection messages followed by final belief; never receives peer messages.",
+        "swarm": "Six messages with round partner delivery followed by final belief; only permitted generated incoming messages."
+      },
+      "budget_matching": "Private and swarm match generation counts and per-call limits. Their realized input token counts differ; report prompt/output tokens and wall time separately. Direct has fewer calls.",
+      "prediction_policy": "Seal all B2 predictions before scoring. Retain frozen B1 results for direct contrasts; no B1 reruns or checkpoint substitution."
+    }
+  ],
+  "endpoint_contract": {
+    "primary_behavior_endpoint": "Equal-group mean normalized six-category ranked probability score (RPS); lower better.",
+    "rps_definition": "For each person, mean over k=1..5 of (cumulative predicted probability through k - indicator(final_category <= k)) squared. Average people within group, then groups equally.",
+    "primary_contrast": "pilot_adapter_direct minus base_direct; negative indicates improvement.",
+    "secondary_contrasts": [
+      "adapter_swarm minus base_swarm",
+      "adapter_private minus base_private",
+      "adapter_swarm minus adapter_direct",
+      "adapter_swarm minus adapter_private",
+      "(adapter_swarm-adapter_direct)-(base_swarm-base_direct)"
+    ],
+    "behavior_guards": [
+      "change-event Brier using q=1-p(initial category)",
+      "expected-category absolute error",
+      "group mean absolute pairwise expected-category distance, explicitly not actual human-response variance"
+    ],
+    "message_diagnostics": [
+      "completion-only NLL",
+      "token length",
+      "repetition rate"
+    ],
+    "no_stance_claim": "Do not use generated message stance as private-belief ground truth or unvalidated judge agreement as human fidelity.",
+    "baselines": [
+      "point-mass persistence at initial category",
+      "Laplace-one conditional final-given-initial transition matrix fitted only on admitted training groups after participant-overlap gate"
+    ],
+    "baseline_fitting": "Exclude validation people/groups/topics; seal fitted 6x6 probabilities before validation scoring. No validation tuning.",
+    "uncertainty": "Four groups/topics are too few for a powered claim. Report all paired group effects, coverage and descriptive means. No equivalence or general superiority claim; repeated seeds would not increase independent people."
+  },
+  "engineering_progression_rules": {
+    "status": "Proposed practical engineering thresholds, not empirically justified scientific effect sizes or power calculations.",
+    "message_signal": "Adapter overall token-weighted completion-only NLL below base; report equal-group secondary and all group effects. This does not substitute for behavioral gate.",
+    "behavioral_signal": "Primary contrast <= -0.02 normalized RPS and adapted direct RPS <= best declared baseline RPS.",
+    "guards": "No validation group worsens by >0.05 RPS; change-event Brier no worse than base direct by >0.02.",
+    "interaction_expansion": "Adapter swarm improves over adapter direct by >=0.02 RPS and is no worse than adapter private, with same group/change guards; otherwise defer interaction expansion.",
+    "interpretation": "Any passed gate permits more development only. Failed/mixed results are logged; insufficient data remain inconclusive.",
+    "B2_entry_guard": "B1 primary RPS difference <=0.02; this engineering non-worsening guard allows further diagnostic work only, not equivalence or success. Review all group outcomes without changing candidate/prompt."
+  },
+  "inference": {
+    "temperature": 0.0,
+    "seed": 20261023,
+    "max_new_tokens": 256,
+    "max_total_sequence_tokens": 4096,
+    "batch_size": 1,
+    "concurrent_models": 1,
+    "context_policy": "No silent truncation. If any planned prompt plus maximum output exceeds cap, stop before running that stage and revise the whole schedule under a new version.",
+    "format_policy": "Strict six finite nonnegative probabilities <=1, sum within 1e-6 of 1; no repair, renormalization, or retry in this diagnostic. Invalid outputs retained; stop behavioral stage, report coverage; no selectively complete-case headline comparison.",
+    "repeat_policy": "One deterministic greedy pass; adapter dropout disabled at inference. No selecting best repeats. Any deterministic-repeat diagnostic must retain and report all outputs."
+  },
+  "resource_caps": {
+    "provider_calls": 0,
+    "provider_usd": 0,
+    "downloads": 0,
+    "training_steps": 0,
+    "stage_A_wall_seconds": 1800,
+    "generation_cap": 480,
+    "generation_token_upper_bound": 122880,
+    "host_rss_stop_gib": 18,
+    "mlx_peak_stop_gib": 14,
+    "swap_growth_stop_gib": 2,
+    "telemetry_poll_seconds": 2,
+    "stop_on": "Any cap, nonfinite loss, missing target, identity mismatch, model/data hash mismatch, mask mismatch or forbidden input; retain partial artifacts, do not claim completed comparison.",
+    "memory_note": "Conservative engineering process limits, not guaranteed physical bounds. Record baseline swap and peak RSS/MLX allocation; parent watchdog required for timely termination.",
+    "stage_B1_wall_seconds": 600,
+    "stage_B2_wall_seconds": 3000
+  },
+  "future_training_rule": {
+    "status": "Not authorized or launched by this document. Separate frozen training contract required.",
+    "proposal": "One fixed seed and final checkpoint after a predeclared exact optimizer-update budget measured by the instrumented smoke; no best-validation checkpoint search. Set budget before training from measured time/memory, record all attempts, and run this comparison as a new version.",
+    "context": "Retain all initial anchors and supervised completion tokens; do not lower context cap below measured token lengths without explicit exclusion audit."
+  },
+  "provenance_required": [
+    "source and model file hashes",
+    "adapter and package lock hashes",
+    "runner and evaluator snapshots",
+    "prompt template hashes",
+    "participant overlap report",
+    "per-case token counts and completion masks",
+    "RSS/MLX/swap/elapsed telemetry",
+    "all predictions, failures, exclusions and seals",
+    "explicit native-host/offline boundary without Docker isolation claim"
+  ],
+  "implementation_blockers": [
+    "Current scripts/run_debate_development_test.py is OpenRouter-only, picks a training group, and cannot execute this matched local contract unchanged.",
+    "No matching local completion-NLL and six-arm inference runner verified yet.",
+    "Verify bound participant-overlap audit before execution; no independent-holdout claim.",
+    "Frozen prompt and runner hashes must be added to sealed run contract before execution.",
+    "Instrumented memory watchdog and full-coverage strict-format smoke required.",
+    "Observed-history final-belief protocol needs separately audited receipts and cutoff; not silently merged into autonomous scores.",
+    "Upstream MLX lora.run ignores supplied training callback; instrument direct train_model entrypoint to prove memory/swap guards. A final peak-only probe does not validate live watchdog enforcement."
+  ],
+  "out_of_scope": [
+    "Final confirmation reserve",
+    "full paper replication",
+    "longer adapter training",
+    "paid provider comparison",
+    "assimilation modes",
+    "unobserved intermediate human beliefs",
+    "prospective election forecast"
+  ]
+}

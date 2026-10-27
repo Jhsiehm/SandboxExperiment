@@ -16,6 +16,8 @@ window through `2013-06-30`, and 50 binary economic, legislative, and
 geopolitical questions. Scoring includes Brier probability error, a derived
 forecast score, calibration views, and Harrell C-index ranking.
 
+Research status and complete study register: [Research log — 27 October 2026](docs/RESEARCH_LOG.md).
+
 ## What this repository is now
 
 The repository is one integrated research workbench with six cooperating

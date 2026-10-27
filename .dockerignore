@@ -1,4 +1,6 @@
 .venv/
+.venv-mlx/
+data/local-mlx-pilot/
 .git/
 __pycache__/
 *.pyc

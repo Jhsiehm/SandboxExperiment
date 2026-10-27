@@ -1,0 +1,856 @@
+{
+  "schema": "polisim-research-register-v1",
+  "compiled_date": "2026-10-27",
+  "roots": {
+    "research": "/Users/joshua/.codex/worktrees/research-preview/Policy Sim",
+    "ohio": "/Users/joshua/Documents/ChatGPT/Policy Sim",
+    "automation": "/Users/joshua/Documents/Codex/2026-09-20/git-github-com-jhsiehm-sandboxexperiment-git/work/SandboxExperiment",
+    "plan": "/Users/joshua/Downloads"
+  },
+  "coverage": "Available authoritative reports, whitelisted aggregate artifacts and prior-session playback evidence; not a claim of raw reconstruction for every historical run.",
+  "latest_scientific_artifact_date": "2026-10-23",
+  "latest_oregon_artifact_date": "2026-10-22",
+  "cost_semantics": "Provider-reported usage only; null means not consolidated, not zero. Calls retain the logical/provider-completion distinctions stated in each entry. No cross-entry cost total.",
+  "entries": [
+    {
+      "id": "anes-foundation",
+      "date": "2026-09-23/2026-10-04",
+      "track": "ANES",
+      "title": "Timing, provider failures and mock validation",
+      "status": "development_only",
+      "scope": "5,914-profile timing preparation; later Ohio mock: 226 profiles, 164 valid targets, 30 repetitions.",
+      "result": "Strict pre-cutoff and paper-faithful profiles were separated. A retrospective two-field baseline scored 0.076340 Brier. The mock produced 13,560 predictions; its 0.105333 individual and 0.116824 society Brier scores measure mechanics only. Credit, authentication and retired-model failures are retained in the status log.",
+      "decision": "Keep retrospective conditioning and mock checks separate from live human-response evidence.",
+      "limitations": "The retrospective baseline conditions on information after the strict cutoff. Failed requests do not establish completed experiments; no combined bill is inferred.",
+      "metrics": {},
+      "provider_calls": null,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_2012_EXPERIMENT_STATUS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "anes-invalid-live-smoke",
+      "date": "2026-10-04",
+      "track": "ANES",
+      "title": "Early live smoke excluded from protocol evidence",
+      "status": "protocol_invalid",
+      "scope": "Completed smoke: four profiles, three scorable, 24 logical calls; earlier attempts incomplete.",
+      "result": "Brier 0.06547967 individual versus 0.088963 society was observed, but the OpenRouter path omitted the system instruction. Across three attempts: 72 request reservations, $0.00880242 reported, one unresolved reservation.",
+      "decision": "Retain receipts; exclude these scores from claims about the corrected protocol.",
+      "limitations": "Reservations, logical calls and provider attempts differ. Usage total covers overlapping attempts, not an additional independent run.",
+      "metrics": {},
+      "provider_calls": null,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_2012_EXPERIMENT_STATUS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "anes-corrected-dialogue",
+      "date": "2026-10-04",
+      "track": "ANES",
+      "title": "Corrected individual versus society run",
+      "status": "completed_development",
+      "scope": "24 unique people, 22 scorable, two repetitions; 48 reflections, 48 public messages, 48 ballots.",
+      "result": "Individual Brier 0.11673581; society 0.14847838. Replication differences had opposite signs. Earlier corrected attempts stopped after 98 logical completions and after a first-call format failure; they remain incomplete.",
+      "decision": "No reliable interaction advantage.",
+      "limitations": "",
+      "metrics": {
+        "individual_brier": 0.11673581,
+        "society_brier": 0.14847838
+      },
+      "provider_calls": 144,
+      "provider_reported_usd": 0.01765025,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_2012_EXPERIMENT_STATUS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "anes-decision-context",
+      "date": "2026-10-11",
+      "track": "ANES",
+      "title": "Profile and evidence factorial",
+      "status": "completed_development",
+      "scope": "24 new Ohio people, four individual conditions; 12-person social subset.",
+      "result": "Vote Brier: sparse 0.106901, sparse + evidence 0.134875, rich 0.089928, rich + evidence 0.103553. Social versus private: vote 0.108627/0.090723, healthcare 0.254590/0.291924, gun 0.365767/0.419940.",
+      "decision": "Mixed outcome-specific effects; do not promote context or interaction as generally beneficial.",
+      "limitations": "Narrow economic context is available evidence, not verified individual exposure; only 18 vote targets scorable.",
+      "metrics": {},
+      "provider_calls": 240,
+      "provider_reported_usd": 0.04662035,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_2012_EXPERIMENT_STATUS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "anes-reserved-named-development",
+      "date": "2026-10-12/2026-10-13",
+      "track": "ANES",
+      "title": "120-person profile comparison",
+      "status": "gate_failed",
+      "scope": "120 inspected development people; three models; a separate 50-person reserve excluded.",
+      "result": "Sparse → rich Brier: vote 0.147859 → 0.145513, healthcare 0.276586 → 0.282043, gun 0.279448 → 0.288865. Macro change +0.004176, interval [-0.009541, 0.017883].",
+      "decision": "No progression. The folder name “reserved-validation” does not make these now-inspected people untouched.",
+      "limitations": "482 reservations included two unresolved read timeouts; reported cost is incomplete billing. Target counts 84/116/120 differ.",
+      "metrics": {},
+      "provider_calls": 480,
+      "provider_reported_usd": 0.0836825,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_2012_EXPERIMENT_STATUS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "ohio-vote-and-turnout",
+      "date": "2026-10-14",
+      "track": "Ohio separate branch",
+      "title": "Vote pilot and synthetic-population check",
+      "status": "completed_development",
+      "scope": "16-person LLM pilot; 135 eligible statistical-evaluation records; separate 1,000-person synthetic population.",
+      "result": "Rich LLM Brier 0.13609 versus basic 0.30290; rich naive Bayes 0.01925 on the same 16 and 0.09927 on 135. Peer conditions did not beat rich individual prediction. Synthetic Democratic two-party share 51.8014% versus official 51.5146%, but predicted turnout exceeded the official count by about 1.39 million.",
+      "decision": "Close aggregate vote share is insufficient behavioral validation; preserve the turnout correction.",
+      "limitations": "Effective pilot sample about 10.8; self-reported turnout is not validated turnout. Statistical samples must be distinguished.",
+      "metrics": {},
+      "provider_calls": 96,
+      "provider_reported_usd": 0.0136972,
+      "sources": [
+        {
+          "root": "ohio",
+          "path": "docs/OHIO_2012_PILOT_REPORT.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "ohio-expanded-attitudes",
+      "date": "2026-10-14",
+      "track": "Ohio separate branch",
+      "title": "Expanded three-outcome attitude comparison",
+      "status": "completed_development",
+      "scope": "226 Ohio people; valid targets healthcare 221, gun 226, environment 225.",
+      "result": "Full multiclass Brier, basic/rich/logistic: healthcare 0.66999/0.55004/0.50910; gun 0.58653/0.56180/0.47719; environment 0.67847/0.61459/0.54280. Rich profiles improved point estimates; logistic remained best on all three. Rich-minus-basic intervals excluded zero for healthcare and environment, not gun policy.",
+      "decision": "Keep rich profiles as a development finding; retain logistic as the benchmark.",
+      "limitations": "Brier scale 0–2; bootstrap intervals are descriptive and conditional, not full complex-survey uncertainty.",
+      "metrics": {},
+      "provider_calls": 452,
+      "provider_reported_usd": 0.1626216,
+      "sources": [
+        {
+          "root": "ohio",
+          "path": "docs/OHIO_2012_PILOT_REPORT.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "ohio-calibration",
+      "date": "2026-10-14",
+      "track": "Ohio separate branch",
+      "title": "Separate calibration and transfer",
+      "status": "completed_development",
+      "scope": "240 people outside Ohio/New Jersey: 160 fit, 80 validation; then frozen Ohio transfer.",
+      "result": "Validation raw → calibrated Brier: healthcare 0.52873 → 0.49867, gun 0.60027 → 0.53570, environment 0.72427 → 0.63460. Ohio: 0.55004 → 0.58293, 0.56180 → 0.52402, 0.61459 → 0.55935. Logistic still beat calibrated LLM forecasts on all three Ohio outcomes.",
+      "decision": "Calibration is outcome- and sample-dependent; it did not generally repair prediction.",
+      "limitations": "Only the validation environment interval excluded zero. The $0.3208856 reserved amount is not billed cost.",
+      "metrics": {},
+      "provider_calls": null,
+      "provider_reported_usd": 0.08781,
+      "sources": [
+        {
+          "root": "ohio",
+          "path": "docs/OHIO_2012_PILOT_REPORT.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "debate-small-pilot",
+      "date": "2026-10-14",
+      "track": "DEBATE",
+      "title": "Initial isolated interaction pilot",
+      "status": "promising_small_pilot",
+      "scope": "32 people, eight groups, four topics; 14 changed and 18 unchanged answers.",
+      "result": "RPS: persistence 0.16250, private 0.15808, generated discussion 0.12166, real-message replay 0.11116. Discussion-minus-private -0.03642, interval [-0.07418, -0.00178]; versus persistence interval [-0.11170, 0.02350] crossed zero.",
+      "decision": "Motivated the larger comparison; not confirmation of society simulation.",
+      "limitations": "Small selected pilot. Real-message replay is a diagnostic with observed discussion information.",
+      "metrics": {},
+      "provider_calls": 480,
+      "provider_reported_usd": 0.1506896,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/DEBATE_ISOLATED_PILOT_RESULTS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "ohio-isolation",
+      "date": "2026-10-14",
+      "track": "Infrastructure",
+      "title": "Isolation and ANES software checks",
+      "status": "mechanics_verified",
+      "scope": "Separate Ohio checkout and Docker development checks.",
+      "result": "Recorded suite: 253 passed plus 39 targeted tests; later fixes reached 290 then 294. Real 2012 ANES data were correctly rejected under the June 2012 cutoff because fieldwork/release occurred later. A 48-vote mock exercised two questions.",
+      "decision": "Use an explicit retrospective contract; passing tests do not establish human fidelity.",
+      "limitations": "Counts are stage-specific and overlapping; do not add them or describe them as a new full-suite run.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "ohio",
+          "path": "docs/ANES_EXPERIMENT_TEST_REPORT_2026-10-14.md"
+        },
+        {
+          "root": "ohio",
+          "path": "docs/OHIO_2012_PILOT_REPORT.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "ohio-peer",
+      "date": "2026-10-15",
+      "track": "Ohio separate branch",
+      "title": "Controlled peer follow-up",
+      "status": "completed_development",
+      "scope": "40 profiles, three repetitions; 38 valid healthcare targets.",
+      "result": "Mean full Brier, reconsideration/grouped peer: healthcare 0.569933/0.536531, gun 0.546849/0.499083, environment 0.614939/0.659114. Grouped arithmetic beat grouped agents on healthcare and environment. Same-cohort logistic: 0.468742, 0.509153, 0.461641; peer agents had the lower gun-policy point estimate only.",
+      "decision": "Retain the narrow positive gun result and the negative outcomes together.",
+      "limitations": "362 reservations; two HTTP 502 requests have unknown charges. Recovery preserved completed predictions. No significance claim or independent human replications; $0.6278636 is conservative reservation.",
+      "metrics": {},
+      "provider_calls": 360,
+      "provider_reported_usd": 0.188384,
+      "sources": [
+        {
+          "root": "ohio",
+          "path": "docs/OHIO_2012_PILOT_REPORT.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "ohio-media-provenance",
+      "date": "2026-10-15",
+      "track": "Ohio separate branch",
+      "title": "Observed media and historical availability audit",
+      "status": "completed_development",
+      "scope": "226 Ohio people; eight observed categorical media predictors; archive/source review.",
+      "result": "Rich → rich + measured-media logistic Brier: healthcare 0.509103 → 0.508760, gun 0.477193 → 0.495882, environment 0.542803 → 0.549810. The October 20 archived debate transcript was available before only 64 of 226 interview starts. Fifty-eight broadcast metadata records are not 58 independent stories.",
+      "decision": "No overall feature gain. Preserve interview cutoffs and reject heuristic outlet weights as measured audience evidence.",
+      "limitations": "Publication date is not proof of contemporaneous archival availability or personal exposure. POST discussion fields excluded; this is not causal media analysis.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "ohio",
+          "path": "docs/OHIO_2012_PILOT_REPORT.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "ohio-reserve-and-crossyear-readiness",
+      "date": "2026-10-15",
+      "track": "Preparation",
+      "title": "Reserve evaluator and cross-year candidates",
+      "status": "preparation_only",
+      "scope": "New Jersey evaluator/access audit and cross-year questionnaire readiness.",
+      "result": "Existing reports document reserve controls and candidate item/mode comparisons. They do not establish an authorized new reserve readout or successful longitudinal transfer.",
+      "decision": "Keep later outcomes outside development. Use source-backed crosswalks before execution.",
+      "limitations": "This compilation did not open New Jersey targets, respondent exports or reserved evaluator outcomes.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "ohio",
+          "path": "docs/OHIO_2012_PILOT_REPORT.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "anes-individual-development",
+      "date": "2026-10-20",
+      "track": "ANES",
+      "title": "Focused profiles and private review",
+      "status": "gate_failed",
+      "scope": "24 previously inspected people, two repetitions, four arms; 96 other development people fit baselines; 50-person reserve excluded.",
+      "result": "Macro weighted half-multiclass Brier: prevalence 0.29645, party 0.25009, sparse 0.26736, rich 0.27166, focused 0.25996, focused + review 0.26601. Focused-minus-rich -0.01170, interval [-0.04104, 0.01600].",
+      "decision": "No demonstrated advantage over the party baseline or progression criterion.",
+      "limitations": "192 final forecasts and 48 reviews; Brier uses half-multiclass normalization, unlike the separate Ohio report.",
+      "metrics": {},
+      "provider_calls": 240,
+      "provider_reported_usd": 0.0929464,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_INDIVIDUAL_DEVELOPMENT_RESULTS.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/ANES_2012_EXPERIMENT_STATUS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "anes-profile-ablation",
+      "date": "2026-10-20",
+      "track": "ANES",
+      "title": "Profile ablation and statistical hybrids",
+      "status": "gate_failed",
+      "scope": "120 inspected people, four arms, two repetitions; nested 5-outer/4-inner development folds.",
+      "result": "Direct macro Brier: sparse 0.23786, rich 0.23778, reduced 0.23871, reduced + observed 0.23184; party baseline 0.22087. Hybrid scores 0.22821/0.22235/0.22590/0.22483. Added observed information change -0.00686, interval [-0.01867, 0.00350].",
+      "decision": "No candidate promoted; keep the separate 50-person reserve untouched.",
+      "limitations": "Conditional intervals omit baseline refit uncertainty; this is development reuse, not fresh confirmation.",
+      "metrics": {},
+      "provider_calls": 960,
+      "provider_reported_usd": 0.6672136,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_PROFILE_ABLATION_RESULTS.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/ANES_2012_EXPERIMENT_STATUS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "oregon-reproduction",
+      "date": "2026-10-22",
+      "track": "Oregon Medicaid",
+      "title": "Published enrollment estimates reproduced",
+      "status": "historical_reproduction",
+      "scope": "74,922 people, 66,385 households; two full-sample Table III enrollment rows.",
+      "result": "Lottery assignment increased ever-enrollment by 25.5866 percentage points (household-clustered SE 0.3509 points), and endpoint enrollment on September 30, 2009 by 14.8139 points (SE 0.3112). All six published-rounding checks passed. This reproduces enrollment findings, not the entire paper.",
+      "decision": "Retain as a verified historical statistical reference; no agent or health-outcome claim.",
+      "limitations": "Medicaid, not Medicare. Unit-weight OLS with lottery-draw and listed-household-size indicators; household CR1 standard errors. Raw control means and adjusted assignment coefficients are different estimands. Full-sample inspection leaves no pristine holdout inside this sample.",
+      "metrics": {
+        "people": 74922,
+        "households": 66385,
+        "ever_enrollment_adjusted_assignment_effect": 0.2558657884576887,
+        "endpoint_adjusted_assignment_effect": 0.14813923617181063,
+        "rounding_checks_passed": 6
+      },
+      "provider_calls": 0,
+      "provider_reported_usd": 0,
+      "sources": [
+        {
+          "root": "research",
+          "path": "reports/behavior-feasibility-20261022/baseline/oregon-results.json"
+        },
+        {
+          "root": "research",
+          "path": "reports/behavior-feasibility-20261022/baseline/README.md"
+        },
+        {
+          "root": "research",
+          "path": "reports/behavior-feasibility-20261022/oregon-data/BASELINE_SOURCE_REVIEW.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "aggregate_artifact_inspected"
+    },
+    {
+      "id": "oregon-prediction",
+      "date": "2026-10-22",
+      "track": "Oregon Medicaid",
+      "title": "Household out-of-fold enrollment prediction",
+      "status": "development_only",
+      "scope": "Five household-separated folds; assignment and selected administrative/list features.",
+      "result": "Brier 0.16769607 assignment-only → 0.16421990 fixed-L2 logistic, an absolute reduction of 0.00347618 (2.07% relative). Log loss 0.51126394 → 0.50097743. No LLM calls.",
+      "decision": "Resolve the pre-event feature/cutoff contract before a matched agent comparison; keep the statistical model.",
+      "limitations": "No difference interval; age omitted, so not the strongest available statistical baseline. Matched lottery draw is analyst alignment, not personal information. No individual causal, health, current-system or prospective forecast validation.",
+      "metrics": {
+        "assignment_brier": 0.16769607425096048,
+        "logistic_brier": 0.16421989719276325,
+        "assignment_log_loss": 0.5112639353034909,
+        "logistic_log_loss": 0.5009774259159702
+      },
+      "provider_calls": 0,
+      "provider_reported_usd": 0,
+      "sources": [
+        {
+          "root": "research",
+          "path": "reports/behavior-feasibility-20261022/baseline/oregon-results.json"
+        },
+        {
+          "root": "research",
+          "path": "reports/behavior-feasibility-20261022/baseline/source-contract.unresolved.json"
+        },
+        {
+          "root": "research",
+          "path": "reports/behavior-feasibility-20261022/oregon-data/FEASIBILITY.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "aggregate_artifact_inspected"
+    },
+    {
+      "id": "debate-larger-comparison",
+      "date": "2026-10-22",
+      "track": "DEBATE",
+      "title": "Larger six-arm comparison",
+      "status": "primary_gate_failed",
+      "scope": "116 people, 29 evaluation groups/topics; 47 other groups and 188 people fit development baseline.",
+      "result": "RPS: direct 0.115118, transition 0.130286, real replay 0.131949, generated discussion 0.146711, reflection 0.149433, persistence 0.163793. Discussion-minus-baseline +0.01643, interval [-0.01698, 0.05190]; discussion-minus-direct +0.03159, interval [0.00791, 0.05933]. False modal changes: discussion 28/58 unchanged people, direct 17/58.",
+      "decision": "Retain direct prediction as a useful reference; do not expand interaction. These 29 groups are now exposed.",
+      "limitations": "One model/generation; direct-baseline lead is a point estimate without a prespecified contrast interval. Source drift in three files caused the original final check to fail; frozen-source recovery reconstructed saved calls without new provider jobs. Not a clean original integrity pass. Original raw run folder not materialized in this worktree.",
+      "metrics": {
+        "direct_rps": 0.115118,
+        "transition_rps": 0.130286,
+        "replay_rps": 0.131949,
+        "discussion_rps": 0.146711,
+        "reflection_rps": 0.149433,
+        "persistence_rps": 0.163793
+      },
+      "provider_calls": 1856,
+      "provider_reported_usd": 0.5863428,
+      "sources": [
+        {
+          "root": "research",
+          "path": "reports/social-comparison-audit-20261022/FINDINGS.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "debate-admission",
+      "date": "2026-10-23",
+      "track": "Data preparation",
+      "title": "Participant admission and message dataset",
+      "status": "development_preparation",
+      "scope": "47 downloaded development groups; 33 admitted: 29 training and four validation.",
+      "result": "Fourteen groups excluded by receipt matching; 831 training and 133 validation messages prepared. Ninety-six unused candidate groups remain metadata-only, not admitted fresh evaluation.",
+      "decision": "Preserve participant/source overlap checks and separate admitted from merely discovered data.",
+      "limitations": "Documentation-level admission does not imply independently verified unique humans across all sessions.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "experiments/debate-sft-replication/README.md"
+        },
+        {
+          "root": "research",
+          "path": "reports/behavior-feasibility-20261022/debate/PARTICIPANT_ADMISSION.md"
+        }
+      ],
+      "artifact_directories": [
+        "data/local-mlx-pilot/validation-cases"
+      ],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "hosted-format-smoke",
+      "date": "2026-10-23",
+      "track": "Provider smoke",
+      "title": "OpenRouter format smoke",
+      "status": "completed_with_format_failures",
+      "scope": "12 responses; 10 valid.",
+      "result": "Two outputs failed formatting. This was not a scientific evaluation.",
+      "decision": "Keep invalid-response costs and failures in the record.",
+      "limitations": "",
+      "metrics": {},
+      "provider_calls": 12,
+      "provider_reported_usd": 9.274e-05,
+      "sources": [
+        {
+          "root": "research",
+          "path": "data/runs/debate-openrouter-development-smoke-20261023/summary.json"
+        }
+      ],
+      "artifact_directories": [
+        "data/runs/debate-openrouter-development-smoke-20261023"
+      ],
+      "evidence": "aggregate_artifact_inspected"
+    },
+    {
+      "id": "debate-one-group",
+      "date": "2026-10-23",
+      "track": "DEBATE",
+      "title": "Single-group hosted development diagnostic",
+      "status": "development_only",
+      "scope": "Four already-inspected people in one group.",
+      "result": "RPS: private 0.102925, transition 0.146322, persistence 0.200000, direct 0.204770, discussion 0.239250.",
+      "decision": "Do not use one group to overturn the larger comparison or rank models generally.",
+      "limitations": "No independent evaluation or intervals; baseline participant overlap was not audited for this diagnostic. Not a base-versus-SFT comparison.",
+      "metrics": {},
+      "provider_calls": 60,
+      "provider_reported_usd": 0.0192684,
+      "sources": [
+        {
+          "root": "research",
+          "path": "data/runs/debate-development-comparison-20261023/evaluation.json"
+        }
+      ],
+      "artifact_directories": [
+        "data/runs/debate-development-comparison-20261023"
+      ],
+      "evidence": "aggregate_artifact_inspected"
+    },
+    {
+      "id": "local-training-feasibility",
+      "date": "2026-10-23",
+      "track": "Local MLX",
+      "title": "Laptop pilot and memory probes",
+      "status": "feasibility_only",
+      "scope": "Recorded laptop: MacBook Air M5, 24 GB memory, 10-core GPU; quantized Llama 3.1 8B.",
+      "result": "LoRA pilot: 52 microsteps/13 updates, batch 1 with accumulation 4, rank 8 over 16 layers; 223.99 seconds, about 40 MiB adapter. Eight-batch validation loss 5.024 → 3.457 was diagnostic. System swap rose about 2.8 → 6.3 GiB. Both subsequent memory probes completed (~70–71 seconds; about 6.52 GiB peak MLX allocation).",
+      "decision": "Small supervised runs fit the laptop, but resource feasibility does not establish predictive utility.",
+      "limitations": "System swap is shared by all applications. Hardware measurements describe these saved runs, not an unrestricted training capacity.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/pilot-20261023-030458/result.json"
+        },
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/memory-probe-20261023-033958/result.json"
+        },
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/memory-probe-20261023-034222/result.json"
+        },
+        {
+          "root": "research",
+          "path": "experiments/debate-sft-replication/README.md"
+        }
+      ],
+      "artifact_directories": [
+        "data/local-mlx-pilot/pilot-20261023-030458",
+        "data/local-mlx-pilot/memory-probe-20261023-033958",
+        "data/local-mlx-pilot/memory-probe-20261023-034222"
+      ],
+      "evidence": "aggregate_artifact_and_report"
+    },
+    {
+      "id": "local-matched-comparison",
+      "date": "2026-10-23",
+      "track": "Local MLX",
+      "title": "Matched base/adapter comparison",
+      "status": "outcome_comparison_blocked",
+      "scope": "133 messages, four groups, 3,415 supervised tokens; matched prompt/source bindings.",
+      "result": "Token-weighted NLL 3.627999 → 3.201114; equal-group NLL 3.970071 → 3.304992. All four groups improved message likelihood. Direct belief format: base 16/16 valid; adapter first output invalid (822 non-JSON characters), so stopped after 1/16.",
+      "decision": "Message imitation improved, but belief-outcome superiority was not evaluated.",
+      "limitations": "Validation had already supplied eight training-time diagnostic batches; it is not untouched confirmation. No outcome scoring after format failure.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/LOCAL_MATCHED_COMPARISON_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/matched-comparison-20261023/message-evaluation.json"
+        }
+      ],
+      "artifact_directories": [
+        "data/local-mlx-pilot/matched-comparison-20261023"
+      ],
+      "evidence": "aggregate_artifact_and_report"
+    },
+    {
+      "id": "local-format-diagnosis",
+      "date": "2026-10-23",
+      "track": "Local MLX",
+      "title": "Bounded format diagnosis",
+      "status": "candidate_format_failed",
+      "scope": "Four training people × two models × two prompt styles = 16 generations.",
+      "result": "Base original 4/4 valid; base prefix 3/4 (one vector summed to 0.99). Adapter 0/4 for both styles; all prefixed vectors were zero. Run completed in 50.79 seconds.",
+      "decision": "A prompt prefix did not rescue the adapter; avoid a larger outcome run.",
+      "limitations": "No outcome evaluation. Independent reviewer hit a spending cap; final root review must not be labeled independent.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/LOCAL_FORMAT_SMOKE_RESULTS_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/format-smoke-v1-20261023/format-evaluation.json"
+        }
+      ],
+      "artifact_directories": [
+        "data/local-mlx-pilot/format-smoke-v1-20261023"
+      ],
+      "evidence": "aggregate_artifact_and_report"
+    },
+    {
+      "id": "local-outcome-classifier",
+      "date": "2026-10-23",
+      "track": "Local MLX",
+      "title": "Task-aligned classifier pilot",
+      "status": "internal_nonworsening_gate_failed",
+      "scope": "92 fit people/23 groups; 24 internal people/six groups; 52 microsteps/13 updates.",
+      "result": "RPS base 0.184574, candidate 0.216049, persistence 0.133333, transition 0.124716. Candidate-minus-base +0.031475 exceeded the +0.02 nonworsening limit. Change-event Brier improved 0.397598 → 0.379312, but expected-category MAE worsened 1.332604 → 1.511860.",
+      "decision": "Stop this candidate; secondary improvement does not override the primary failed gate.",
+      "limitations": "Native offline training 43.78 seconds, peak 5.10 GiB. Six-label probability mass fell 0.984780 → 0.654332; this is not a calibration score.",
+      "metrics": {
+        "base_rps": 0.184574,
+        "candidate_rps": 0.216049,
+        "persistence_rps": 0.133333,
+        "transition_rps": 0.124716
+      },
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/CLASSIFIER_PILOT_RESULTS_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/outcome-classifier-v1-20261023/internal-evaluation.json"
+        }
+      ],
+      "artifact_directories": [
+        "data/local-mlx-pilot/outcome-classifier-v1-20261023",
+        "data/local-mlx-pilot/outcome-sft-v1-data"
+      ],
+      "evidence": "aggregate_artifact_and_report"
+    },
+    {
+      "id": "classifier-investigation",
+      "date": "2026-10-23",
+      "track": "Diagnostic audit",
+      "title": "Training, error and method audit",
+      "status": "diagnosis_only",
+      "scope": "Saved classifier outputs and admitted fit cohort; no new training.",
+      "result": "No implementation bug identified. The candidate chose category 4 for 23/24 people; 14 unchanged people accounted for 88.6% of the gap to the transition baseline. Reconstructed training exposure covered 52/92 people and 21/23 groups. A 52-case statistical control scored 0.134724 versus 0.124716 for all 92, still far better than candidate 0.216049.",
+      "decision": "Investigate target/data design; the evidence does not justify asserting that more training will fix the failure.",
+      "limitations": "Exposure was reconstructed, not observed in a training log. Leave-one-group sensitivity is descriptive, not a new independent test.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/CLASSIFIER_INVESTIGATION_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/CLASSIFIER_ERROR_ANALYSIS.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/CLASSIFIER_TRAINING_AUDIT.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/CLASSIFIER_METHOD_REVIEW.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    },
+    {
+      "id": "residual-calibration",
+      "date": "2026-10-23",
+      "track": "Local MLX",
+      "title": "Frozen-model residual calibration",
+      "status": "oof_gate_failed",
+      "scope": "92 fit people, 23 groups, 21 topic/person components; five folds of 20/20/20/16/16.",
+      "result": "Equal-group normalized RPS: raw transition 0.141335935, calibrated control 0.140185794, control + frozen logits 0.140233300. Gain over raw 0.001102635 was below 0.01; extension was worse than control by 0.000047505. Ten bounded fits converged; model coefficient effectively zero in four folds.",
+      "decision": "Keep the statistical baseline; stop before refit/internal/outer stages.",
+      "limitations": "Independent audit reproduced probabilities exactly and metrics within 1e-12. Ninety-two base forwards took 32.56 seconds, peak 4.59 GiB, no observed swap growth. No new neural training or internal/outer outcome read.",
+      "metrics": {
+        "transition_rps": 0.1413359348984477,
+        "calibrated_control_rps": 0.14018579447414445,
+        "extension_rps": 0.14023329976619928
+      },
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/RESIDUAL_CALIBRATION_RESULTS_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/RESIDUAL_CALIBRATION_RESULT_AUDIT.md"
+        },
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/residual-calibration-v1-20261023/decision.json"
+        },
+        {
+          "root": "research",
+          "path": "data/local-mlx-pilot/residual-calibration-v1-20261023/oof-evaluation.json"
+        }
+      ],
+      "artifact_directories": [
+        "data/local-mlx-pilot/residual-calibration-v1-20261023",
+        "data/local-mlx-pilot/residual-calibration-v1-data"
+      ],
+      "evidence": "aggregate_artifact_and_report"
+    },
+    {
+      "id": "baseline-preservation",
+      "date": "2026-10-23",
+      "track": "Data and design",
+      "title": "Statistical reference frozen and data audited",
+      "status": "reference_preserved",
+      "scope": "92 admitted people, 23 groups, 21 topics; 48 unchanged, 44 changed.",
+      "result": "Required fields were present and valid; initial-category counts ranged from 10 to 22. The exact six-category Laplace-one transition table was retained, not replaced by a calibrated variant. SHA-256 ffc4ecc705c209841dfe51bcab5b40f68159c91cb914ef4e362c4abdda46b245.",
+      "decision": "Improve data and design before further model training.",
+      "limitations": "Completeness of the admitted export does not establish selection representativeness or adequate sample size.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/DATA_AND_DESIGN_NEXT_STEPS_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "reports/statistical-reference-20261023/manifest.json"
+        },
+        {
+          "root": "research",
+          "path": "reports/statistical-reference-20261023/data-quality.json"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "aggregate_artifact_and_report"
+    },
+    {
+      "id": "panel-readiness",
+      "date": "2026-10-23",
+      "track": "ANES panel",
+      "title": "Linked-panel source and design readiness",
+      "status": "ingestion_blocked",
+      "scope": "Proposed seven-category party ID: 2016 → 2020 development; separately frozen 2020 → 2024 later evaluation.",
+      "result": "Development auditor, reference functions and readiness gates implemented; 52 relevant tests reported. Five source blockers remain: 2024 summary construction, unavailable original documentation bytes, unverified repeated-variable archive, release/errata alignment, and unverified merged schema/linkage/missing codes. No respondent dataset ingested.",
+      "decision": "Archive source documentation, resolve equivalence and freeze a development-only projection before ingestion; then fit a new seven-category baseline.",
+      "limitations": "Derived paraphrase hash is not an original-source hash. One early transition cannot test a matched long-history ablation. Candidate, practical margin and design-aware uncertainty remain unresolved; later evaluation and model training disabled.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/ANES_PANEL_METADATA_READINESS.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/PANEL_EXPERIMENT_DESIGN_REVIEW.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/DATA_AND_DESIGN_NEXT_STEPS_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "reports/anes-panel-readiness-20261023/readiness.json"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "aggregate_artifact_and_report"
+    },
+    {
+      "id": "research-viewer",
+      "date": "2026-10-23",
+      "track": "Infrastructure",
+      "title": "Research playback and aggregate display",
+      "status": "recorded_playback_verified",
+      "scope": "Available DEBATE recording selected; 51 recorded actions reported in the prior preview check.",
+      "result": "Playback operates on a materialized recording. “No actions” on an unavailable ANES run did not imply that a live job was running. Dashboard checks subsequently covered failed classifier/calibration gates and panel readiness as separate states.",
+      "decision": "Display recording availability, experiment status and live execution separately.",
+      "limitations": "The 51-action browser check is prior-session evidence, not a fresh October 27 browser check. Current server liveness was not tested in this compilation.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": null,
+      "sources": [
+        {
+          "root": "research",
+          "path": "docs/LOCAL_MATCHED_COMPARISON_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/RESIDUAL_CALIBRATION_RESULTS_2026-10-23.md"
+        },
+        {
+          "root": "research",
+          "path": "docs/DATA_AND_DESIGN_NEXT_STEPS_2026-10-23.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "prior_session_and_reports"
+    },
+    {
+      "id": "automation-maintenance",
+      "date": "2026-10-23/2026-10-27",
+      "track": "Maintenance",
+      "title": "Mock-mode provenance and routine offline verification",
+      "status": "mechanics_verified",
+      "scope": "Separate automation/daily-swarm checkout; October 23 provenance fix and October 27 verification.",
+      "result": "Mock/live mode now participates in resumable-run provenance. Seven regression cases were added; 313 tests passed on October 23 and again October 27 with two existing warnings. Bounded mocks ran two questions × 12 votes, Brier 0.25.",
+      "decision": "Keep maintenance evidence separate from scientific outcomes; these checks do not refresh research-branch results.",
+      "limitations": "Research branch remained unmerged. Mock scores show mechanics, not model performance; October 27 checks did not test Docker isolation.",
+      "metrics": {},
+      "provider_calls": 0,
+      "provider_reported_usd": 0,
+      "sources": [
+        {
+          "root": "automation",
+          "path": "docs/automation/DAILY_SWARM.md"
+        }
+      ],
+      "artifact_directories": [],
+      "evidence": "documented_report"
+    }
+  ]
+}

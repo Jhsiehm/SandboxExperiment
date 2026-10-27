@@ -8,6 +8,11 @@ const isActive = () => document.body.dataset.view === 'research' && !document.hi
 const eventKey = event => String(event.id ?? event.seq);
 const summary = event => event.summary || labels[event.kind] || 'Recorded event';
 const title = event => labels[event.kind] || String(event.kind || 'Recorded event').replaceAll('_',' ');
+function automaticRecording(feed, explicitRun) {
+  if (explicitRun || feed.mode === 'live' || feed.events?.length || feed.coverage?.available_events > 0) return null;
+  return [...(feed.runs || [])].filter(run => run.id && run.id !== feed.run_id && ['live','replay'].includes(run.mode))
+    .sort((a,b) => Number(b.mode === 'live') - Number(a.mode === 'live') || String(b.heartbeat_at || '').localeCompare(String(a.heartbeat_at || '')))[0]?.id || null;
+}
 function stop() { controlEpoch++; stage?.pause?.(); playing = false; clearTimeout(timer); timer = null; element('research-play').textContent = 'Play recording'; }
 async function ensureStage() {
   if (stage || !watch || !visible || !studyId) return;
@@ -30,7 +35,7 @@ function select(index) {
   element('research-event-position').textContent = `${selected + 1} / ${events.length}${feed?.has_more ? '+' : ''}`;
   const badge = following && feed?.mode === 'live' ? 'Live · following worker' : event ? 'Replay · recorded actions' : feed?.mode === 'unsupported' ? 'No action stream' : 'Waiting for recorded actions';
   element('research-feed-mode').textContent = badge;
-  element('research-current-event').innerHTML = event ? `<strong>${escape(title(event))}${event.actor ? ` · ${escape(event.actor)}` : ''}</strong><span>${escape(summary(event))}</span><small>${escape(event.at || 'Original action time unavailable')}${event.phase ? ` · ${escape(event.phase)}` : ''}${event.model ? ` · ${escape(event.model)}` : ''}</small>` : '<strong>No recorded action to display</strong><span>The scene is illustrative and still. No model activity is being invented.</span>';
+  element('research-current-event').innerHTML = event ? `<strong>${escape(title(event))}${event.actor ? ` · ${escape(event.actor)}` : ''}</strong><span>${escape(summary(event))}</span><small>${escape(event.at || 'Original action time unavailable')}${event.phase ? ` · ${escape(event.phase)}` : ''}${event.model ? ` · ${escape(event.model)}` : ''}</small>` : '<strong>No recording for this study</strong><span>Playback needs saved actions. Choose a study marked Recording available below, then select a recorded run. No model activity is being invented.</span>';
   element('research-play').disabled = !events.length;
   element('research-rewind').disabled = !events.length;
   element('research-step').disabled = !events.length || (selected === events.length - 1 && !feed?.has_more);
@@ -77,8 +82,16 @@ async function fetchActivity({append = Boolean(feed && currentRun)} = {}) {
   try {
     const response = await fetch(`/api/research/activity?${params}`,{cache:'no-store'});
     if (!response.ok) throw new Error(`Activity request failed (${response.status})`);
-    const data = await response.json();
+    let data = await response.json();
     if (token !== generation) return;
+    const fallbackRun = automaticRecording(data, requestedRun);
+    if (fallbackRun) {
+      const fallbackParams = new URLSearchParams({study_id:studyId,run_id:fallbackRun,after:'0',tail:'false'});
+      const fallbackResponse = await fetch(`/api/research/activity?${fallbackParams}`, {cache:'no-store'});
+      if (!fallbackResponse.ok) throw new Error('Could not load available recording');
+      data = await fallbackResponse.json();
+      if (token !== generation) return;
+    }
     const priorKey = events[selected] ? eventKey(events[selected]) : null;
     const changedRun = currentRun !== data.run_id || currentSession !== data.session_id;
     if (append && changedRun) { currentRun=null; currentSession=null; feed=null; events=[]; selected=-1; setTimeout(() => fetchActivity(),0); return; }

@@ -1,0 +1,1013 @@
+{
+  "schema": "polisim-research-source-inventory-v1",
+  "created_utc": "2026-10-27T10:04:37.975875+00:00",
+  "root_snapshots": {
+    "research": {
+      "path": "/Users/joshua/.codex/worktrees/research-preview/Policy Sim",
+      "branch": "codex/local-mlx-pilot",
+      "head": "28f1664f0fef4465830078d7e0661bb2a7f49643",
+      "dirty": true
+    },
+    "ohio": {
+      "path": "/Users/joshua/Documents/ChatGPT/Policy Sim",
+      "branch": "codex/isolation-and-benchmark-integrity",
+      "head": "cce0e0621eb49dd6d011742d9c0a070d8a54a68b",
+      "dirty": true
+    },
+    "automation": {
+      "path": "/Users/joshua/Documents/Codex/2026-09-20/git-github-com-jhsiehm-sandboxexperiment-git/work/SandboxExperiment",
+      "branch": "automation/daily-swarm",
+      "head": "711e088eba97e92a3647513526bc31e16b9daff8",
+      "dirty": true
+    }
+  },
+  "roots": {
+    "research": "/Users/joshua/.codex/worktrees/research-preview/Policy Sim",
+    "ohio": "/Users/joshua/Documents/ChatGPT/Policy Sim",
+    "automation": "/Users/joshua/Documents/Codex/2026-09-20/git-github-com-jhsiehm-sandboxexperiment-git/work/SandboxExperiment",
+    "plan": "/Users/joshua/Downloads"
+  },
+  "sources": [
+    {
+      "root": "automation",
+      "path": "docs/automation/DAILY_SWARM.md",
+      "roles": [
+        "study:automation-maintenance"
+      ],
+      "id": "automation:docs/automation/DAILY_SWARM.md",
+      "exists": true,
+      "size_bytes": 40268,
+      "sha256": "17f3cd7c70a4ad0c4b21d26164f26a559c12fc32d21b71241efce4b30b5d6b9d"
+    },
+    {
+      "root": "ohio",
+      "path": "docs/ANES_EXPERIMENT_TEST_REPORT_2026-10-14.md",
+      "roles": [
+        "study:ohio-isolation"
+      ],
+      "id": "ohio:docs/ANES_EXPERIMENT_TEST_REPORT_2026-10-14.md",
+      "exists": true,
+      "size_bytes": 7062,
+      "sha256": "36d0041d4fda546fce6a55371c7fe37645ea35c10a471f24b567e4f7247d29f4"
+    },
+    {
+      "root": "ohio",
+      "path": "docs/DOCKER_AND_EXPERIMENT_INTEGRITY.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "ohio:docs/DOCKER_AND_EXPERIMENT_INTEGRITY.md",
+      "exists": true,
+      "size_bytes": 9505,
+      "sha256": "0354cb9f945066a91bcd142cefea57005d619e15e120abd6302bb05e06f0083f"
+    },
+    {
+      "root": "ohio",
+      "path": "docs/HUMAN_SIMULATION_RESEARCH.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "ohio:docs/HUMAN_SIMULATION_RESEARCH.md",
+      "exists": true,
+      "size_bytes": 5400,
+      "sha256": "50f1d38bb3ce14166ee710b1d7eb858d324539e0c9b5908bc01a478b3a9fcfd5"
+    },
+    {
+      "root": "ohio",
+      "path": "docs/OHIO_2012_PILOT_REPORT.md",
+      "roles": [
+        "study:ohio-vote-and-turnout",
+        "study:ohio-expanded-attitudes",
+        "study:ohio-calibration",
+        "study:ohio-isolation",
+        "study:ohio-peer",
+        "study:ohio-media-provenance",
+        "study:ohio-reserve-and-crossyear-readiness"
+      ],
+      "id": "ohio:docs/OHIO_2012_PILOT_REPORT.md",
+      "exists": true,
+      "size_bytes": 39275,
+      "sha256": "a7adfa78f76d8635be54ac8cf5972a474f5f112ce0e05a85ea2048fe3cc4e029"
+    },
+    {
+      "root": "plan",
+      "path": "PoliSim_Research_Game_Plan_2026-10-22.md",
+      "roles": [
+        "user_plan_context"
+      ],
+      "id": "plan:PoliSim_Research_Game_Plan_2026-10-22.md",
+      "exists": true,
+      "size_bytes": 32306,
+      "sha256": "2fdb4c758dc2a2f30df3fca3beb91a54b786f18edd18619e62a9c23bc04c9903"
+    },
+    {
+      "root": "research",
+      "path": "README.md",
+      "roles": [
+        "context_or_protocol"
+      ],
+      "id": "research:README.md",
+      "exists": true,
+      "size_bytes": 30631,
+      "sha256": "eec81dcef957f6e7806953e07cff6553701183af71dfe84a99d20f9e5e04f42e"
+    },
+    {
+      "root": "research",
+      "path": "config/anes-panel-design-v1.json",
+      "roles": [
+        "context_or_protocol"
+      ],
+      "id": "research:config/anes-panel-design-v1.json",
+      "exists": true,
+      "size_bytes": 3243,
+      "sha256": "7db59799dfb9399d9b7016fada53adfef6aea81cb39d0d03cbec2a72abcb41cc"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/format-smoke-v1-20261023/format-evaluation.json",
+      "roles": [
+        "study:local-format-diagnosis"
+      ],
+      "id": "research:data/local-mlx-pilot/format-smoke-v1-20261023/format-evaluation.json",
+      "exists": true,
+      "size_bytes": 5957,
+      "sha256": "2364c7a195fb36c813f4087220566f3dd6a9ec1bc1ddf65a67669c9dcac1de7a"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/matched-comparison-20261023/message-evaluation.json",
+      "roles": [
+        "study:local-matched-comparison"
+      ],
+      "id": "research:data/local-mlx-pilot/matched-comparison-20261023/message-evaluation.json",
+      "exists": true,
+      "size_bytes": 3347,
+      "sha256": "c3fc9901f9f0f0e28672c3adcbb2c8b1ccd51b78e7451ee4f7b37b347024690e"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/memory-probe-20261023-033958/result.json",
+      "roles": [
+        "study:local-training-feasibility"
+      ],
+      "id": "research:data/local-mlx-pilot/memory-probe-20261023-033958/result.json",
+      "exists": true,
+      "size_bytes": 326,
+      "sha256": "25051509ea7c2a89086a87c43a7edbe68c571f0b6f1004e12d4a4eeca877c062"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/memory-probe-20261023-034222/result.json",
+      "roles": [
+        "study:local-training-feasibility"
+      ],
+      "id": "research:data/local-mlx-pilot/memory-probe-20261023-034222/result.json",
+      "exists": true,
+      "size_bytes": 325,
+      "sha256": "a006866284cb64a9daf99801cd6194b61bf5ac9d21215ed6138f2589f965f985"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/outcome-classifier-v1-20261023/internal-evaluation.json",
+      "roles": [
+        "study:local-outcome-classifier"
+      ],
+      "id": "research:data/local-mlx-pilot/outcome-classifier-v1-20261023/internal-evaluation.json",
+      "exists": true,
+      "size_bytes": 5853,
+      "sha256": "23200e0cdc111ef8772a0e4c6d59f065e075fc92abc2f682dcb466433a257e6a"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/pilot-20261023-030458/result.json",
+      "roles": [
+        "study:local-training-feasibility"
+      ],
+      "id": "research:data/local-mlx-pilot/pilot-20261023-030458/result.json",
+      "exists": true,
+      "size_bytes": 204,
+      "sha256": "496bb69fa93765d67d01d0972035e230ff2687eaaef94e7d32f9a5ee8215a4df"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/residual-calibration-v1-20261023/decision.json",
+      "roles": [
+        "study:residual-calibration"
+      ],
+      "id": "research:data/local-mlx-pilot/residual-calibration-v1-20261023/decision.json",
+      "exists": true,
+      "size_bytes": 187,
+      "sha256": "be55212f429793bf2dc9f14ecffc09424f39ded0191e1de930cd8680ffc21736"
+    },
+    {
+      "root": "research",
+      "path": "data/local-mlx-pilot/residual-calibration-v1-20261023/oof-evaluation.json",
+      "roles": [
+        "study:residual-calibration"
+      ],
+      "id": "research:data/local-mlx-pilot/residual-calibration-v1-20261023/oof-evaluation.json",
+      "exists": true,
+      "size_bytes": 42553,
+      "sha256": "b70c911b5f5c22cc6a1e4f48f1f36ad4ecf3455ae354fed4ba7d68bd206a90ea"
+    },
+    {
+      "root": "research",
+      "path": "data/runs/debate-development-comparison-20261023/evaluation.json",
+      "roles": [
+        "study:debate-one-group"
+      ],
+      "id": "research:data/runs/debate-development-comparison-20261023/evaluation.json",
+      "exists": true,
+      "size_bytes": 1035,
+      "sha256": "413b37e1604b9f3cf79abfdaec91cfd7550df2ad9b9deef3077121f40b9737d5"
+    },
+    {
+      "root": "research",
+      "path": "data/runs/debate-openrouter-development-smoke-20261023/summary.json",
+      "roles": [
+        "study:hosted-format-smoke"
+      ],
+      "id": "research:data/runs/debate-openrouter-development-smoke-20261023/summary.json",
+      "exists": true,
+      "size_bytes": 244,
+      "sha256": "68faf5d526e40e8a5ec192e56acfec7a70fe40e478bf1ce793480868d4daecea"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_2012_EXPERIMENT_STATUS.md",
+      "roles": [
+        "study:anes-foundation",
+        "study:anes-invalid-live-smoke",
+        "study:anes-corrected-dialogue",
+        "study:anes-decision-context",
+        "study:anes-reserved-named-development",
+        "study:anes-individual-development",
+        "study:anes-profile-ablation",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_2012_EXPERIMENT_STATUS.md",
+      "exists": true,
+      "size_bytes": 62145,
+      "sha256": "cf655e443efca7804651093a52452f7d77286505ef4e890fadaa9a6e615198cd"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_2012_SILICON_SOCIETY_PROTOCOL.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_2012_SILICON_SOCIETY_PROTOCOL.md",
+      "exists": true,
+      "size_bytes": 8836,
+      "sha256": "434402d41641b57e5713a0e083ba0f4b267ffc9d9702b9ca6b77935379701c54"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_DECISION_CONTEXT_PROTOCOL.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_DECISION_CONTEXT_PROTOCOL.md",
+      "exists": true,
+      "size_bytes": 6145,
+      "sha256": "f324165c31fb17a16bf84bdfc9ed3efc1df657b49f88f91ac116e63d3a7c1afe"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_INDIVIDUAL_DEVELOPMENT_PROTOCOL.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_INDIVIDUAL_DEVELOPMENT_PROTOCOL.md",
+      "exists": true,
+      "size_bytes": 6651,
+      "sha256": "109728db4c097c07deb5fc6d21744f244a25ccb45689b4bc55fc9926e9bc2147"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_INDIVIDUAL_DEVELOPMENT_RESULTS.md",
+      "roles": [
+        "study:anes-individual-development",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_INDIVIDUAL_DEVELOPMENT_RESULTS.md",
+      "exists": true,
+      "size_bytes": 7500,
+      "sha256": "f2c3e23c28249ef0cacb83438aaeb33decb4255044af6c4a6490b7355d0da1de"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_PANEL_METADATA_READINESS.md",
+      "roles": [
+        "study:panel-readiness",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_PANEL_METADATA_READINESS.md",
+      "exists": true,
+      "size_bytes": 6048,
+      "sha256": "05391641be754741f59b9d490bdb1c42a793481623827e9f4c5e1816ac128a06"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_PROFILE_ABLATION_RESULTS.md",
+      "roles": [
+        "study:anes-profile-ablation",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_PROFILE_ABLATION_RESULTS.md",
+      "exists": true,
+      "size_bytes": 6045,
+      "sha256": "bcc1660812dc0881469752dbcd41ab6845a4fd3118f91aafdbebf5c36056e5ed"
+    },
+    {
+      "root": "research",
+      "path": "docs/ANES_RESERVED_VALIDATION_PROTOCOL.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ANES_RESERVED_VALIDATION_PROTOCOL.md",
+      "exists": true,
+      "size_bytes": 11260,
+      "sha256": "75517b5c0cef02364f978b740cfda286c3308f59e535e9be3dfa83b6ad9e462b"
+    },
+    {
+      "root": "research",
+      "path": "docs/CLASSIFIER_ERROR_ANALYSIS.md",
+      "roles": [
+        "study:classifier-investigation",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/CLASSIFIER_ERROR_ANALYSIS.md",
+      "exists": true,
+      "size_bytes": 8000,
+      "sha256": "62121be31a7366fdab31261b2146e68e1e9b9418935e8ec50d3810abead0b0e8"
+    },
+    {
+      "root": "research",
+      "path": "docs/CLASSIFIER_INVESTIGATION_2026-10-23.md",
+      "roles": [
+        "study:classifier-investigation",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/CLASSIFIER_INVESTIGATION_2026-10-23.md",
+      "exists": true,
+      "size_bytes": 5868,
+      "sha256": "b575fc53871ac0a9ba78abd1b186d53bd4275e40166c3ee967d6fbee85241920"
+    },
+    {
+      "root": "research",
+      "path": "docs/CLASSIFIER_METHOD_REVIEW.md",
+      "roles": [
+        "study:classifier-investigation",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/CLASSIFIER_METHOD_REVIEW.md",
+      "exists": true,
+      "size_bytes": 13397,
+      "sha256": "12ae41295b1ca448f425a3414375167efecc48723501ee315ed9c117f663ee27"
+    },
+    {
+      "root": "research",
+      "path": "docs/CLASSIFIER_PILOT_RESULTS_2026-10-23.md",
+      "roles": [
+        "study:local-outcome-classifier",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/CLASSIFIER_PILOT_RESULTS_2026-10-23.md",
+      "exists": true,
+      "size_bytes": 4752,
+      "sha256": "b5f5551328a56aa07f88a4488f380fe109a5b6a1e426a51604300e179b60c8fe"
+    },
+    {
+      "root": "research",
+      "path": "docs/CLASSIFIER_TRAINING_AUDIT.md",
+      "roles": [
+        "study:classifier-investigation",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/CLASSIFIER_TRAINING_AUDIT.md",
+      "exists": true,
+      "size_bytes": 9839,
+      "sha256": "e6292bd59e6f6d8cd7aad518dca62cfcd41bee8dd2a9affb2cd16529196fcef5"
+    },
+    {
+      "root": "research",
+      "path": "docs/COST_AND_SECURITY_GUARDRAILS.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/COST_AND_SECURITY_GUARDRAILS.md",
+      "exists": true,
+      "size_bytes": 4207,
+      "sha256": "4cee54147f5e61f4c65a60234e7d614298429c546f58ee581059ac9e41d03662"
+    },
+    {
+      "root": "research",
+      "path": "docs/DASHBOARD_SPEC.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/DASHBOARD_SPEC.md",
+      "exists": true,
+      "size_bytes": 2275,
+      "sha256": "c2c7520a9f2b1e3db2dfae5e73501ef80762248e6c569444f6e3c3ac070ca3d9"
+    },
+    {
+      "root": "research",
+      "path": "docs/DATA_AND_DESIGN_NEXT_STEPS_2026-10-23.md",
+      "roles": [
+        "study:baseline-preservation",
+        "study:panel-readiness",
+        "study:research-viewer",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/DATA_AND_DESIGN_NEXT_STEPS_2026-10-23.md",
+      "exists": true,
+      "size_bytes": 7062,
+      "sha256": "f40d7891527dfc6a992ba1974f8f05b7493c1372570b18439d90f63f4d5f0656"
+    },
+    {
+      "root": "research",
+      "path": "docs/DATA_GOVERNANCE.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/DATA_GOVERNANCE.md",
+      "exists": true,
+      "size_bytes": 4606,
+      "sha256": "8621bc84060eadaace245be5cf9f2e39656c75d94cf70c51bdc48fd740cf644a"
+    },
+    {
+      "root": "research",
+      "path": "docs/DEBATE_ISOLATED_PILOT_PROTOCOL.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/DEBATE_ISOLATED_PILOT_PROTOCOL.md",
+      "exists": true,
+      "size_bytes": 8776,
+      "sha256": "2517b45b19dde91b25b30c8656dcac9a4a2f43ee50cb331fc44faedd41c91b23"
+    },
+    {
+      "root": "research",
+      "path": "docs/DEBATE_ISOLATED_PILOT_RESULTS.md",
+      "roles": [
+        "study:debate-small-pilot",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/DEBATE_ISOLATED_PILOT_RESULTS.md",
+      "exists": true,
+      "size_bytes": 8258,
+      "sha256": "c6b3781636223c43b81295e6c4c7380553c734f5c3823680034b692e15e01819"
+    },
+    {
+      "root": "research",
+      "path": "docs/ELECTION_DATA_PIPELINE.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/ELECTION_DATA_PIPELINE.md",
+      "exists": true,
+      "size_bytes": 7486,
+      "sha256": "1047dc9b2ec12352dec5c4450ddc0e07f6aa30f9a9e5bc652d3dbd549083e24d"
+    },
+    {
+      "root": "research",
+      "path": "docs/IMPLEMENTATION_AUDIT_20261020.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/IMPLEMENTATION_AUDIT_20261020.md",
+      "exists": true,
+      "size_bytes": 11693,
+      "sha256": "6ade739c81ab20a09bf0805a967f0bc0f7d8c012c8dbd52247b4307abb08a9fa"
+    },
+    {
+      "root": "research",
+      "path": "docs/LOCAL_COMPARISON_PROVENANCE_REVIEW.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/LOCAL_COMPARISON_PROVENANCE_REVIEW.md",
+      "exists": true,
+      "size_bytes": 5187,
+      "sha256": "32a00f3b893b08023d06cae77c2cb3e6bc9b7845412a847d411ee2a66a7894ca"
+    },
+    {
+      "root": "research",
+      "path": "docs/LOCAL_FORMAT_FAILURE_DIAGNOSIS.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/LOCAL_FORMAT_FAILURE_DIAGNOSIS.md",
+      "exists": true,
+      "size_bytes": 4200,
+      "sha256": "41d6de9aee5091ee453210d095078ecf7b96f0581ba0fa052f3da3eb8926abdc"
+    },
+    {
+      "root": "research",
+      "path": "docs/LOCAL_FORMAT_PROTOCOL_REVIEW.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/LOCAL_FORMAT_PROTOCOL_REVIEW.md",
+      "exists": true,
+      "size_bytes": 9992,
+      "sha256": "bb109011928190c14616804713744506e890ec6e6ec9393d25bd69cd88c8f8e0"
+    },
+    {
+      "root": "research",
+      "path": "docs/LOCAL_FORMAT_SMOKE_RESULTS_2026-10-23.md",
+      "roles": [
+        "study:local-format-diagnosis",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/LOCAL_FORMAT_SMOKE_RESULTS_2026-10-23.md",
+      "exists": true,
+      "size_bytes": 3699,
+      "sha256": "9a9b03d66acce92e3d6b740b34e68f28e2adbba522c6ede1fbfded330808ba87"
+    },
+    {
+      "root": "research",
+      "path": "docs/LOCAL_MATCHED_COMPARISON_2026-10-23.md",
+      "roles": [
+        "study:local-matched-comparison",
+        "study:research-viewer",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/LOCAL_MATCHED_COMPARISON_2026-10-23.md",
+      "exists": true,
+      "size_bytes": 3269,
+      "sha256": "d31b9d6f768c28ef6277b059f7b906a17214994a41a264454364f737286fe2d9"
+    },
+    {
+      "root": "research",
+      "path": "docs/LONGITUDINAL_PANEL_FEASIBILITY.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/LONGITUDINAL_PANEL_FEASIBILITY.md",
+      "exists": true,
+      "size_bytes": 7983,
+      "sha256": "275bbfe916ecf969bffbf988ba05cf256aa9d281ab3f4218309358cf926012bf"
+    },
+    {
+      "root": "research",
+      "path": "docs/OBJECTIVE_ALIGNMENT_PROTOCOL_REVIEW.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/OBJECTIVE_ALIGNMENT_PROTOCOL_REVIEW.md",
+      "exists": true,
+      "size_bytes": 13353,
+      "sha256": "89ddee06c1eb27de1963daae397c3093347779a650fb83f2f39cc2006f35f4c7"
+    },
+    {
+      "root": "research",
+      "path": "docs/PANEL_EXPERIMENT_DESIGN_REVIEW.md",
+      "roles": [
+        "study:panel-readiness",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/PANEL_EXPERIMENT_DESIGN_REVIEW.md",
+      "exists": true,
+      "size_bytes": 16116,
+      "sha256": "ff97e4649f73b8070cc89b2535e4a3f2021a66d3bd423ce2917b37865d93442e"
+    },
+    {
+      "root": "research",
+      "path": "docs/RESIDUAL_CALIBRATION_PROTOCOL_REVIEW.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/RESIDUAL_CALIBRATION_PROTOCOL_REVIEW.md",
+      "exists": true,
+      "size_bytes": 7924,
+      "sha256": "57d6ed13076407a6acd7ae41f0832887bc29404307734db103a60ce4ad08becf"
+    },
+    {
+      "root": "research",
+      "path": "docs/RESIDUAL_CALIBRATION_RESULTS_2026-10-23.md",
+      "roles": [
+        "study:residual-calibration",
+        "study:research-viewer",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/RESIDUAL_CALIBRATION_RESULTS_2026-10-23.md",
+      "exists": true,
+      "size_bytes": 4714,
+      "sha256": "3537f681257a3022a560188769b3fe8512dfa832a4073eeffb09f488079173b9"
+    },
+    {
+      "root": "research",
+      "path": "docs/RESIDUAL_CALIBRATION_RESULT_AUDIT.md",
+      "roles": [
+        "study:residual-calibration",
+        "supporting_inventory"
+      ],
+      "id": "research:docs/RESIDUAL_CALIBRATION_RESULT_AUDIT.md",
+      "exists": true,
+      "size_bytes": 7530,
+      "sha256": "1a3109736819a44f89a0288129133ecefa484caaa1295670454b4bd511426dbd"
+    },
+    {
+      "root": "research",
+      "path": "docs/SOCIAL_EMULATION_RESEARCH.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/SOCIAL_EMULATION_RESEARCH.md",
+      "exists": true,
+      "size_bytes": 22710,
+      "sha256": "ecfec0ea8b97bdc5c271451ae58261032ceeb7bd2ba0586b87e7959bd36a1351"
+    },
+    {
+      "root": "research",
+      "path": "docs/TRACK_B_ARCHITECTURE.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/TRACK_B_ARCHITECTURE.md",
+      "exists": true,
+      "size_bytes": 5308,
+      "sha256": "8d179509af9381cf1e2c1ed4f0668178473c7a9d5b86bb7fd6a37af375ba8376"
+    },
+    {
+      "root": "research",
+      "path": "docs/USE_CASES_AND_BOUNDARIES.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/USE_CASES_AND_BOUNDARIES.md",
+      "exists": true,
+      "size_bytes": 3222,
+      "sha256": "137d0c58f28505cecc471becec3cb02ef65deca8ea750f528e4b4453781f50af"
+    },
+    {
+      "root": "research",
+      "path": "docs/WORKSPACE_MIGRATION.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:docs/WORKSPACE_MIGRATION.md",
+      "exists": true,
+      "size_bytes": 4221,
+      "sha256": "d5d5b25dde12269e239519501690330e7646bd6668cdb71500aebf00d609b912"
+    },
+    {
+      "root": "research",
+      "path": "experiments/debate-sft-replication/README.md",
+      "roles": [
+        "study:debate-admission",
+        "study:local-training-feasibility"
+      ],
+      "id": "research:experiments/debate-sft-replication/README.md",
+      "exists": true,
+      "size_bytes": 11337,
+      "sha256": "bd4fd7fb63f40eeb6b421bac8a7fbbb0c6776452849c39b27af60f11f3b7b916"
+    },
+    {
+      "root": "research",
+      "path": "experiments/debate-sft-replication/classifier-v1.protocol.json",
+      "roles": [
+        "context_or_protocol"
+      ],
+      "id": "research:experiments/debate-sft-replication/classifier-v1.protocol.json",
+      "exists": true,
+      "size_bytes": 2351,
+      "sha256": "b96125d7bf7b1ac6c13a425b3e1f4c2443d553620c7ba5ba1a1fbedf118dff36"
+    },
+    {
+      "root": "research",
+      "path": "experiments/debate-sft-replication/format-smoke-v1.protocol.json",
+      "roles": [
+        "context_or_protocol"
+      ],
+      "id": "research:experiments/debate-sft-replication/format-smoke-v1.protocol.json",
+      "exists": true,
+      "size_bytes": 1811,
+      "sha256": "f34fce99d9a8da5539a3199fc6020dbee3d444c7d2a0a5c5a3cbc171298272c7"
+    },
+    {
+      "root": "research",
+      "path": "experiments/debate-sft-replication/residual-calibration-v1.protocol.json",
+      "roles": [
+        "context_or_protocol"
+      ],
+      "id": "research:experiments/debate-sft-replication/residual-calibration-v1.protocol.json",
+      "exists": true,
+      "size_bytes": 2487,
+      "sha256": "35b5cda06f81a2b0f248fa4adce96c17b286c14f5f293385c48d74fae7b0936a"
+    },
+    {
+      "root": "research",
+      "path": "reports/PoliSim_Experimental_Program_Status_Report_2026-09-23.docx",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/PoliSim_Experimental_Program_Status_Report_2026-09-23.docx",
+      "exists": true,
+      "size_bytes": 100170,
+      "sha256": "d27a4eb8371c62af569b1c66035ba5468428677e7b02d96cfa2d7ae881fb74e9"
+    },
+    {
+      "root": "research",
+      "path": "reports/PoliSim_Experimental_Program_Status_Report_2026-09-24.docx",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/PoliSim_Experimental_Program_Status_Report_2026-09-24.docx",
+      "exists": true,
+      "size_bytes": 102568,
+      "sha256": "63910f3cc38225db92c156815ce8e974f828333c334def8dd4538e261aba1d1f"
+    },
+    {
+      "root": "research",
+      "path": "reports/anes-panel-readiness-20261023/documentation/derived-evidence.json",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/anes-panel-readiness-20261023/documentation/derived-evidence.json",
+      "exists": true,
+      "size_bytes": 7622,
+      "sha256": "2f71b4a4b4c2405c467c50285197f88f88e2bd59aa34dc7eb09588d872bef827"
+    },
+    {
+      "root": "research",
+      "path": "reports/anes-panel-readiness-20261023/documentation/download-attempts.json",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/anes-panel-readiness-20261023/documentation/download-attempts.json",
+      "exists": true,
+      "size_bytes": 1424,
+      "sha256": "62675b176e78737b3d06adca71034c7fd050b00515bb69f1038bf0ddd4fc6d6c"
+    },
+    {
+      "root": "research",
+      "path": "reports/anes-panel-readiness-20261023/metadata.json",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/anes-panel-readiness-20261023/metadata.json",
+      "exists": true,
+      "size_bytes": 7916,
+      "sha256": "5991d182f1804d01e9675646441e2db43230142e0a040dd94875c68edd49529a"
+    },
+    {
+      "root": "research",
+      "path": "reports/anes-panel-readiness-20261023/readiness.json",
+      "roles": [
+        "study:panel-readiness",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/anes-panel-readiness-20261023/readiness.json",
+      "exists": true,
+      "size_bytes": 3103,
+      "sha256": "079a72ea3ed62b3b0b79c3482469782c6d5ee2140dc3b61cbfd801fc1b46b52b"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/README.md",
+      "roles": [
+        "study:oregon-reproduction",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/README.md",
+      "exists": true,
+      "size_bytes": 8988,
+      "sha256": "1ce01c6636b78c743c0ee5f0d6d196d7e04035c68541d555161084e1ad18c3e4"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/baseline.py",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/baseline.py",
+      "exists": true,
+      "size_bytes": 8951,
+      "sha256": "8d535e4f397199d59d105d08f7fce7b76614780f8f839cf8342619fff94d9cf0"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/manifest.json",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/manifest.json",
+      "exists": true,
+      "size_bytes": 1354,
+      "sha256": "97d73f2323b62c189844693475f7b223768268740a39a24ffb85c7f7b9709e51"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/oregon-execution.log",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/oregon-execution.log",
+      "exists": true,
+      "size_bytes": 3792,
+      "sha256": "d79b47fe136645bce38baba86b7a4d4d45d20723a39733a6d8e688139ccdb605"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/oregon-results.json",
+      "roles": [
+        "study:oregon-reproduction",
+        "study:oregon-prediction",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/oregon-results.json",
+      "exists": true,
+      "size_bytes": 3792,
+      "sha256": "d79b47fe136645bce38baba86b7a4d4d45d20723a39733a6d8e688139ccdb605"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/oregon_reference.py",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/oregon_reference.py",
+      "exists": true,
+      "size_bytes": 7184,
+      "sha256": "ee091d19ce3471e2ab7678e9a657a983b983c0634d615835011b6df223fbbf94"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/reference-targets.json",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/reference-targets.json",
+      "exists": true,
+      "size_bytes": 507,
+      "sha256": "18e9ba2948b3fb7e317c494bb4ef7ae996cc74489e304c41432548758924a0a6"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/source-contract.unresolved.json",
+      "roles": [
+        "study:oregon-prediction",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/source-contract.unresolved.json",
+      "exists": true,
+      "size_bytes": 1596,
+      "sha256": "8d3f601fd6d7e306104e3e4833cb8902b308bccb0e2e2a4dc06409f67a36b236"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/test-results.txt",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/test-results.txt",
+      "exists": true,
+      "size_bytes": 80,
+      "sha256": "341d5dca33250b815baddbafb6001e174c20bf1716bb74f3d612e77777db8938"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/baseline/test_baseline.py",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/baseline/test_baseline.py",
+      "exists": true,
+      "size_bytes": 5919,
+      "sha256": "d17d5ee4b943251ccb2327c5cce4e33943a32408ac77b0b94e7cc546f911b9de"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/debate/BASELINE_PEER_REVIEW.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/debate/BASELINE_PEER_REVIEW.md",
+      "exists": true,
+      "size_bytes": 4309,
+      "sha256": "2dc1d4f3532936f5e78e05664649ac5d35289cadce6fd405e1d632e897a14998"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/debate/LICENSE",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/debate/LICENSE",
+      "exists": true,
+      "size_bytes": 6892,
+      "sha256": "39fce5bc9667e2f97539abf2b114a227818454e29dba63edc8ff7801a809463e"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/debate/PARTICIPANT_ADMISSION.md",
+      "roles": [
+        "study:debate-admission",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/debate/PARTICIPANT_ADMISSION.md",
+      "exists": true,
+      "size_bytes": 4821,
+      "sha256": "e55fe0bc5bff2eaa213f3490fabf26cbdfbd724ea9d20d9d2fdbef65aa2e6f7e"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/debate/README.md",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/debate/README.md",
+      "exists": true,
+      "size_bytes": 11813,
+      "sha256": "3573cf6ba35dbb5064328d2b41b975e223707de132bb52251b8f2778aa8598f3"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/oregon-data/BASELINE_SOURCE_REVIEW.md",
+      "roles": [
+        "study:oregon-reproduction",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/oregon-data/BASELINE_SOURCE_REVIEW.md",
+      "exists": true,
+      "size_bytes": 2826,
+      "sha256": "ff2d1d8a30f014a5ebbebaadae7fb576653a0e7fd27e2de26222c8e4a2966159"
+    },
+    {
+      "root": "research",
+      "path": "reports/behavior-feasibility-20261022/oregon-data/FEASIBILITY.md",
+      "roles": [
+        "study:oregon-prediction",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/behavior-feasibility-20261022/oregon-data/FEASIBILITY.md",
+      "exists": true,
+      "size_bytes": 8173,
+      "sha256": "e4fea9b857e1a5c6c9285da5a0288bf83011cd3f2f2d3af7384fc76c5282adc5"
+    },
+    {
+      "root": "research",
+      "path": "reports/classifier-training-audit-20261023.json",
+      "roles": [
+        "supporting_inventory"
+      ],
+      "id": "research:reports/classifier-training-audit-20261023.json",
+      "exists": true,
+      "size_bytes": 8522,
+      "sha256": "59d2fbe4bf7b4412a3e73db0eabcdd49bbd45615e462d8f73c6bc5fd22dc33a7"
+    },
+    {
+      "root": "research",
+      "path": "reports/social-comparison-audit-20261022/FINDINGS.md",
+      "roles": [
+        "study:debate-larger-comparison",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/social-comparison-audit-20261022/FINDINGS.md",
+      "exists": true,
+      "size_bytes": 6082,
+      "sha256": "ab898879295c68df6bea7a4e400a11e4e40efc010d6e01295680fd84d53bd96c"
+    },
+    {
+      "root": "research",
+      "path": "reports/statistical-reference-20261023/data-quality.json",
+      "roles": [
+        "study:baseline-preservation",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/statistical-reference-20261023/data-quality.json",
+      "exists": true,
+      "size_bytes": 857,
+      "sha256": "c18819275b125325020b1a9540da87a34ae65685eba8c357271feb73c509f648"
+    },
+    {
+      "root": "research",
+      "path": "reports/statistical-reference-20261023/manifest.json",
+      "roles": [
+        "study:baseline-preservation",
+        "supporting_inventory"
+      ],
+      "id": "research:reports/statistical-reference-20261023/manifest.json",
+      "exists": true,
+      "size_bytes": 2913,
+      "sha256": "706fb66cb6d7b252e440df2307e43c201a288b13e7344fc79acdec1057fe300c"
+    }
+  ],
+  "inventory_scope": "Research docs/reports excluding this register; selected aggregate outputs/protocols; named Ohio and automation reports; user plan. No recursive respondent/run reads.",
+  "non_claims": [
+    "Not every inventoried file was independently reviewed or replicated.",
+    "Older raw run folders may be absent.",
+    "No pristine holdout is inferred from a filename."
+  ],
+  "external_references": [
+    {
+      "url": "https://www.nber.org/papers/w17190",
+      "purpose": "Original Oregon first-year study; Medicaid lottery context",
+      "checked_date": "2026-10-27"
+    }
+  ]
+}

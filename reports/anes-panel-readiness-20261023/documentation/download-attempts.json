@@ -1,0 +1,37 @@
+[
+  {
+    "filename": "repeated-variables.zip",
+    "requested_url": "https://electionstudies.org/repeated_variables_2016_20_24/",
+    "retrieved_utc": "2026-10-23T09:08:16.442366+00:00",
+    "status": "failed",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "filename": "2024-codebook.html",
+    "requested_url": "https://electionstudies.org/wp-content/uploads/2026/04/anes_timeseries_2024_userguidecodebook_accessible_html.html",
+    "retrieved_utc": "2026-10-23T09:08:16.442701+00:00",
+    "status": "failed",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "filename": "2024-codebook.pdf",
+    "requested_url": "https://electionstudies.org/wp-content/uploads/2026/05/anes_timeseries_2024_userguidecodebook_20260519.pdf",
+    "retrieved_utc": "2026-10-23T09:08:16.442823+00:00",
+    "status": "failed",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "filename": "2020-codebook.pdf",
+    "requested_url": "https://electionstudies.org/anes_timeseries_2020_userguidecodebook_20220210/",
+    "retrieved_utc": "2026-10-23T09:08:16.442931+00:00",
+    "status": "failed",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "filename": "2016-codebook.pdf",
+    "requested_url": "https://electionstudies.org/wp-content/uploads/2018/12/anes_timeseries_2016_userguidecodebook.pdf",
+    "retrieved_utc": "2026-10-23T09:08:16.443029+00:00",
+    "status": "failed",
+    "error": "HTTP Error 403: Forbidden"
+  }
+]

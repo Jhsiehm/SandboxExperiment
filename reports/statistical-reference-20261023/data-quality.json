@@ -1,0 +1,43 @@
+{
+  "cases": 92,
+  "changed_count": 44,
+  "duplicate_case_identity_count": 0,
+  "duplicate_target_identity_count": 0,
+  "final_counts": {
+    "1": 16,
+    "2": 8,
+    "3": 20,
+    "4": 10,
+    "5": 15,
+    "6": 23
+  },
+  "initial_counts": {
+    "1": 11,
+    "2": 10,
+    "3": 19,
+    "4": 10,
+    "5": 20,
+    "6": 22
+  },
+  "missing_final_score_count": 0,
+  "missing_identity_count": 0,
+  "missing_initial_score_count": 0,
+  "missing_initial_text_count": 0,
+  "missing_topic_count": 0,
+  "out_of_range_score_count": 0,
+  "per_initial_support": {
+    "1": 11,
+    "2": 10,
+    "3": 19,
+    "4": 10,
+    "5": 20,
+    "6": 22
+  },
+  "schema_version": 1,
+  "scope": "Already admitted fitting partition only; descriptive counts, no model ranking.",
+  "targets": 92,
+  "unchanged_count": 48,
+  "unique_groups": 23,
+  "unique_people": 92,
+  "unique_topics": 21
+}

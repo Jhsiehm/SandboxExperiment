@@ -1,0 +1,33 @@
+{
+  "version": "format-smoke-v1",
+  "purpose": "Training-only output-format diagnosis; no belief-accuracy or confirmation claim",
+  "selection": "First admitted training group in frozen manifest order; all four initial participants in CSV initial-record order",
+  "models": [
+    "base",
+    "pilot_adapter"
+  ],
+  "conditions": [
+    "original",
+    "assistant_prefill"
+  ],
+  "assistant_prefix": "{\"probabilities\":[",
+  "planned_generations": 16,
+  "temperature": 0,
+  "seed": 20261023,
+  "max_new_tokens": 256,
+  "max_total_tokens": 4096,
+  "total_wall_seconds": 900,
+  "rss_gib": 18,
+  "mlx_peak_gib": 14,
+  "swap_growth_mib": 2048,
+  "failure_policy": "Record every format failure and continue all predeclared cases; stop on resource, runtime or integrity failure. No retries, repair, extraction, renormalization or choosing another prompt.",
+  "analysis": "Paired format validity by model and condition; token-cap hits and repeated-four-token-gram fraction. Never read validation cases, labels or reserve payloads.",
+  "progression": "All four assistant-prefill results must be strictly valid for BOTH models before considering a separate new validation protocol. This gate does not authorize an automatic validation rerun.",
+  "cost": {
+    "paid_calls": 0,
+    "training_steps": 0,
+    "downloads": 0
+  },
+  "limitation": "The adapter was trained on message text; successful prefilling would establish output compatibility only. Prefix bytes are declared input, never counted as generated text. Conditions have unequal input-token lengths and can consume unequal total tokens.",
+  "wall_budget_enforcement": "Root coordinator enforces one 900-second stage deadline across both sequential watchdogs; arm runner has defensive per-process cap. Report rejects combined supervisor time over900 seconds."
+}

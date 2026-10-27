@@ -1,0 +1,56 @@
+{
+  "schema": "panel-design-readiness-v1",
+  "status": "development_preparation_only",
+  "purpose": "Audit linked-panel data and establish a statistical reference before selecting another learned predictor.",
+  "endpoint": {
+    "construct": "Seven-category party identification; observed survey response",
+    "categories": 7,
+    "phase": "pre",
+    "crosswalk_status": "documented identifiers; construction equivalence unresolved",
+    "development_variables": {"2016": "V161158x", "2020": "V201231x"},
+    "later_variable": "V241227x",
+    "link_id": "V160001_orig"
+  },
+  "design": {
+    "development": [2016, 2020],
+    "later_evaluation": [2020, 2024],
+    "primary_scope": "Unweighted, observed-endpoint linked cohort; not the 2024 electorate",
+    "transfer_claim": "Later-wave prediction for known panel members",
+    "development_partition": "SHA256(anes-panel-development-v1: + linked_person_id) modulo 5; all records of a person stay together",
+    "partition_limit": "Source PSU/household dependencies require a separate grouping review before inferential use; five folds are not five temporal replications.",
+    "primary_task": "One-step conditional prediction from the observed input wave",
+    "raw_reference": "New seven-by-seven Laplace-one transition table fitted only on authorized development pairs",
+    "secondary_reference": "Observed initial-category persistence",
+    "primary_metric": "Mean normalized RPS across six ordinal cuts",
+    "stability_metric": "Change-event Brier score from 1 minus predicted probability of the initial category",
+    "missing_targets": "Exclude from scored endpoint pairs with reason counts; never impute truth or map missing codes to category four",
+    "later_inputs": "Initial party ID at 2020 pre only; additional features require a separately verified and frozen schema",
+    "later_predictions_before_targets": true,
+    "autonomous_and_assimilated_runs": "Deferred, separately specified information conditions",
+    "history_ablation": "Deferred: only one earlier observed transition supports development"
+  },
+  "unresolved_evaluation_decisions": {
+    "enhanced_candidate": null,
+    "candidate_features": null,
+    "practical_improvement_margin": null,
+    "margin_rationale": null,
+    "design_aware_uncertainty_method": null,
+    "precision_assessment": null,
+    "population_weighting_protocol": null
+  },
+  "stage_order": [
+    "Retain existing DEBATE reference separately; never reuse its six-category coefficients for ANES",
+    "Archive official source documentation and resolve endpoint construction, release and column mappings",
+    "Freeze a trusted raw-to-development projection; keep later outcomes outside the development export",
+    "Audit linkage, missingness, attrition, modes and development fold support",
+    "Assess development precision and define one candidate, practical margin and uncertainty plan",
+    "Freeze predictor, fit data, later input whitelist and complete predictions before evaluating later outcomes"
+  ],
+  "execution": {
+    "raw_ingestion_enabled": false,
+    "model_training_enabled": false,
+    "paid_api_calls_enabled": false,
+    "later_wave_readout_enabled": false,
+    "protected_existing_reserve_access_enabled": false
+  }
+}

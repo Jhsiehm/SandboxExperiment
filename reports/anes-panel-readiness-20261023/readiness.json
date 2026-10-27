@@ -1,0 +1,60 @@
+{
+  "schema": "panel-readiness-v1",
+  "status": "blocked_on_source_metadata",
+  "reference_retained": true,
+  "development_export_tool_ready": true,
+  "source_blocker_count": 5,
+  "blockers": [
+    {
+      "id": "summary_equivalence",
+      "stage": "source_metadata"
+    },
+    {
+      "id": "original_document_bytes",
+      "stage": "source_metadata"
+    },
+    {
+      "id": "repeated_variable_archive",
+      "stage": "source_metadata"
+    },
+    {
+      "id": "release_alignment",
+      "stage": "source_metadata"
+    },
+    {
+      "id": "merged_missingness",
+      "stage": "source_metadata"
+    }
+  ],
+  "source_metadata_ready": false,
+  "ready_for_development_ingestion": false,
+  "development_projection_frozen": false,
+  "real_panel_records_audited": 0,
+  "raw_panel_downloaded": false,
+  "model_training_enabled": false,
+  "later_wave_readout_enabled": false,
+  "evaluation_contract_complete": false,
+  "unresolved_evaluation_decisions": [
+    "enhanced_candidate",
+    "candidate_features",
+    "practical_improvement_margin",
+    "margin_rationale",
+    "design_aware_uncertainty_method",
+    "precision_assessment",
+    "population_weighting_protocol"
+  ],
+  "scope": "Preparation assessment only; no new respondent data, candidate fit or evaluation",
+  "next_action": "Resolve source metadata and freeze the development-only projection before ingestion",
+  "primary_scope": "Unweighted, observed-endpoint linked cohort; not the 2024 electorate",
+  "bindings": {
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/reports/anes-panel-readiness-20261023/metadata.json": "5991d182f1804d01e9675646441e2db43230142e0a040dd94875c68edd49529a",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/config/anes-panel-design-v1.json": "7db59799dfb9399d9b7016fada53adfef6aea81cb39d0d03cbec2a72abcb41cc",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/reports/statistical-reference-20261023/manifest.json": "706fb66cb6d7b252e440df2307e43c201a288b13e7344fc79acdec1057fe300c",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/data/local-mlx-pilot/outcome-classifier-v1-20261023/baseline.json": "ffc4ecc705c209841dfe51bcab5b40f68159c91cb914ef4e362c4abdda46b245",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/reports/statistical-reference-20261023/data-quality.json": "c18819275b125325020b1a9540da87a34ae65685eba8c357271feb73c509f648",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/src/psbx/experiments/panel_development.py": "d73e7b9f833cb821169c5d3ab990e7f3f3a0a6c47ba08b306fd96a7fc24b4b43",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/scripts/assess_panel_readiness.py": "89c2e9bf793dbf273f4198493a71b45e6259c7e0f72e3aad99257b4bfffa4861",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/docs/ANES_PANEL_METADATA_READINESS.md": "05391641be754741f59b9d490bdb1c42a793481623827e9f4c5e1816ac128a06",
+    "/Users/joshua/.codex/worktrees/research-preview/Policy Sim/docs/PANEL_EXPERIMENT_DESIGN_REVIEW.md": "ff97e4649f73b8070cc89b2535e4a3f2021a66d3bd423ce2917b37865d93442e"
+  }
+}

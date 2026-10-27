@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from psbx import recurring_budget
 from psbx.paths import run_dir
 from psbx.schemas import ModelConfig
 
@@ -60,6 +61,7 @@ class Reservation:
     estimated_usd: float
     model_id: str
     provider: str
+    recurring_budget_path: Path | None = None
 
 
 def _enabled(raw: str | None) -> bool:
@@ -133,6 +135,8 @@ def is_paid_model(model: ModelConfig) -> bool:
 
 
 def _require_pricing(model: ModelConfig) -> None:
+    if not all(math.isfinite(cost) for cost in (model.cost_per_1k_input, model.cost_per_1k_output)):
+        raise SpendGuardError(f"{model.id}: model pricing must be finite")
     if model.cost_per_1k_input < 0 or model.cost_per_1k_output < 0:
         raise SpendGuardError(f"{model.id}: model pricing cannot be negative")
     if model.cost_per_1k_input == 0 and model.cost_per_1k_output == 0:
@@ -184,6 +188,12 @@ def preflight_paid_requests(
             "paid models are disabled; set PSBX_ENABLE_PAID_MODELS=1 only for an "
             "intentional live run"
         )
+    try:
+        recurring_path = recurring_budget.configured_path()
+        if recurring_path is not None and recurring_budget.status(recurring_path)["blocked"]:
+            raise recurring_budget.RecurringBudgetError("recurring budget halted after cost overrun")
+    except recurring_budget.RecurringBudgetError as exc:
+        raise SpendGuardError(str(exc)) from exc
     total_requests = 0
     estimated = 0.0
     by_model: list[dict[str, Any]] = []
@@ -289,11 +299,16 @@ class _SpendGuard:
                 f"{model.id}: request estimate ${estimated:.4f} exceeds "
                 f"PSBX_MAX_REQUEST_USD=${limits.max_request_usd:.4f}"
             )
+        try:
+            recurring_path = recurring_budget.configured_path()
+        except recurring_budget.RecurringBudgetError as exc:
+            raise SpendGuardError(str(exc)) from exc
         reservation = Reservation(
             id=uuid.uuid4().hex,
             estimated_usd=estimated,
             model_id=model.id,
             provider=model.provider,
+            recurring_budget_path=recurring_path,
         )
         with self._lock:
             if self._request_count + 1 > limits.max_paid_requests:
@@ -306,6 +321,13 @@ class _SpendGuard:
                     f"run spend reservation would reach ${projected:.4f}; "
                     f"PSBX_MAX_RUN_USD=${limits.max_run_usd:.4f}"
                 )
+            if recurring_path is not None:
+                try:
+                    recurring_budget.reserve(
+                        recurring_path, reservation.id, self._run_id, estimated
+                    )
+                except recurring_budget.RecurringBudgetError as exc:
+                    raise SpendGuardError(str(exc)) from exc
             self._request_count += 1
             self._reserved_usd = projected
             self._entries.append(
@@ -335,6 +357,24 @@ class _SpendGuard:
         prompt = usage.get("prompt_tokens", usage.get("input_tokens"))
         completion = usage.get("completion_tokens", usage.get("output_tokens"))
         reported_cost = usage.get("cost")
+        if reservation.recurring_budget_path is not None:
+            # Preserve the exact provider cost before the per-run display ledger rounds it.
+            # Missing usage keeps the full reservation; no successful response refunds it.
+            actual = reported_cost
+            if actual is None and prompt is not None and completion is not None:
+                try:
+                    actual = estimate_request_usd(
+                        model, input_tokens=int(prompt), output_tokens=int(completion)
+                    )
+                except (TypeError, ValueError, OverflowError) as exc:
+                    raise SpendGuardError("invalid token usage in recurring paid call") from exc
+            if actual is not None:
+                try:
+                    recurring_budget.record_actual(
+                        reservation.recurring_budget_path, reservation.id, actual
+                    )
+                except recurring_budget.RecurringBudgetError as exc:
+                    raise SpendGuardError(str(exc)) from exc
         safe: dict[str, Any] = {}
         try:
             if prompt is not None:

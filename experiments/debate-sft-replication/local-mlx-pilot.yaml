@@ -1,0 +1,22 @@
+# Hardware feasibility only; adapted QLoRA, not paper-faithful full SFT.
+# The launcher supplies the pinned local model and output paths.
+train: true
+fine_tune_type: lora
+optimizer: adam
+mask_prompt: true
+num_layers: 16
+batch_size: 1
+iters: 52
+val_batches: 8
+learning_rate: 0.00005
+steps_per_report: 4
+steps_per_eval: 52
+grad_accumulation_steps: 4
+save_every: 52
+max_seq_length: 2304
+grad_checkpoint: true
+seed: 20261023
+lora_parameters:
+  rank: 8
+  dropout: 0.0
+  scale: 20.0

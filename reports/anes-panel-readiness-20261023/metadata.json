@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-10-23",
+  "scope": "Official documentation only; no respondent microdata, model calls or outcome datasets accessed.",
+  "readiness": "metadata identified; not ingestion-ready or measurement-equivalence certified",
+  "sources": [
+    {
+      "source_id": "merged",
+      "url": "https://electionstudies.org/data-center/2016-2020-2024-panel-merged-study/",
+      "reported_version": "May 19, 2026",
+      "locator": "Study overview, sample, merge instructions",
+      "original_sha256": null,
+      "access": "official web-tool rendered documentation",
+      "original_bytes_archived": false
+    },
+    {
+      "source_id": "2016",
+      "url": "https://electionstudies.org/wp-content/uploads/2018/12/anes_timeseries_2016_userguidecodebook.pdf",
+      "reported_version": "20190904 internal footer",
+      "locator": "V161158x; printed p256",
+      "original_sha256": null,
+      "access": "official web-tool rendered documentation",
+      "original_bytes_archived": false
+    },
+    {
+      "source_id": "2020",
+      "url": "https://electionstudies.org/wp-content/uploads/2022/02/anes_timeseries_2020_userguidecodebook_20220210.pdf",
+      "reported_version": "February 10, 2022",
+      "locator": "Printed pp9\u201310,115,772\u2013773",
+      "original_sha256": null,
+      "access": "official web-tool rendered documentation",
+      "original_bytes_archived": false
+    },
+    {
+      "source_id": "2024",
+      "url": "https://electionstudies.org/wp-content/uploads/2026/04/anes_timeseries_2024_userguidecodebook_accessible_html.html",
+      "reported_version": "May 19, 2026 release",
+      "locator": "Weights; V241221\u2013V241227x",
+      "original_sha256": null,
+      "access": "official web-tool rendered documentation",
+      "original_bytes_archived": false
+    },
+    {
+      "source_id": "2024_pdf",
+      "url": "https://electionstudies.org/wp-content/uploads/2026/05/anes_timeseries_2024_userguidecodebook_20260519.pdf",
+      "reported_version": "May 19, 2026",
+      "locator": "V241225\u2013V241227x",
+      "original_sha256": null,
+      "access": "official web-tool rendered documentation",
+      "original_bytes_archived": false
+    },
+    {
+      "source_id": "repeated",
+      "url": "https://electionstudies.org/repeated_variables_2016_20_24/",
+      "reported_version": null,
+      "locator": "Official merged-page documentation link; archive content not read",
+      "original_sha256": null,
+      "access": "link only; unsupported ZIP content",
+      "original_bytes_archived": false
+    },
+    {
+      "source_id": "errata",
+      "url": "https://electionstudies.org/data-center/2016-2020-2024-panel-merged-study/2016-2020-2024-panel-merged-file-updates-errata/",
+      "reported_version": "Page states October 30, 2025",
+      "locator": "Version inconsistent with main merged page",
+      "original_sha256": null,
+      "access": "official web-tool rendered documentation",
+      "original_bytes_archived": false
+    },
+    {
+      "source_id": "cumulative",
+      "url": "https://electionstudies.org/wp-content/uploads/2026/02/anes_timeseries_cdf_codebook_var_20260205.pdf",
+      "reported_version": "February 5, 2026",
+      "locator": "VCF0301 crosswalk; documentation only, not linked-panel data",
+      "original_sha256": null,
+      "access": "official web-tool rendered documentation",
+      "original_bytes_archived": false
+    }
+  ],
+  "verified": {
+    "link_id": "V160001_orig",
+    "merged_universe": "2016 pre and post completers with at least 2020 pre completion",
+    "cohort_target": "2016 electorate; not a refreshed 2024 electorate",
+    "wave_modes": {
+      "2016": [
+        "face-to-face",
+        "internet"
+      ],
+      "2020": [
+        "internet"
+      ],
+      "2024": [
+        "internet"
+      ]
+    },
+    "endpoint_crosswalk": [
+      {
+        "year": 2016,
+        "phase": "pre",
+        "variable": "V161158x",
+        "valid_codes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "documented_missing": [
+          -9,
+          -8
+        ]
+      },
+      {
+        "year": 2020,
+        "phase": "pre",
+        "variable": "V201231x",
+        "valid_codes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "documented_missing": [
+          -9,
+          -8
+        ]
+      },
+      {
+        "year": 2024,
+        "phase": "pre",
+        "variable": "V241227x",
+        "valid_codes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "documented_missing": [
+          -9,
+          -8,
+          -4
+        ]
+      }
+    ],
+    "category_labels": [
+      "Strong Democrat",
+      "Not very strong Democrat",
+      "Independent-Democrat",
+      "Independent",
+      "Independent-Republican",
+      "Not very strong Republican",
+      "Strong Republican"
+    ],
+    "panel_weights": {
+      "2020": {
+        "pre": "V200011a",
+        "post": "V200011b",
+        "psu": "V200011c",
+        "stratum": "V200011d"
+      },
+      "2024": {
+        "pre": "V240106a",
+        "post": "V240106b",
+        "psu": "V240106c",
+        "stratum": "V240106d"
+      }
+    },
+    "routing": "Strength conditional on major-party identification; lean branch includes independents/no preference/other/DK. 2024 adds web neither follow-up V241225 among summary source questions.",
+    "2020_summary_rule": "Valid lean can assign 3/4/5 despite a negative initial party-identification response; do not screen on raw first-question code alone."
+  },
+  "unresolved": [
+    {
+      "id": "summary_equivalence",
+      "blocking": true,
+      "detail": "Exact role of 2024 V241225 in V241227x construction not established. Same code labels do not certify invariance."
+    },
+    {
+      "id": "original_document_bytes",
+      "blocking": true,
+      "detail": "Direct documentation requests HTTP403; original SHA256 unavailable. Derived evidence hashes are not source hashes."
+    },
+    {
+      "id": "repeated_variable_archive",
+      "blocking": true,
+      "detail": "Official CSV-labeled link serves ZIP content to web tool. Archive members, column schema, exact release and hash unverified."
+    },
+    {
+      "id": "release_alignment",
+      "blocking": true,
+      "detail": "Merged main page May19,2026 versus errata October30,2025. Per-wave documents differ in vintage; membership in exact merged release unverified."
+    },
+    {
+      "id": "merged_missingness",
+      "blocking": true,
+      "detail": "Actual merged column existence, casing, uniqueness, blank/NA encoding, wave availability and item response counts unverified without authorized metadata/schema intake."
+    },
+    {
+      "id": "analysis_weights",
+      "blocking": false,
+      "detail": "Documented panel pre weights identified. Valid-endpoint subgroup weighting and uncertainty plan still needs freezing; weights do not eliminate attrition assumptions."
+    }
+  ],
+  "proposed_minimum_design": {
+    "status": "proposal, not executed",
+    "development": "2016 pre -> 2020 pre",
+    "evaluation": "2020 pre -> 2024 pre",
+    "feature": "initial seven-category party ID only",
+    "reference": "unweighted Laplace-one 7x7 transition plus persistence",
+    "population": "linked 2016 cohort, valid endpoints; quantify attrition separately",
+    "no_extra_history": true,
+    "notes": "Same respondents across time imply within-person temporal generalization, not held-out-person generalization. Weighted sensitivity is distinct from raw reference."
+  },
+  "local_evidence": {
+    "path": "reports/anes-panel-readiness-20261023/documentation/derived-evidence.json",
+    "sha256": "2f71b4a4b4c2405c467c50285197f88f88e2bd59aa34dc7eb09588d872bef827",
+    "kind": "agent-authored paraphrase of rendered documentation; NOT archived original source"
+  }
+}
