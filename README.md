@@ -1,27 +1,104 @@
 # Prediction Sandbox
 
-An auditable, local-first laboratory for historical forecasting with language
-models and synthetic agent populations.
+An auditable, local-first research laboratory for historical forecasting,
+human-response prediction, and synthetic agent populations.
 
 Clone: `git@github.com:Jhsiehm/SandboxExperiment.git`
 
-Prediction Sandbox freezes an evidence world at a declared date, lets a model
-or representative swarm reason only from that world, and evaluates the saved
-forecast against later observed outcomes. The model weights are unchanged; the
-experiment controls the searchable corpus, clock, population profile, model
-composition, provenance, and evaluation boundary around them.
+Prediction Sandbox tests whether language models, richer profiles, local
+training, or agent discussion improve predictions of observed human outcomes.
+Each comparison retains statistical controls, saved predictions, source
+provenance, costs, and an explicit boundary between development and evaluation.
+Recent work spans ANES survey responses, DEBATE opinion changes, local MLX
+adapter training, and a reconstructed Oregon Medicaid enrollment benchmark.
 
-The working environment is epoch **e2012**: cutoff `2012-06-30`, resolution
+The original forecasting environment remains epoch **e2012**: cutoff `2012-06-30`, resolution
 window through `2013-06-30`, and 50 binary economic, legislative, and
 geopolitical questions. Scoring includes Brier probability error, a derived
 forecast score, calibration views, and Harrell C-index ranking.
 
-Research status and complete study register: [Research log — 27 October 2026](docs/RESEARCH_LOG.md).
+That forecasting track freezes the searchable evidence and clock around the
+model. Behavioral studies use their own cohort, information, and evaluation
+contracts; they do not inherit the e2012 cutoff. Local training experiments
+explicitly change adapter weights and compare them with the base model.
+
+## Research update · 27 October 2026
+
+**The tested training and discussion additions have not established a useful
+improvement over their controls.** Direct prediction had the lowest RPS point
+estimate in the larger DEBATE comparison, but discussion performed worse.
+Learning discussion language did not establish better belief prediction.
+
+The latest saved behavioral experiments are from **23 October**. The October 27
+update compiled and verified the research record without new paid runs.
+
+- **DEBATE discussion comparison:** 116 people in 29 groups. Direct prediction
+  scored RPS **0.11512**, transition control **0.13029**, and generated discussion
+  **0.14671**. Discussion incorrectly changed the modal answer for 28 of 58 people
+  whose actual answers stayed stable. These are now-inspected development
+  results, with a documented source-integrity recovery.
+  [Comparison and limitations](reports/social-comparison-audit-20261022/FINDINGS.md).
+- **Local message training:** a four-bit Llama 3.1 8B adapter completed 13
+  optimizer updates on a 24 GB M5 MacBook Air. Validation message loss improved
+  **3.6280 → 3.2011 nats/token** across 133 messages in four groups, but the
+  adapter failed its first direct-belief output. Belief accuracy was not scored
+  and interaction testing stopped.
+  [Matched comparison](docs/LOCAL_MATCHED_COMPARISON_2026-10-23.md).
+- **Categorical prediction and calibration:** a fresh classifier produced valid
+  probabilities but scored RPS **0.21605**, worse than the base model's **0.18457**
+  and transition control's **0.12472** on 24 internal-evaluation participants.
+  It overpredicted opinion change. A separate five-fold diagnostic on 92 fitting
+  participants found no useful gain from adding frozen-model logits to calibrated
+  transition probabilities. Both progression gates failed.
+  [Classifier](docs/CLASSIFIER_PILOT_RESULTS_2026-10-23.md) ·
+  [Calibration](docs/RESIDUAL_CALIBRATION_RESULTS_2026-10-23.md).
+- **ANES profiles:** the 120-person profile ablation did not beat the party-based
+  statistical baseline. Its half-multiclass Brier was **0.22087**, versus **0.23184**
+  for the best direct-model profile and **0.22235** for the best hybrid.
+  The separate 50-person reserve remained excluded.
+  [Profile ablation](docs/ANES_PROFILE_ABLATION_RESULTS.md).
+- **Oregon Medicaid:** reconstructed two published enrollment results using
+  **74,922 people in 66,385 households**, passing all six rounding checks.
+  Household-separated statistical prediction improved Brier **0.167696 → 0.164220**.
+  Agent performance on this benchmark remains untested.
+  [Reproduction and baseline](reports/behavior-feasibility-20261022/baseline/README.md).
+
+Lower scores indicate less error, but RPS, message loss, and the different Brier
+scales are not interchangeable. These retrospective development studies do not
+establish prospective forecasting performance or a validated policy simulator.
+
+Start with the [October research summary](docs/RESEARCH_LOG_2026-10-27.md).
+The [complete research log](docs/RESEARCH_LOG.md) indexes **31 studies**, including
+earlier Ohio work, costs, stopped runs, limitations, and next steps. Its
+[machine-readable register](reports/research-register-20261027/experiment-ledger.json)
+is backed by an [84-source inventory](reports/research-register-20261027/source-inventory.json).
+Some underlying artifacts remain local or in parallel checkouts; the register
+records their locations and does not imply that a clone contains every dataset.
+
+## What comes next
+
+1. **Resolve ANES panel provenance and measurement.** The proposed design develops
+   seven-category party-identification transitions on 2016→2020, then evaluates
+   2020→2024. Five source and construction blockers remain; raw panel ingestion,
+   training, and later-cohort evaluation have not started.
+   [Readiness report](docs/ANES_PANEL_METADATA_READINESS.md).
+2. **Freeze the next comparison before inspecting another cohort.** Retain
+   persistence and transition controls, measure change/no-change calibration,
+   and require a defined predictive gain before expanding training or discussion.
+   [Data and design plan](docs/DATA_AND_DESIGN_NEXT_STEPS_2026-10-23.md).
+3. **Define the Oregon agent comparison.** Resolve the pre-event feature set and
+   lottery-batch cutoffs before testing agents against the statistical reference.
+   Reproducing enrollment effects alone does not validate simulated behavior.
+
+The immediate research priority is predicting stability and establishing
+comparable data and baselines before scaling the agent population.
 
 ## What this repository is now
 
-The repository is one integrated research workbench with six cooperating
-systems:
+The research workbench includes local adapter training and evaluation scripts,
+participant admission audits, calibration protocols, a study register, and a
+viewer for aggregate experiment progress and saved discussion recordings.
+The underlying forecasting platform has six cooperating systems:
 
 | System | What it does today |
 |---|---|
@@ -39,9 +116,10 @@ remain separate throughout that chain.
 
 ## Current vision
 
-Near term, Prediction Sandbox is becoming a reproducible benchmark for asking
-how evidence, model family, persona construction, population weighting, and
-swarm size change forecast quality across multiple historical epochs. The goal
+Near term, Prediction Sandbox is testing whether evidence, profile construction,
+local training, calibration, and interaction improve individual predictions over
+strong statistical controls. Historical forecasting and population construction
+remain supporting tracks. The goal
 is not merely to produce a winning percentage; it is to expose why a result was
 possible, what information the agent could access, how much evidence supports
 the ranking, and where uncertainty enters the system.
@@ -64,7 +142,7 @@ Agent-loop layout follows [AgentSociety 2](https://github.com/tsinghua-fib-lab/A
 (arXiv:2607.11895). The sibling platform remains external; its urban simulator
 is not vendored into this repository.
 
-## Two complementary tracks (Phase 1)
+## Historical forecasting tracks (original Phase 1)
 
 They share the frozen corpus, cutoff, sequential OpenRouter swarm, and
 Brier/C-index scoring. Neither is PolicySim.
@@ -92,9 +170,10 @@ response prediction → PolicySim (later).** Year-step is a hook
 (constituents drafting bills that are statistically likely to pass) is
 explicitly out of Phase 1.
 
-## Status
+## Forecasting platform capabilities
 
-Working today (aligned 15 September 2026):
+The original e2012 platform provides the following capabilities. The research
+update above reports the newer behavioral experiments separately.
 
 - e2012 freeze: cutoff `2012-06-30`, resolution through `2013-06-30`, 50 binary
   questions. Brier **and** Harrell C-index.
@@ -120,8 +199,9 @@ Working today (aligned 15 September 2026):
   `meta-llama/llama-3.1-8b-instruct`, `qwen/qwen-2.5-7b-instruct`), median
   `swarm-median`, votes in `swarm_votes.jsonl`. Rate limit 1 req / 2s, 20/min,
   concurrency 1, `max_tokens` 256. A full 12×50 pass is hours — keep `--limit 1`.
-- `local-*` Llama 3.1 8B / Qwen2.5 7B stay vLLM-only (`VLLM_BASE_URL`). They
+- In the forecasting runner, `local-*` Llama 3.1 8B / Qwen2.5 7B use vLLM (`VLLM_BASE_URL`). They
   are never auto-routed onto `OPENROUTER_API_KEY`.
+  The separate DEBATE training scripts use native MLX on Apple Silicon.
 - Seaborn charts on Results: vote swarm vs later truth / median / 2012 prior,
   Brier bars by species, signed-error lollipops. Practice (≥8 questions) also
   gets a per-question Brier violin. `psbx score` writes the same PNGs next to
@@ -150,7 +230,7 @@ Working today (aligned 15 September 2026):
   presidential, U.S. Senate, and U.S. House general-election contests. State-legislative and local
   election coverage still requires jurisdiction-specific adapters and is not claimed complete.
 
-Not working yet:
+Remaining forecasting limitations and setup requirements:
 
 - Native Claude + GPT still needs **both** `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` (`config/run-phase2.yaml`). That path is optional; OpenRouter
@@ -563,6 +643,9 @@ src/psbx/agents/swarm.py   sequential 12-vote median (not a stub)
 src/psbx/scoring/plots.py  seaborn vote swarm / Brier bars / signed-error / violin
 leaderboard/     tactical World Model, Arena leaderboard, experiment console, local APIs
 leaderboard/jobs.py        Run practice / live mix / swarm button wiring
+experiments/debate-sft-replication/  local MLX training, protocols, and focused tests
+scripts/         participant audits, development evaluation, calibration, register verification
+reports/         saved aggregate findings, provenance, readiness, and study register
 custom/          AgentSociety-shaped env + forecaster
 examples/        e2012 AgentSociety 2 InitConfig + questionnaire steps
 ../AgentSociety  sibling clone (gh repo clone tsinghua-fib-lab/AgentSociety)
@@ -573,6 +656,7 @@ data/corpus/     built index (gitignored)
 data/population/ generated population artifacts (gitignored)
 data/elections/  downloaded/imported election artifacts (gitignored)
 data/runs/       predictions and scores (gitignored)
+data/local-mlx-pilot/  local training and inference artifacts (gitignored)
 tests/
 ```
 
@@ -584,6 +668,8 @@ pytest -q
 python -m compileall -q src leaderboard
 node --check leaderboard/static/app.js
 node --check leaderboard/static/geography-map.js
+node --check leaderboard/static/research.js
+node --check leaderboard/static/research-live.js
 ```
 
 The offline suite covers the cutoff lock, 50-question e2012 set, Brier and
@@ -593,6 +679,25 @@ security boundaries, plots, Docker clock and archive-only search, society
 tracks, the year-step hook, and wheel contents including dashboard static
 assets. GitHub Actions runs Ruff, the complete test suite, and whitespace checks
 without provider credentials or paid-model access.
+
+Behavioral research checks also cover participant admission, local comparison
+boundaries, outcome-classifier evaluation, residual calibration, panel readiness,
+and research-viewer navigation. MLX-dependent tests under
+`experiments/debate-sft-replication/` require the separate Apple Silicon MLX
+environment and are outside the default `tests/` collection.
+
+Before the October 27 research commit, 475 offline tests and 16 additional
+MLX-dependent tests passed. The research register passed 417 checks across 31
+studies and 84 indexed sources. These counts describe that checkout and test
+selection; they are software and record-consistency checks, not new experiments.
+To verify the register in a workspace containing its recorded local artifacts:
+
+```bash
+python scripts/verify_research_log.py
+```
+
+That verifier needs the source paths and saved outputs recorded in the inventory;
+it is not a fresh-clone check and does not call a model provider.
 
 ## License
 
